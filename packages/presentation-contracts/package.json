@@ -1,0 +1,23 @@
+{
+  "name": "@pulpit-ai/presentation-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FreeShow Integration Adapter and Mock Server for Pulpit AI",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pulpit-ai/authority-manager": "workspace:*",
+    "@pulpit-ai/shared-types": "workspace:*",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io": "^4.8.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

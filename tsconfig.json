@@ -6,6 +6,7 @@
   "include": [],
   "references": [
     { "path": "./packages/shared-types" },
-    { "path": "./packages/authority-manager" }
+    { "path": "./packages/authority-manager" },
+    { "path": "./packages/presentation-contracts" }
   ]
 }
