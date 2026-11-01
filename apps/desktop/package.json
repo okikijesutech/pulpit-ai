@@ -1,0 +1,30 @@
+{
+  "name": "@pulpit-ai/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pulpit AI Operator Desktop Application",
+  "main": "./dist/main/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build:renderer": "vite build",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build": "pnpm run build:renderer && pnpm run build:main",
+    "start": "electron ./dist/main/index.js"
+  },
+  "dependencies": {
+    "@pulpit-ai/authority-manager": "workspace:*",
+    "@pulpit-ai/presentation-contracts": "workspace:*",
+    "@pulpit-ai/shared-types": "workspace:*",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.1"
+  }
+}

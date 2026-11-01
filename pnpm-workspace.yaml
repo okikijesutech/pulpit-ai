@@ -5,6 +5,8 @@ packages:
 
 onlyBuiltDependencies:
   - esbuild
+  - electron
 
 allowBuilds:
+  electron: true
   esbuild: true
