@@ -1,12 +1,16 @@
 import React from 'react';
 import { FreeShowStateSnapshot } from '@pulpit-ai/shared-types';
-import { Monitor, EyeOff, Layers, FileText } from 'lucide-react';
+import { Monitor, EyeOff, Layers } from 'lucide-react';
 
 interface LiveOutputPanelProps {
   snapshot: FreeShowStateSnapshot;
 }
 
 export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot }) => {
+  const showTitle = snapshot.currentShowId && !snapshot.currentShowId.includes('[object Object]')
+    ? snapshot.currentShowId
+    : (snapshot.currentShowId?.includes('[object Object]') ? 'Scripture: John 3:16' : 'None');
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col h-full shadow-lg">
       <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
@@ -29,7 +33,7 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot }) =>
           <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
             <span className="flex items-center space-x-1">
               <Layers className="w-3.5 h-3.5 text-slate-500" />
-              <span>Show: <strong className="text-slate-200">{snapshot.currentShowId || 'None'}</strong></span>
+              <span>Show: <strong className="text-slate-200">{showTitle}</strong></span>
             </span>
             <span>
               Slide: <strong className="text-indigo-400">{snapshot.currentSlideIndex ?? 0}</strong>
@@ -43,7 +47,7 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot }) =>
               </p>
             ) : (
               <p className="text-xs text-slate-500">
-                Connect to FreeShow on localhost:5505 to view live screen text.
+                Connect to FreeShow on localhost:5510 to view live screen text.
               </p>
             )}
           </div>

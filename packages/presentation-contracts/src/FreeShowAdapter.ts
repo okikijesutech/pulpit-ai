@@ -28,6 +28,45 @@ export class FreeShowAdapter {
   private reconnectIntervalMs: number;
   private isManuallyClosed = false;
 
+  private extractFreeShowText(data: any): string | null {
+    if (!data) return null;
+    // Temp items (scriptures, quick texts)
+    if (data.tempItems && Array.isArray(data.tempItems)) {
+      const parts: string[] = [];
+      for (const item of data.tempItems) {
+        if (item.lines && Array.isArray(item.lines)) {
+          for (const line of item.lines) {
+            if (Array.isArray(line.items)) {
+              const text = line.items.map((i: any) => i.text || '').join('').trim();
+              if (text) parts.push(text);
+            } else if (typeof line.text === 'string' && line.text.trim()) {
+              parts.push(line.text.trim());
+            }
+          }
+        }
+      }
+      if (parts.length > 0) return parts.join('\n');
+    }
+    // Regular slide items
+    if (data.items && Array.isArray(data.items)) {
+      const parts: string[] = [];
+      for (const item of data.items) {
+        if (item.lines && Array.isArray(item.lines)) {
+          for (const line of item.lines) {
+            if (Array.isArray(line.items)) {
+              const text = line.items.map((i: any) => i.text || '').join('').trim();
+              if (text) parts.push(text);
+            } else if (typeof line.text === 'string' && line.text.trim()) {
+              parts.push(line.text.trim());
+            }
+          }
+        }
+      }
+      if (parts.length > 0) return parts.join('\n');
+    }
+    return null;
+  }
+
   constructor(authorityManager: AuthorityManager, options: FreeShowAdapterOptions = {}) {
     this.authorityManager = authorityManager;
     this.host = options.host ?? 'localhost';
@@ -102,6 +141,14 @@ export class FreeShowAdapter {
         this.socket.on('connect', () => {
           this.stateSnapshot.lastHeartbeat = Date.now();
           this.updateStatus('connected');
+
+          // Authenticate with FreeShow Remote Server protocol (port 5510)
+          this.socket!.emit('REMOTE', {
+            id: this.socket!.id || '',
+            channel: 'ACCESS',
+            data: this.authKey || '1445'
+          });
+
           resolve(true);
         });
 
@@ -118,6 +165,28 @@ export class FreeShowAdapter {
             this.updateStatus('error');
           }
           resolve(false);
+        });
+
+        // Listen for FreeShow Remote protocol events (port 5510)
+        this.socket.on('REMOTE', (msg: any) => {
+          this.stateSnapshot.lastHeartbeat = Date.now();
+          if (!msg || typeof msg !== 'object') return;
+
+          if (msg.channel === 'ACCESS' && msg.data === true) {
+            this.updateStatus('connected');
+          } else if (msg.channel === 'OUT' && msg.data) {
+            const projectedText = this.extractFreeShowText(msg.data);
+            if (projectedText) {
+              this.stateSnapshot.currentSlideText = projectedText;
+              this.stateSnapshot.isOutputCleared = false;
+            }
+            if (typeof msg.data.slide === 'number') {
+              this.stateSnapshot.currentSlideIndex = msg.data.slide;
+            }
+          } else if (msg.channel === 'SHOW' && msg.data && typeof msg.data.name === 'string') {
+            this.stateSnapshot.currentShowId = msg.data.name;
+          }
+          this.notify();
         });
 
         // Listen for incoming FreeShow telemetry
@@ -200,6 +269,54 @@ export class FreeShowAdapter {
         done({ success: true });
       }, 300);
 
+      const dotRef = typeof command.data?.reference === 'string' && command.data.reference.includes('.')
+        ? command.data.reference
+        : '43.3.16';
+
+      const refDisplay = command.data?.referenceDisplay
+        ? String(command.data.referenceDisplay)
+        : (typeof command.data?.reference === 'string' && !command.data.reference.includes('.')
+            ? command.data.reference
+            : (command.data?.book ? `${command.data.book} ${command.data.chapter}:${command.data.verse}` : 'John 3:16'));
+
+      const text = String(command.data?.text ?? command.data?.fullText ?? refDisplay);
+
+      // Dispatch to FreeShow Remote Server protocol (port 5510)
+      let remoteChannel: string | null = null;
+      let remoteData: any = undefined;
+
+      switch (command.action) {
+        case 'start_scripture':
+          remoteChannel = 'API:start_scripture';
+          remoteData = { reference: dotRef };
+          break;
+        case 'next_slide':
+          remoteChannel = 'API:next_slide';
+          break;
+        case 'previous_slide':
+          remoteChannel = 'API:previous_slide';
+          break;
+        case 'clear_all':
+        case 'clear_slide':
+          remoteChannel = 'API:clear_all';
+          break;
+        case 'restore_output':
+          remoteChannel = 'API:restore_output';
+          break;
+        case 'start_show':
+          remoteChannel = 'API:start_show';
+          remoteData = command.data;
+          break;
+      }
+
+      if (remoteChannel) {
+        this.socket!.emit('REMOTE', {
+          id: this.socket!.id || '',
+          channel: remoteChannel,
+          data: remoteData
+        });
+      }
+
       const payload = {
         action: command.action,
         data: command.data
@@ -220,9 +337,7 @@ export class FreeShowAdapter {
 
       // Optimistically update snapshot so presentation display reflects approved projection
       if (command.action === 'start_scripture') {
-        const ref = String(command.data?.reference ?? 'Scripture');
-        const text = String(command.data?.text ?? command.data?.fullText ?? ref);
-        this.stateSnapshot.currentShowId = `Scripture: ${ref}`;
+        this.stateSnapshot.currentShowId = `Scripture: ${refDisplay}`;
         this.stateSnapshot.currentSlideText = text;
         this.stateSnapshot.isOutputCleared = false;
         this.notify();

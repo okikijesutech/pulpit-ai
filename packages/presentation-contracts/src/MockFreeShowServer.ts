@@ -84,9 +84,17 @@ export class MockFreeShowServer {
           }
         });
 
+        // Handle FreeShow Remote protocol handshake
+        socket.on('REMOTE', (msg: any) => {
+          if (!msg) return;
+          if (msg.channel === 'ACCESS') {
+            socket.emit('REMOTE', { id: socket.id, channel: 'ACCESS', data: true });
+          }
+        });
+
         // Allow direct event by action name (e.g. socket.emit("next_slide"))
         socket.onAny((event, ...args) => {
-          if (event !== 'action' && event !== 'disconnect' && event !== 'data') {
+          if (event !== 'action' && event !== 'disconnect' && event !== 'data' && event !== 'REMOTE') {
             const data = args[0];
             const callback = typeof args[args.length - 1] === 'function' ? args[args.length - 1] : undefined;
             this.handleAction(event, data);
@@ -129,8 +137,9 @@ export class MockFreeShowServer {
         this.isOutputCleared = false;
         break;
       case 'start_scripture':
-        this.currentShowId = data?.reference ? `Scripture: ${data.reference}` : 'Scripture';
-        this.currentSlideText = data?.text || data?.fullText || (data?.reference ? `Scripture: ${data.reference}` : 'Scripture');
+        const refStr = data?.referenceDisplay || (typeof data?.reference === 'string' ? data.reference : (data?.book ? `${data.book} ${data.chapter}:${data.verse}` : 'Scripture'));
+        this.currentShowId = `Scripture: ${refStr}`;
+        this.currentSlideText = data?.text || data?.fullText || `Scripture: ${refStr}`;
         this.isOutputCleared = false;
         break;
       case 'start_show':

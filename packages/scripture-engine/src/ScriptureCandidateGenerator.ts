@@ -11,6 +11,7 @@
 import { SuggestionCandidate, FreeShowCommand } from '@pulpit-ai/shared-types';
 import { ScriptureReferenceParser, ParsedScriptureResult } from './ScriptureReferenceParser.js';
 import { ScriptureDatabase } from './ScriptureDatabase.js';
+import { CANON_BOOKS } from './CanonData.js';
 
 export interface CandidateGeneratorOptions {
   activeTranslation?: string;
@@ -129,11 +130,28 @@ export class ScriptureCandidateGenerator {
       return null;
     }
 
+    const verseRangeStr = ref.verseEnd && ref.verseEnd > ref.verseStart
+      ? `${ref.verseStart}-${ref.verseEnd}`
+      : `${ref.verseStart}`;
+
+    const bookIdx = CANON_BOOKS.findIndex(
+      b => b.name.toLowerCase() === ref.book.toLowerCase() || b.id.toLowerCase() === ref.book.toLowerCase()
+    );
+    const bookNumber = bookIdx >= 0 ? bookIdx + 1 : 1;
+    const dotReference = `${bookNumber}.${ref.chapter}.${ref.verseStart}`;
+    const referenceDisplay = `${ref.book} ${ref.chapter}:${verseRangeStr}`;
+
     // Build standard FreeShow projection command payload
     const actionPayload: FreeShowCommand = {
       action: 'start_scripture',
       data: {
-        reference: passage.reference,
+        reference: dotReference, // FreeShow dot-notation: e.g. "43.3.16"
+        referenceDisplay, // Formatted text: e.g. "John 3:16"
+        book: ref.book,
+        bookNumber,
+        chapter: ref.chapter,
+        verse: ref.verseStart,
+        verseEnd: ref.verseEnd,
         text: passage.formattedText,
         fullText: passage.fullText,
         translation: passage.translation.abbreviation,
@@ -144,14 +162,10 @@ export class ScriptureCandidateGenerator {
       createdAt: now
     };
 
-    const verseRangeStr = ref.verseEnd && ref.verseEnd > ref.verseStart
-      ? `${ref.verseStart}-${ref.verseEnd}`
-      : `${ref.verseStart}`;
-
     const candidate: SuggestionCandidate = {
       id: `cand_${now}_${Math.random().toString(36).substring(2, 9)}`,
       type: 'scripture',
-      title: `${ref.book} ${ref.chapter}:${verseRangeStr} (${passage.translation.abbreviation})`,
+      title: `${referenceDisplay} (${passage.translation.abbreviation})`,
       contentPreview: passage.formattedText,
       confidence: Math.round(parseResult.confidence * 100) / 100,
       evidence: parseResult.rawEvidence,

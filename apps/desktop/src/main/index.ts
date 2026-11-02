@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 import { AuthorityManager } from '@pulpit-ai/authority-manager';
 import { FreeShowAdapter, MockFreeShowServer } from '@pulpit-ai/presentation-contracts';
 import {
@@ -189,14 +190,34 @@ function startLevelMeterBroadcast(): void {
   }, 100);
 }
 
+function detectFreeShowPassword(): string | undefined {
+  try {
+    const appData = process.env.APPDATA || '';
+    const settingsPath = join(appData, 'FreeShow', 'settings.json');
+    if (existsSync(settingsPath)) {
+      const content = readFileSync(settingsPath, 'utf8');
+      const parsed = JSON.parse(content);
+      if (parsed?.serverData?.remote?.password) {
+        return String(parsed.serverData.remote.password);
+      }
+    }
+  } catch (err) {
+    // ignore
+  }
+  return undefined;
+}
+
 function initFreeShow(port = 5510): FreeShowAdapter {
   if (freeShowAdapter) {
     freeShowAdapter.disconnect();
   }
 
+  const detectedPassword = detectFreeShowPassword();
+
   freeShowAdapter = new FreeShowAdapter(authorityManager, {
     host: '127.0.0.1',
-    port
+    port,
+    authKey: detectedPassword || '1445'
   });
 
   freeShowAdapter.subscribe((snapshot) => {
@@ -510,7 +531,8 @@ ipcMain.handle(
 
 // App Lifecycle
 app.whenReady().then(() => {
-  initFreeShow(5505);
+  const adapter = initFreeShow(5510);
+  adapter.connect().catch(() => {});
   createWindow();
 
   app.on('activate', () => {
