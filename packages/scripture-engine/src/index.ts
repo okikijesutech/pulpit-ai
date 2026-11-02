@@ -5,3 +5,4 @@ export * from './ScriptureReferenceParser.js';
 export * from './types.js';
 export * from './ScriptureDatabase.js';
 export * from './SeedScriptureData.js';
+export * from './ScriptureCandidateGenerator.js';
