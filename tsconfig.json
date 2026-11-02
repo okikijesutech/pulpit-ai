@@ -9,6 +9,7 @@
     { "path": "./packages/authority-manager" },
     { "path": "./packages/presentation-contracts" },
     { "path": "./packages/audio-engine" },
+    { "path": "./packages/speech-engine" },
     { "path": "./apps/desktop/tsconfig.main.json" }
   ]
 }

@@ -1,0 +1,21 @@
+{
+  "name": "@pulpit-ai/speech-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local speech recognition engine with whisper.cpp and fail-closed crash recovery",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pulpit-ai/audio-engine": "workspace:*",
+    "@pulpit-ai/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
