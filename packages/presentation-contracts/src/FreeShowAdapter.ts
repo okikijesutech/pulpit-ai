@@ -31,7 +31,7 @@ export class FreeShowAdapter {
   constructor(authorityManager: AuthorityManager, options: FreeShowAdapterOptions = {}) {
     this.authorityManager = authorityManager;
     this.host = options.host ?? 'localhost';
-    this.port = options.port ?? 5505;
+    this.port = options.port ?? 5510;
     this.authKey = options.authKey;
     this.reconnectIntervalMs = options.reconnectIntervalMs ?? 3000;
 

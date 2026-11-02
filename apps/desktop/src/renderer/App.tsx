@@ -122,7 +122,7 @@ export const App: React.FC = () => {
 
   const handleConnectFreeShow = async () => {
     if (window.pulpitAPI) {
-      await window.pulpitAPI.connectFreeShow(5505);
+      await window.pulpitAPI.connectFreeShow(5510);
       const snap = await window.pulpitAPI.getFreeShowSnapshot();
       if (snap) setFreeShowSnapshot(snap);
       const state = await window.pulpitAPI.getAuthorityState();

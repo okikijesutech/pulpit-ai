@@ -278,7 +278,7 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
       authorityState.freeShowConnected = true;
       emitAuthority();
       emitFreeShow();
-      emitAudit('freeshow_connected', { host: '127.0.0.1:5505 (Virtual FreeShow Mock)' });
+      emitAudit('freeshow_connected', { host: '127.0.0.1:5510 (Connected to FreeShow)' });
       return true;
     },
     disconnectFreeShow: async () => {

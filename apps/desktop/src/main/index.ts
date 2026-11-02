@@ -189,7 +189,7 @@ function startLevelMeterBroadcast(): void {
   }, 100);
 }
 
-function initFreeShow(port = 5505): FreeShowAdapter {
+function initFreeShow(port = 5510): FreeShowAdapter {
   if (freeShowAdapter) {
     freeShowAdapter.disconnect();
   }
@@ -221,15 +221,21 @@ ipcMain.handle('authority:set-mode', (_event, mode: OperatorMode) => {
   authorityManager.setOperatorMode(mode);
 });
 
-ipcMain.handle('freeshow:connect', async (_event, port = 5505) => {
-  const adapter = initFreeShow(port);
+ipcMain.handle('freeshow:connect', async (_event, port = 5510) => {
+  let adapter = initFreeShow(port);
   let connected = await adapter.connect();
+  if (!connected && port === 5510) {
+    // Fallback check on port 5505
+    adapter = initFreeShow(5505);
+    connected = await adapter.connect();
+  }
   if (!connected) {
     // Automatically launch Virtual FreeShow Mock Server for seamless local testing
     if (!virtualMockServer) {
-      virtualMockServer = new MockFreeShowServer({ port });
+      virtualMockServer = new MockFreeShowServer({ port: 5510 });
       await virtualMockServer.start();
     }
+    adapter = initFreeShow(5510);
     connected = await adapter.connect();
   }
   return connected;

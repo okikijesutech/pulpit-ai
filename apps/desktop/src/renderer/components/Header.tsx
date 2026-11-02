@@ -206,7 +206,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-xs font-semibold">
               FreeShow: {freeShowSnapshot.connected ? 'Connected' : 'Disconnected'}
             </span>
-            <span className="text-xs text-slate-500 font-mono">:5505</span>
+            <span className="text-xs text-slate-500 font-mono">:5510</span>
           </div>
 
           <button
