@@ -70,9 +70,23 @@ export class MockFreeShowServer {
           }
         });
 
+        // Listen for FreeShow 'data' command payloads
+        socket.on('data', (raw: any) => {
+          let payload = raw;
+          if (typeof payload === 'string') {
+            try { payload = JSON.parse(payload); } catch {}
+          }
+          if (payload && payload.action && payload.action !== 'data') {
+            const last = this.receivedCommands[this.receivedCommands.length - 1];
+            if (!last || last.action !== payload.action || Date.now() - last.timestamp > 50) {
+              this.handleAction(payload.action, payload.data ?? payload);
+            }
+          }
+        });
+
         // Allow direct event by action name (e.g. socket.emit("next_slide"))
         socket.onAny((event, ...args) => {
-          if (event !== 'action' && event !== 'disconnect') {
+          if (event !== 'action' && event !== 'disconnect' && event !== 'data') {
             const data = args[0];
             const callback = typeof args[args.length - 1] === 'function' ? args[args.length - 1] : undefined;
             this.handleAction(event, data);
@@ -115,8 +129,9 @@ export class MockFreeShowServer {
         this.isOutputCleared = false;
         break;
       case 'start_scripture':
-        this.currentShowId = 'scripture';
-        this.currentSlideText = data?.reference ? `Scripture: ${data.reference}` : 'Scripture';
+        this.currentShowId = data?.reference ? `Scripture: ${data.reference}` : 'Scripture';
+        this.currentSlideText = data?.text || data?.fullText || (data?.reference ? `Scripture: ${data.reference}` : 'Scripture');
+        this.isOutputCleared = false;
         break;
       case 'start_show':
         if (data?.name) this.currentShowId = data.name;

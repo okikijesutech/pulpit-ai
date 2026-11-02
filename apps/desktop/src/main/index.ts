@@ -304,21 +304,12 @@ ipcMain.handle('audio:select-device', (_event, deviceId: string) => {
 });
 
 ipcMain.handle('audio:simulate-speech', async (_event, phrase: string) => {
-  whisperWorker.registerMockTranscript('sim_speech', phrase);
-
-  // Synthesize and segment a 2-second speech audio stream
-  const frameCount = 30;
-  for (let i = 0; i < frameCount; i++) {
-    speechSegmenter.pushFrame(virtualAudio.generateSyntheticSpeechFrame(0.03));
-  }
-  // Feed 15 silence frames to trigger hangover emission
-  for (let i = 0; i < 15; i++) {
-    speechSegmenter.pushFrame(new Int16Array(480));
-  }
+  whisperWorker.registerMockTranscript('*', phrase);
+  speechEngine.ingestDirectTranscript(phrase);
 });
 
 ipcMain.handle('audio:simulate-singing', async (_event, lyrics: string) => {
-  whisperWorker.registerMockTranscript('sim_singing', lyrics);
+  whisperWorker.registerMockTranscript('*', lyrics);
 
   // Synthesize harmonic tone frames to activate singing mode detector
   const toneFrame = new Int16Array(480);
@@ -329,14 +320,7 @@ ipcMain.handle('audio:simulate-singing', async (_event, lyrics: string) => {
     singingActivityDetector.processFrame(toneFrame);
   }
 
-  // Synthesize audio frames into speech segmenter
-  const frameCount = 30;
-  for (let i = 0; i < frameCount; i++) {
-    speechSegmenter.pushFrame(virtualAudio.generateSyntheticSpeechFrame(0.03));
-  }
-  for (let i = 0; i < 15; i++) {
-    speechSegmenter.pushFrame(new Int16Array(480));
-  }
+  speechEngine.ingestDirectTranscript(lyrics);
 });
 
 // Scripture Engine Handlers

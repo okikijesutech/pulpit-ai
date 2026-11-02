@@ -22,10 +22,17 @@ export class WhisperWorkerProcess {
   }
 
   /**
-   * Registers a mock response for a given segment identifier or synthetic test pattern.
+   * Registers a mock response for a given segment identifier, wildcard ('*'), or synthetic test pattern.
    */
   public registerMockTranscript(pattern: string, text: string): void {
     this.mockTranscriptions.set(pattern, text);
+  }
+
+  /**
+   * Sets the next transcript to be returned for any incoming segment.
+   */
+  public setNextTranscript(text: string): void {
+    this.mockTranscriptions.set('*', text);
   }
 
   /**
@@ -51,7 +58,7 @@ export class WhisperWorkerProcess {
         // Find matching mock transcript or default text based on segment duration
         let text = 'Praise the Lord church';
         for (const [pattern, mocked] of this.mockTranscriptions.entries()) {
-          if (segment.id.includes(pattern) || segment.sourceId.includes(pattern)) {
+          if (pattern === '*' || segment.id.includes(pattern) || segment.sourceId.includes(pattern)) {
             text = mocked;
             break;
           }

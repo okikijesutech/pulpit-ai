@@ -86,6 +86,36 @@ export class SpeechRecognitionEngine {
     }
   }
 
+  /**
+   * Directly ingests a transcript (e.g. from an audio simulation or direct feed),
+   * normalizes it, and broadcasts to listeners.
+   */
+  public ingestDirectTranscript(rawText: string, sourceId = 'simulated_mic'): RecognizedTranscriptEvent {
+    const normalized: NormalizedTranscript = this.normalizer.normalize(rawText);
+
+    const event: RecognizedTranscriptEvent = {
+      id: `tr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      segmentId: `sim_seg_${Date.now()}`,
+      sourceId,
+      timestamp: Date.now(),
+      rawText: normalized.rawText,
+      normalizedText: normalized.normalizedText,
+      tokens: normalized.tokens,
+      confidence: 0.96,
+      latencyMs: 14
+    };
+
+    for (const listener of this.transcriptListeners) {
+      try {
+        listener(event);
+      } catch (err) {
+        console.error('Error in transcript listener:', err);
+      }
+    }
+
+    return event;
+  }
+
   public onTranscript(listener: TranscriptListener): () => void {
     this.transcriptListeners.add(listener);
     return () => this.transcriptListeners.delete(listener);

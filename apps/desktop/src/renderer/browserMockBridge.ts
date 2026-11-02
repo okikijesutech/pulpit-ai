@@ -310,6 +310,7 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
         return { success: false, reason: 'Projection inhibited: Manual Lock is active.' };
       }
       freeShowSnapshot.isCleared = false;
+      freeShowSnapshot.currentShowId = candidate.title;
       freeShowSnapshot.currentSlideText = candidate.contentPreview;
       emitFreeShow();
       emitAudit('candidate_approved', {
@@ -346,28 +347,58 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
       transcriptListeners.forEach((fn) => fn(transcriptEvent));
 
       // Check if reference detected
-      if (phrase.toLowerCase().includes('john 3:16')) {
+      const lower = phrase.toLowerCase();
+      if (lower.includes('john') && (lower.includes('3') || lower.includes('three')) && (lower.includes('16') || lower.includes('sixteen'))) {
         const cand: SuggestionCandidate = {
           id: `cand_scripture_${Date.now()}`,
           type: 'scripture',
           title: 'John 3:16 (WEB)',
           contentPreview:
             'For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life.',
-          confidence: 0.96,
+          confidence: 0.98,
           evidence: `Spoken reference matched verified WEB translation package: "John 3:16"`,
           detectedAt: Date.now(),
           status: 'pending',
           actionPayload: {
-            action: 'update_text',
+            action: 'start_scripture',
             data: {
-              text: 'For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life. — John 3:16 (WEB)'
+              reference: 'John 3:16',
+              text: 'For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life.',
+              translation: 'WEB',
+              attribution: 'World English Bible (WEB) — Dedicated to the Public Domain'
             },
-            source: 'ai_scripture_engine',
-            correlationId: `ref_${Date.now()}`
+            source: 'ai',
+            correlationId: `ref_${Date.now()}`,
+            createdAt: Date.now()
           }
         };
         scriptureListeners.forEach((fn) => fn(cand));
-      } else if (phrase.toLowerCase().includes('romans 8:28')) {
+      } else if (lower.includes('psalm') && (lower.includes('23') || lower.includes('twenty-three'))) {
+        const cand: SuggestionCandidate = {
+          id: `cand_scripture_${Date.now()}`,
+          type: 'scripture',
+          title: 'Psalm 23:1 (WEB)',
+          contentPreview:
+            'Yahweh is my shepherd: I shall lack nothing.',
+          confidence: 0.96,
+          evidence: `Spoken reference matched verified WEB translation package: "Psalm 23:1"`,
+          detectedAt: Date.now(),
+          status: 'pending',
+          actionPayload: {
+            action: 'start_scripture',
+            data: {
+              reference: 'Psalm 23:1',
+              text: 'Yahweh is my shepherd: I shall lack nothing.',
+              translation: 'WEB',
+              attribution: 'World English Bible (WEB) — Dedicated to the Public Domain'
+            },
+            source: 'ai',
+            correlationId: `ref_${Date.now()}`,
+            createdAt: Date.now()
+          }
+        };
+        scriptureListeners.forEach((fn) => fn(cand));
+      } else if (lower.includes('romans 8:28')) {
         const cand: SuggestionCandidate = {
           id: `cand_scripture_${Date.now()}`,
           type: 'scripture',

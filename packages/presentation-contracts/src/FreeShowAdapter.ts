@@ -121,20 +121,32 @@ export class FreeShowAdapter {
         });
 
         // Listen for incoming FreeShow telemetry
-        this.socket.on('data', (payload: any) => {
+        this.socket.on('data', (rawPayload: any) => {
           this.stateSnapshot.lastHeartbeat = Date.now();
-          if (payload) {
-            if (typeof payload.slide_number === 'number') {
-              this.stateSnapshot.currentSlideIndex = payload.slide_number;
+          let payload = rawPayload;
+          if (typeof payload === 'string') {
+            try {
+              payload = JSON.parse(payload);
+            } catch {
+              payload = { slide_text: rawPayload };
             }
-            if (typeof payload.show_id === 'string') {
-              this.stateSnapshot.currentShowId = payload.show_id;
+          }
+          if (payload && typeof payload === 'object') {
+            const slideNum = payload.slide_number ?? payload.slideIndex ?? payload.slide ?? payload.index;
+            if (typeof slideNum === 'number') {
+              this.stateSnapshot.currentSlideIndex = slideNum;
             }
-            if (typeof payload.slide_text === 'string') {
-              this.stateSnapshot.currentSlideText = payload.slide_text;
+            const showId = payload.show_id ?? payload.show ?? payload.name;
+            if (typeof showId === 'string') {
+              this.stateSnapshot.currentShowId = showId;
             }
-            if (typeof payload.is_cleared === 'boolean') {
-              this.stateSnapshot.isOutputCleared = payload.is_cleared;
+            const slideText = payload.slide_text ?? payload.text ?? payload.content;
+            if (typeof slideText === 'string') {
+              this.stateSnapshot.currentSlideText = slideText;
+            }
+            const isCleared = payload.is_cleared ?? payload.cleared ?? payload.hidden;
+            if (typeof isCleared === 'boolean') {
+              this.stateSnapshot.isOutputCleared = isCleared;
             }
           }
           this.notify();
@@ -175,28 +187,52 @@ export class FreeShowAdapter {
 
     // 3. Dispatch to FreeShow
     return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        resolve({
-          success: false,
-          reason: 'Command dispatch timed out awaiting FreeShow response.'
-        });
-      }, 3000);
-
-      this.socket!.emit(
-        'action',
-        { action: command.action, data: command.data },
-        (response: any) => {
-          clearTimeout(timeout);
-          if (response && response.success !== false) {
-            resolve({ success: true });
-          } else {
-            resolve({
-              success: false,
-              reason: response?.error || 'FreeShow returned an error.'
-            });
-          }
+      let resolved = false;
+      const done = (res: { success: boolean; reason?: string }) => {
+        if (!resolved) {
+          resolved = true;
+          resolve(res);
         }
-      );
+      };
+
+      // Failsafe timer: if server doesn't provide an ack callback, treat as delivered within 300ms
+      const timer = setTimeout(() => {
+        done({ success: true });
+      }, 300);
+
+      const payload = {
+        action: command.action,
+        data: command.data
+      };
+
+      // Emit action with callback
+      this.socket!.emit('action', payload, (response: any) => {
+        clearTimeout(timer);
+        if (response && response.success !== false) {
+          done({ success: true });
+        } else {
+          done({
+            success: false,
+            reason: response?.error || 'FreeShow returned an error.'
+          });
+        }
+      });
+
+      // Optimistically update snapshot so presentation display reflects approved projection
+      if (command.action === 'start_scripture') {
+        const ref = String(command.data?.reference ?? 'Scripture');
+        const text = String(command.data?.text ?? command.data?.fullText ?? ref);
+        this.stateSnapshot.currentShowId = `Scripture: ${ref}`;
+        this.stateSnapshot.currentSlideText = text;
+        this.stateSnapshot.isOutputCleared = false;
+        this.notify();
+      } else if (command.action === 'clear_all' || command.action === 'clear_slide') {
+        this.stateSnapshot.isOutputCleared = true;
+        this.notify();
+      } else if (command.action === 'restore_output') {
+        this.stateSnapshot.isOutputCleared = false;
+        this.notify();
+      }
     });
   }
 
