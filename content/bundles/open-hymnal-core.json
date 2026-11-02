@@ -1,0 +1,96 @@
+{
+  "packageId": "open_hymnal_core_v1",
+  "packageName": "Open Hymnal & Public Domain Core Hymns",
+  "version": "1.0.0",
+  "curator": "Pulpit AI Curated Shared Library",
+  "sourceUrl": "https://openhymnal.org/",
+  "licensing": {
+    "source": "Open Hymnal (2014 Edition) / Pre-1928 Historical Hymnals",
+    "copyrightOwner": "Public Domain",
+    "licenseType": "public_domain",
+    "attribution": "Public Domain — Hymns in the Christian Commons",
+    "offlineStoragePermission": true,
+    "localUsePermission": true,
+    "redistributionPermission": true,
+    "commercialUsePermission": true,
+    "aiProcessingPermission": true,
+    "verificationStatus": "verified"
+  },
+  "songs": [
+    {
+      "id": "hymn_amazing_grace",
+      "canonicalTitle": "Amazing Grace",
+      "author": "John Newton (1779)",
+      "copyright": "Public Domain",
+      "sections": [
+        {
+          "type": "verse",
+          "label": "Verse 1",
+          "lines": [
+            "Amazing grace! How sweet the sound",
+            "That saved a wretch like me!",
+            "I once was lost, but now am found;",
+            "Was blind, but now I see."
+          ]
+        },
+        {
+          "type": "verse",
+          "label": "Verse 2",
+          "lines": [
+            "'Twas grace that taught my heart to fear,",
+            "And grace my fears relieved;",
+            "How precious did that grace appear",
+            "The hour I first believed."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hymn_blessed_assurance",
+      "canonicalTitle": "Blessed Assurance",
+      "author": "Fanny J. Crosby (1873)",
+      "copyright": "Public Domain",
+      "sections": [
+        {
+          "type": "verse",
+          "label": "Verse 1",
+          "lines": [
+            "Blessed assurance, Jesus is mine!",
+            "Oh, what a foretaste of glory divine!",
+            "Heir of salvation, purchase of God,",
+            "Born of His Spirit, washed in His blood."
+          ]
+        },
+        {
+          "type": "chorus",
+          "label": "Chorus",
+          "lines": [
+            "This is my story, this is my song,",
+            "Praising my Savior all the day long;",
+            "This is my story, this is my song,",
+            "Praising my Savior all the day long."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hymn_holy_holy_holy",
+      "canonicalTitle": "Holy, Holy, Holy! Lord God Almighty",
+      "author": "Reginald Heber (1826)",
+      "copyright": "Public Domain",
+      "sections": [
+        {
+          "type": "verse",
+          "label": "Verse 1",
+          "lines": [
+            "Holy, holy, holy! Lord God Almighty!",
+            "Early in the morning our song shall rise to Thee;",
+            "Holy, holy, holy! Merciful and mighty!",
+            "God in three Persons, blessed Trinity!"
+          ]
+        }
+      ]
+    }
+  ],
+  "checksumSha256": "848b6cbaf762c377cfa6b3c48460090c5a1e900e200340ab2a7cd9ea93a607d1"
+}
