@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'node:path';
 import { AuthorityManager } from '@pulpit-ai/authority-manager';
-import { FreeShowAdapter } from '@pulpit-ai/presentation-contracts';
+import { FreeShowAdapter, MockFreeShowServer } from '@pulpit-ai/presentation-contracts';
 import {
   AudioDeviceManager,
   AudioLevelMeter,
@@ -71,6 +71,7 @@ const songCandidateGenerator = new SongCandidateGenerator(songDatabase, {
 });
 
 let freeShowAdapter: FreeShowAdapter | null = null;
+let virtualMockServer: MockFreeShowServer | null = null;
 let levelMeterTimer: NodeJS.Timeout | null = null;
 
 function createWindow(): void {
@@ -222,7 +223,15 @@ ipcMain.handle('authority:set-mode', (_event, mode: OperatorMode) => {
 
 ipcMain.handle('freeshow:connect', async (_event, port = 5505) => {
   const adapter = initFreeShow(port);
-  const connected = await adapter.connect();
+  let connected = await adapter.connect();
+  if (!connected) {
+    // Automatically launch Virtual FreeShow Mock Server for seamless local testing
+    if (!virtualMockServer) {
+      virtualMockServer = new MockFreeShowServer({ port });
+      await virtualMockServer.start();
+    }
+    connected = await adapter.connect();
+  }
   return connected;
 });
 
