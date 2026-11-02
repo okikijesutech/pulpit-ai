@@ -5,10 +5,12 @@ import {
   FreeShowStateSnapshot,
   OperatorMode
 } from '@pulpit-ai/shared-types';
-import { Mic, Radio, BookOpen } from 'lucide-react';
+import { Mic, Radio, BookOpen, Music } from 'lucide-react';
 import { AudioLevelMetrics } from '../../preload/index.js';
 
 interface HeaderProps {
+  currentView?: 'live' | 'songs';
+  onViewChange?: (view: 'live' | 'songs') => void;
   authorityState: AuthorityState;
   freeShowSnapshot: FreeShowStateSnapshot;
   audioDevices: AudioInputDevice[];
@@ -23,6 +25,8 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  currentView = 'live',
+  onViewChange,
   authorityState,
   freeShowSnapshot,
   audioDevices,
@@ -48,6 +52,34 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">
             v0.1.0-alpha
           </span>
+        </div>
+
+        <div className="h-4 w-px bg-slate-700 mx-2" />
+
+        {/* View Switcher: Live Presentation vs Song Library */}
+        <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium">
+          <button
+            onClick={() => onViewChange?.('live')}
+            className={`flex items-center space-x-1.5 px-3 py-1 rounded transition-all ${
+              currentView === 'live'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5" />
+            <span>Live Assistant</span>
+          </button>
+          <button
+            onClick={() => onViewChange?.('songs')}
+            className={`flex items-center space-x-1.5 px-3 py-1 rounded transition-all ${
+              currentView === 'songs'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Music className="w-3.5 h-3.5" />
+            <span>Song Library</span>
+          </button>
         </div>
 
         <div className="h-4 w-px bg-slate-700 mx-2" />

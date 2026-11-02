@@ -18,9 +18,11 @@ import {
   LiveTranscriptPanel,
   RecognizedTranscriptEvent
 } from './components/LiveTranscriptPanel.js';
+import { SongLibraryPanel } from './components/SongLibraryPanel.js';
 import { AudioLevelMetrics } from '../preload/index.js';
 
 export const App: React.FC = () => {
+  const [currentView, setCurrentView] = useState<'live' | 'songs'>('live');
   const [authorityState, setAuthorityState] = useState<AuthorityState>({
     operatorMode: 'suggestions',
     listeningEnabled: true,
@@ -210,6 +212,8 @@ export const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
       <Header
+        currentView={currentView}
+        onViewChange={setCurrentView}
         authorityState={authorityState}
         freeShowSnapshot={freeShowSnapshot}
         audioDevices={audioDevices}
@@ -228,45 +232,52 @@ export const App: React.FC = () => {
         onToggleLock={handleToggleLock}
       />
 
-      <main className="flex-1 p-6 grid grid-cols-12 gap-6 min-h-0">
-        {/* Left Column (4 cols): Live Screen and Manual Operator Controls */}
-        <div className="col-span-4 flex flex-col gap-6 min-h-0">
-          <div className="flex-1 min-h-0">
-            <LiveOutputPanel snapshot={freeShowSnapshot} />
+      {currentView === 'songs' ? (
+        <SongLibraryPanel
+          freeShowConnected={freeShowSnapshot.connected}
+          manualLockActive={authorityState.manualLockActive}
+        />
+      ) : (
+        <main className="flex-1 p-6 grid grid-cols-12 gap-6 min-h-0">
+          {/* Left Column (4 cols): Live Screen and Manual Operator Controls */}
+          <div className="col-span-4 flex flex-col gap-6 min-h-0">
+            <div className="flex-1 min-h-0">
+              <LiveOutputPanel snapshot={freeShowSnapshot} />
+            </div>
+            <div>
+              <ManualControlsPanel
+                onDispatch={handleDispatchCommand}
+                onAddMockCandidate={handleAddMockCandidate}
+                disabled={!freeShowSnapshot.connected}
+              />
+            </div>
           </div>
-          <div>
-            <ManualControlsPanel
-              onDispatch={handleDispatchCommand}
-              onAddMockCandidate={handleAddMockCandidate}
-              disabled={!freeShowSnapshot.connected}
-            />
-          </div>
-        </div>
 
-        {/* Center Column (5 cols): Live Transcript Stream & Suggested Content Queue */}
-        <div className="col-span-5 flex flex-col gap-6 min-h-0">
-          <div className="h-1/2 min-h-0">
-            <LiveTranscriptPanel
-              transcripts={transcripts}
-              onSimulatePhrase={handleSimulatePhrase}
-            />
+          {/* Center Column (5 cols): Live Transcript Stream & Suggested Content Queue */}
+          <div className="col-span-5 flex flex-col gap-6 min-h-0">
+            <div className="h-1/2 min-h-0">
+              <LiveTranscriptPanel
+                transcripts={transcripts}
+                onSimulatePhrase={handleSimulatePhrase}
+              />
+            </div>
+            <div className="h-1/2 min-h-0">
+              <SuggestionsQueue
+                candidates={candidates}
+                isLocked={authorityState.manualLockActive}
+                onApprove={handleApproveCandidate}
+                onDismiss={handleDismissCandidate}
+                onManualLookup={handleManualLookup}
+              />
+            </div>
           </div>
-          <div className="h-1/2 min-h-0">
-            <SuggestionsQueue
-              candidates={candidates}
-              isLocked={authorityState.manualLockActive}
-              onApprove={handleApproveCandidate}
-              onDismiss={handleDismissCandidate}
-              onManualLookup={handleManualLookup}
-            />
-          </div>
-        </div>
 
-        {/* Right Column (3 cols): Live Security & Authority Audit Trail */}
-        <div className="col-span-3 flex flex-col min-h-0">
-          <AuditTrailPanel events={auditEvents} />
-        </div>
-      </main>
+          {/* Right Column (3 cols): Live Security & Authority Audit Trail */}
+          <div className="col-span-3 flex flex-col min-h-0">
+            <AuditTrailPanel events={auditEvents} />
+          </div>
+        </main>
+      )}
     </div>
   );
 };

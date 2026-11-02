@@ -30,6 +30,9 @@ export interface ApproveImportOptions {
   overrideAuthor?: string;
 }
 
+export type StagedImportSong = StagedSongImport;
+export type ApprovalOptions = ApproveImportOptions;
+
 export class SongReviewManager {
   private stagedMap: Map<string, StagedSongImport> = new Map();
 

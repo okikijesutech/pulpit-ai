@@ -6,8 +6,14 @@ import {
   AuthorityState,
   FreeShowStateSnapshot,
   OperatorMode,
+  Song,
   SuggestionCandidate
 } from '@pulpit-ai/shared-types';
+import {
+  ApprovalOptions,
+  SongSearchResult,
+  StagedImportSong
+} from '@pulpit-ai/song-engine';
 
 export interface AudioLevelMetrics {
   rmsLevel: number;
@@ -56,6 +62,47 @@ export interface PulpitAPI {
     verseEnd?: number;
   }) => Promise<any>;
 
+  // Song Library & Imports
+  listSongs: () => Promise<Song[]>;
+  searchSongs: (query: string) => Promise<SongSearchResult[]>;
+  getSong: (id: string) => Promise<Song | null>;
+  stageSongFile: (file: {
+    name: string;
+    base64: string;
+  }) => Promise<{
+    success: boolean;
+    staged?: StagedImportSong[];
+    errors?: string[];
+    warnings?: string[];
+    quarantined?: boolean;
+  }>;
+  stageSongText: (
+    text: string,
+    title?: string
+  ) => Promise<{
+    success: boolean;
+    staged?: StagedImportSong;
+    errors?: string[];
+  }>;
+  listStagedImports: () => Promise<StagedImportSong[]>;
+  approveStagedImport: (
+    stagedId: string,
+    options: ApprovalOptions
+  ) => Promise<{
+    success: boolean;
+    song?: Song;
+    error?: string;
+  }>;
+  rejectStagedImport: (
+    stagedId: string,
+    reason: string
+  ) => Promise<{ success: boolean }>;
+  projectSongSection: (
+    songTitle: string,
+    sectionLabel: string,
+    sectionIndex: number
+  ) => Promise<{ success: boolean; reason?: string }>;
+
   onAuthorityStateChange: (callback: (state: AuthorityState) => void) => () => void;
   onFreeShowStateChange: (callback: (snapshot: FreeShowStateSnapshot) => void) => () => void;
   onAuditEvent: (callback: (event: AuditEvent) => void) => () => void;
@@ -83,6 +130,18 @@ const api: PulpitAPI = {
   setActiveTranslation: (translationId: string) =>
     ipcRenderer.invoke('scripture:set-translation', translationId),
   lookupPassage: (params) => ipcRenderer.invoke('scripture:lookup-passage', params),
+  listSongs: () => ipcRenderer.invoke('songs:list'),
+  searchSongs: (query: string) => ipcRenderer.invoke('songs:search', query),
+  getSong: (id: string) => ipcRenderer.invoke('songs:get', id),
+  stageSongFile: (file) => ipcRenderer.invoke('songs:stage-file', file),
+  stageSongText: (text, title) => ipcRenderer.invoke('songs:stage-text', { text, title }),
+  listStagedImports: () => ipcRenderer.invoke('songs:list-staged'),
+  approveStagedImport: (stagedId, options) =>
+    ipcRenderer.invoke('songs:approve-staged', { stagedId, options }),
+  rejectStagedImport: (stagedId, reason) =>
+    ipcRenderer.invoke('songs:reject-staged', { stagedId, reason }),
+  projectSongSection: (songTitle, sectionLabel, sectionIndex) =>
+    ipcRenderer.invoke('songs:project-section', { songTitle, sectionLabel, sectionIndex }),
 
   onAuthorityStateChange: (callback) => {
     const handler = (_event: any, state: AuthorityState) => callback(state);

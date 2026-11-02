@@ -35,6 +35,9 @@ importers:
       '@pulpit-ai/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      '@pulpit-ai/song-engine':
+        specifier: workspace:*
+        version: link:../../packages/song-engine
       '@pulpit-ai/speech-engine':
         specifier: workspace:*
         version: link:../../packages/speech-engine
