@@ -11,3 +11,5 @@ export * from './importers/PdfSongParser.js';
 export * from './importers/SongImportPipeline.js';
 export * from './SongDuplicateDetector.js';
 export * from './SongReviewManager.js';
+export * from './ConsecutiveEvidenceTracker.js';
+export * from './LyricMatcher.js';
