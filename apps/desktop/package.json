@@ -9,6 +9,7 @@
     "build:renderer": "vite build",
     "build:main": "tsc -p tsconfig.main.json",
     "build": "pnpm run build:renderer && pnpm run build:main",
+    "test": "vitest run",
     "start": "electron ./dist/main/index.js"
   },
   "dependencies": {

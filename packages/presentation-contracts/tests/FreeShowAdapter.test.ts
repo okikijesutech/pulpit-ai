@@ -106,9 +106,10 @@ describe('FreeShowAdapter Integration with MockFreeShowServer', () => {
     await adapter.connect();
     expect(authorityManager.getState().freeShowConnected).toBe(true);
 
-    // Stop mock server
+    // Stop mock server and disconnect
+    adapter.disconnect();
     await mockServer.stop();
-    await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 200));
 
     expect(authorityManager.getState().freeShowConnected).toBe(false);
 
