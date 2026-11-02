@@ -5,6 +5,8 @@
   "description": "Open-source, local-first church presentation assistant for FreeShow",
   "packageManager": "pnpm@11.20.0",
   "scripts": {
+    "start": "pnpm --filter @pulpit-ai/desktop start",
+    "dev": "pnpm --filter @pulpit-ai/desktop dev",
     "build": "pnpm -r run build",
     "test": "vitest run",
     "test:watch": "vitest",
