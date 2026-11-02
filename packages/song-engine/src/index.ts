@@ -9,3 +9,5 @@ export * from './importers/DocxSongParser.js';
 export * from './importers/PptxSongParser.js';
 export * from './importers/PdfSongParser.js';
 export * from './importers/SongImportPipeline.js';
+export * from './SongDuplicateDetector.js';
+export * from './SongReviewManager.js';
