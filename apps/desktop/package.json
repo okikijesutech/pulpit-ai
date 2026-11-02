@@ -12,9 +12,11 @@
     "start": "electron ./dist/main/index.js"
   },
   "dependencies": {
+    "@pulpit-ai/audio-engine": "workspace:*",
     "@pulpit-ai/authority-manager": "workspace:*",
     "@pulpit-ai/presentation-contracts": "workspace:*",
     "@pulpit-ai/shared-types": "workspace:*",
+    "@pulpit-ai/speech-engine": "workspace:*",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

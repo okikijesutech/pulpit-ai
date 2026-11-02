@@ -20,6 +20,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@pulpit-ai/audio-engine':
+        specifier: workspace:*
+        version: link:../../packages/audio-engine
       '@pulpit-ai/authority-manager':
         specifier: workspace:*
         version: link:../../packages/authority-manager
@@ -29,6 +32,9 @@ importers:
       '@pulpit-ai/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      '@pulpit-ai/speech-engine':
+        specifier: workspace:*
+        version: link:../../packages/speech-engine
       lucide-react:
         specifier: ^0.460.0
         version: 0.460.0(react@18.3.1)

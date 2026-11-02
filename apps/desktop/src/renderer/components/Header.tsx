@@ -1,28 +1,38 @@
 import React from 'react';
 import {
+  AudioInputDevice,
   AuthorityState,
   FreeShowStateSnapshot,
   OperatorMode
 } from '@pulpit-ai/shared-types';
-import { Shield, Radio, CheckCircle2, AlertTriangle, Power } from 'lucide-react';
+import { Mic, Radio } from 'lucide-react';
+import { AudioLevelMetrics } from '../../preload/index.js';
 
 interface HeaderProps {
   authorityState: AuthorityState;
   freeShowSnapshot: FreeShowStateSnapshot;
+  audioDevices: AudioInputDevice[];
+  activeDeviceId: string;
+  audioLevel: AudioLevelMetrics;
   onModeChange: (mode: OperatorMode) => void;
   onConnectFreeShow: () => void;
   onDisconnectFreeShow: () => void;
+  onSelectAudioDevice: (id: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   authorityState,
   freeShowSnapshot,
+  audioDevices,
+  activeDeviceId,
+  audioLevel,
   onModeChange,
   onConnectFreeShow,
-  onDisconnectFreeShow
+  onDisconnectFreeShow,
+  onSelectAudioDevice
 }) => {
   return (
-    <header className="h-16 border-b border-slate-800 bg-slate-900/80 px-6 flex items-center justify-between backdrop-blur">
+    <header className="h-16 border-b border-slate-800 bg-slate-900/90 px-6 flex items-center justify-between backdrop-blur">
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">
@@ -67,6 +77,41 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center space-x-4">
+        {/* Audio Input Device Dropdown & VU Meter */}
+        <div className="flex items-center space-x-3 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+          <Mic className="w-4 h-4 text-emerald-400" />
+          <select
+            value={activeDeviceId}
+            onChange={(e) => onSelectAudioDevice(e.target.value)}
+            className="bg-transparent text-xs text-slate-200 border-none outline-none cursor-pointer max-w-[180px] truncate"
+          >
+            {audioDevices.map((d) => (
+              <option key={d.id} value={d.id} className="bg-slate-900 text-slate-100">
+                {d.name}
+              </option>
+            ))}
+          </select>
+
+          {/* VU Level Meter Bar */}
+          <div className="flex items-center space-x-1 pl-2 border-l border-slate-800">
+            <div className="w-16 h-2 bg-slate-800 rounded-full overflow-hidden flex">
+              <div
+                className={`h-full transition-all duration-75 ${
+                  audioLevel.isClipping
+                    ? 'bg-rose-500'
+                    : audioLevel.rmsLevel > 0.4
+                    ? 'bg-amber-400'
+                    : 'bg-emerald-500'
+                }`}
+                style={{ width: `${Math.min(100, Math.round(audioLevel.rmsLevel * 100 * 2))}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-slate-500 font-mono w-9 text-right">
+              {audioLevel.isSilent ? 'MUTE' : `${audioLevel.decibels}dB`}
+            </span>
+          </div>
+        </div>
+
         {/* FreeShow Connection Status */}
         <div className="flex items-center space-x-3 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
           <div className="flex items-center space-x-2">
@@ -93,12 +138,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {freeShowSnapshot.connected ? 'Disconnect' : 'Connect'}
           </button>
-        </div>
-
-        {/* Listening Indicator */}
-        <div className="flex items-center space-x-1.5 text-xs text-slate-400 bg-slate-800/50 px-2.5 py-1.5 rounded-lg">
-          <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-          <span>Mic: Line In</span>
         </div>
       </div>
     </header>

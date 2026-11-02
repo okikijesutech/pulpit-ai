@@ -3,6 +3,16 @@ import { join } from 'node:path';
 import { AuthorityManager } from '@pulpit-ai/authority-manager';
 import { FreeShowAdapter } from '@pulpit-ai/presentation-contracts';
 import {
+  AudioDeviceManager,
+  AudioLevelMeter,
+  SpeechSegmenter,
+  VirtualAudioSource
+} from '@pulpit-ai/audio-engine';
+import {
+  SpeechRecognitionEngine,
+  WhisperWorkerProcess
+} from '@pulpit-ai/speech-engine';
+import {
   AllowlistedAction,
   FreeShowCommand,
   OperatorMode,
@@ -14,15 +24,23 @@ let mainWindow: BrowserWindow | null = null;
 // Initialize Core Singletons
 const authorityManager = new AuthorityManager();
 const auditLogger = authorityManager.getAuditLogger();
+const audioDeviceManager = new AudioDeviceManager();
+const audioLevelMeter = new AudioLevelMeter();
+const speechSegmenter = new SpeechSegmenter({ sampleRate: 16000 });
+const whisperWorker = new WhisperWorkerProcess();
+const speechEngine = new SpeechRecognitionEngine(whisperWorker);
+const virtualAudio = new VirtualAudioSource(16000);
+
 let freeShowAdapter: FreeShowAdapter | null = null;
+let levelMeterTimer: NodeJS.Timeout | null = null;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: 1360,
+    height: 840,
     minWidth: 1024,
     minHeight: 680,
-    backgroundColor: '#0f172a', // Tailwind Slate-900
+    backgroundColor: '#090d16',
     title: 'Pulpit AI — Church Presentation Assistant',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -32,7 +50,7 @@ function createWindow(): void {
     }
   });
 
-  // Content Security Policy
+  // Strict Content Security Policy
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -51,6 +69,23 @@ function createWindow(): void {
     }
   });
 
+  // Forward recognized transcripts to renderer
+  speechEngine.onTranscript((event) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('speech:transcript', event);
+    }
+  });
+
+  // Connect segmenter to speech recognition engine
+  speechSegmenter.onSegment((segment) => {
+    speechEngine.processSegment(segment).catch((err) => {
+      console.error('Speech recognition error:', err);
+    });
+  });
+
+  // Start periodic audio level meter broadcast (100ms)
+  startLevelMeterBroadcast();
+
   // Load the UI
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
   if (isDev && process.env.VITE_DEV_SERVER_URL) {
@@ -61,7 +96,23 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    if (levelMeterTimer) {
+      clearInterval(levelMeterTimer);
+      levelMeterTimer = null;
+    }
   });
+}
+
+function startLevelMeterBroadcast(): void {
+  levelMeterTimer = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+
+    // Simulate idle background room noise or active audio level
+    const frame = virtualAudio.generateSyntheticSpeechFrame(0.05);
+    const metrics = audioLevelMeter.analyze(frame);
+
+    mainWindow.webContents.send('audio:level-changed', metrics);
+  }, 100);
 }
 
 function initFreeShow(port = 5505): FreeShowAdapter {
@@ -142,7 +193,7 @@ ipcMain.handle(
     if (!approvedCommand) {
       return {
         success: false,
-        reason: 'Approval blocked by Authority Manager (Lock or state invalid)'
+        reason: 'Approval blocked by Authority Manager (Lock active or invalid state)'
       };
     }
 
@@ -152,6 +203,30 @@ ipcMain.handle(
 
 ipcMain.handle('audit:get-events', () => {
   return auditLogger.getEvents(50);
+});
+
+ipcMain.handle('audio:get-devices', () => {
+  return audioDeviceManager.getDevices();
+});
+
+ipcMain.handle('audio:select-device', (_event, deviceId: string) => {
+  const device = audioDeviceManager.selectActiveDevice(deviceId);
+  speechSegmenter.setSourceId(deviceId);
+  return device;
+});
+
+ipcMain.handle('audio:simulate-speech', async (_event, phrase: string) => {
+  whisperWorker.registerMockTranscript('sim_speech', phrase);
+
+  // Synthesize and segment a 2-second speech audio stream
+  const frameCount = 30;
+  for (let i = 0; i < frameCount; i++) {
+    speechSegmenter.pushFrame(virtualAudio.generateSyntheticSpeechFrame(0.03));
+  }
+  // Feed 15 silence frames to trigger hangover emission
+  for (let i = 0; i < 15; i++) {
+    speechSegmenter.pushFrame(new Int16Array(480));
+  }
 });
 
 // App Lifecycle
@@ -167,6 +242,9 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  if (levelMeterTimer) {
+    clearInterval(levelMeterTimer);
+  }
   if (freeShowAdapter) {
     freeShowAdapter.disconnect();
   }

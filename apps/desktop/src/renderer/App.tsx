@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   AllowlistedAction,
   AuditEvent,
+  AudioInputDevice,
   AuthorityState,
   FreeShowStateSnapshot,
   OperatorMode,
@@ -13,6 +14,11 @@ import { LiveOutputPanel } from './components/LiveOutputPanel.js';
 import { SuggestionsQueue } from './components/SuggestionsQueue.js';
 import { ManualControlsPanel } from './components/ManualControlsPanel.js';
 import { AuditTrailPanel } from './components/AuditTrailPanel.js';
+import {
+  LiveTranscriptPanel,
+  RecognizedTranscriptEvent
+} from './components/LiveTranscriptPanel.js';
+import { AudioLevelMetrics } from '../preload/index.js';
 
 export const App: React.FC = () => {
   const [authorityState, setAuthorityState] = useState<AuthorityState>({
@@ -32,35 +38,49 @@ export const App: React.FC = () => {
     lastHeartbeat: 0
   });
 
+  const [audioDevices, setAudioDevices] = useState<AudioInputDevice[]>([]);
+  const [activeDeviceId, setActiveDeviceId] = useState<string>('default_mic');
+  const [audioLevel, setAudioLevel] = useState<AudioLevelMetrics>({
+    rmsLevel: 0,
+    decibels: -100,
+    isClipping: false,
+    isSilent: true
+  });
+
   const [candidates, setCandidates] = useState<SuggestionCandidate[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [transcripts, setTranscripts] = useState<RecognizedTranscriptEvent[]>([]);
 
   useEffect(() => {
-    // Initial fetch
     if (window.pulpitAPI) {
+      // Initial fetch
       window.pulpitAPI.getAuthorityState().then(setAuthorityState).catch(console.error);
       window.pulpitAPI.getFreeShowSnapshot().then((snap) => {
         if (snap) setFreeShowSnapshot(snap);
       }).catch(console.error);
       window.pulpitAPI.getAuditEvents().then(setAuditEvents).catch(console.error);
+      window.pulpitAPI.getAudioDevices().then((devs) => {
+        setAudioDevices(devs);
+        if (devs.length > 0) setActiveDeviceId(devs[0].id);
+      }).catch(console.error);
 
       // Reactive event subscriptions
-      const unsubAuth = window.pulpitAPI.onAuthorityStateChange((state) => {
-        setAuthorityState(state);
-      });
-
-      const unsubFS = window.pulpitAPI.onFreeShowStateChange((snap) => {
-        setFreeShowSnapshot(snap);
-      });
-
+      const unsubAuth = window.pulpitAPI.onAuthorityStateChange(setAuthorityState);
+      const unsubFS = window.pulpitAPI.onFreeShowStateChange(setFreeShowSnapshot);
       const unsubAudit = window.pulpitAPI.onAuditEvent((ev) => {
         setAuditEvents((prev) => [ev, ...prev].slice(0, 50));
+      });
+      const unsubAudioLevel = window.pulpitAPI.onAudioLevelChange(setAudioLevel);
+      const unsubTranscript = window.pulpitAPI.onTranscriptEvent((event) => {
+        setTranscripts((prev) => [event, ...prev].slice(0, 50));
       });
 
       return () => {
         unsubAuth();
         unsubFS();
         unsubAudit();
+        unsubAudioLevel();
+        unsubTranscript();
       };
     }
   }, []);
@@ -106,6 +126,13 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleSelectAudioDevice = async (deviceId: string) => {
+    if (window.pulpitAPI) {
+      const selected = await window.pulpitAPI.selectAudioDevice(deviceId);
+      setActiveDeviceId(selected.id);
+    }
+  };
+
   const handleDispatchCommand = async (action: AllowlistedAction, data?: any) => {
     if (window.pulpitAPI) {
       const res = await window.pulpitAPI.dispatchOperatorCommand(action, data);
@@ -121,7 +148,6 @@ export const App: React.FC = () => {
     if (window.pulpitAPI) {
       const res = await window.pulpitAPI.approveCandidate(candidate);
       if (res.success) {
-        // Remove approved candidate from queue
         setCandidates((prev) => prev.filter((c) => c.id !== candidate.id));
       } else {
         alert(`Approval rejected: ${res.reason}`);
@@ -156,14 +182,24 @@ export const App: React.FC = () => {
     setCandidates((prev) => [mockCand, ...prev]);
   };
 
+  const handleSimulatePhrase = async (phrase: string) => {
+    if (window.pulpitAPI) {
+      await window.pulpitAPI.simulateSpeechInput(phrase);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
       <Header
         authorityState={authorityState}
         freeShowSnapshot={freeShowSnapshot}
+        audioDevices={audioDevices}
+        activeDeviceId={activeDeviceId}
+        audioLevel={audioLevel}
         onModeChange={handleModeChange}
         onConnectFreeShow={handleConnectFreeShow}
         onDisconnectFreeShow={handleDisconnectFreeShow}
+        onSelectAudioDevice={handleSelectAudioDevice}
       />
 
       <ManualLockBanner
@@ -172,7 +208,7 @@ export const App: React.FC = () => {
       />
 
       <main className="flex-1 p-6 grid grid-cols-12 gap-6 min-h-0">
-        {/* Left Column: Live Screen and Manual Controls */}
+        {/* Left Column (4 cols): Live Screen and Manual Operator Controls */}
         <div className="col-span-4 flex flex-col gap-6 min-h-0">
           <div className="flex-1 min-h-0">
             <LiveOutputPanel snapshot={freeShowSnapshot} />
@@ -186,17 +222,25 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Column: Suggested Content Queue */}
-        <div className="col-span-5 flex flex-col min-h-0">
-          <SuggestionsQueue
-            candidates={candidates}
-            isLocked={authorityState.manualLockActive}
-            onApprove={handleApproveCandidate}
-            onDismiss={handleDismissCandidate}
-          />
+        {/* Center Column (5 cols): Live Transcript Stream & Suggested Content Queue */}
+        <div className="col-span-5 flex flex-col gap-6 min-h-0">
+          <div className="h-1/2 min-h-0">
+            <LiveTranscriptPanel
+              transcripts={transcripts}
+              onSimulatePhrase={handleSimulatePhrase}
+            />
+          </div>
+          <div className="h-1/2 min-h-0">
+            <SuggestionsQueue
+              candidates={candidates}
+              isLocked={authorityState.manualLockActive}
+              onApprove={handleApproveCandidate}
+              onDismiss={handleDismissCandidate}
+            />
+          </div>
         </div>
 
-        {/* Right Column: Live Security & Authority Audit Trail */}
+        {/* Right Column (3 cols): Live Security & Authority Audit Trail */}
         <div className="col-span-3 flex flex-col min-h-0">
           <AuditTrailPanel events={auditEvents} />
         </div>

@@ -2,11 +2,31 @@ import { contextBridge, ipcRenderer } from 'electron';
 import {
   AllowlistedAction,
   AuditEvent,
+  AudioInputDevice,
   AuthorityState,
   FreeShowStateSnapshot,
   OperatorMode,
   SuggestionCandidate
 } from '@pulpit-ai/shared-types';
+
+export interface AudioLevelMetrics {
+  rmsLevel: number;
+  decibels: number;
+  isClipping: boolean;
+  isSilent: boolean;
+}
+
+export interface RecognizedTranscriptEvent {
+  id: string;
+  segmentId: string;
+  sourceId: string;
+  timestamp: number;
+  rawText: string;
+  normalizedText: string;
+  tokens: string[];
+  confidence: number;
+  latencyMs: number;
+}
 
 export interface PulpitAPI {
   getAuthorityState: () => Promise<AuthorityState>;
@@ -23,9 +43,15 @@ export interface PulpitAPI {
     candidate: SuggestionCandidate
   ) => Promise<{ success: boolean; reason?: string }>;
   getAuditEvents: () => Promise<AuditEvent[]>;
+  getAudioDevices: () => Promise<AudioInputDevice[]>;
+  selectAudioDevice: (deviceId: string) => Promise<AudioInputDevice>;
+  simulateSpeechInput: (phrase: string) => Promise<void>;
+
   onAuthorityStateChange: (callback: (state: AuthorityState) => void) => () => void;
   onFreeShowStateChange: (callback: (snapshot: FreeShowStateSnapshot) => void) => () => void;
   onAuditEvent: (callback: (event: AuditEvent) => void) => () => void;
+  onAudioLevelChange: (callback: (metrics: AudioLevelMetrics) => void) => () => void;
+  onTranscriptEvent: (callback: (event: RecognizedTranscriptEvent) => void) => () => void;
 }
 
 const api: PulpitAPI = {
@@ -40,6 +66,9 @@ const api: PulpitAPI = {
   approveCandidate: (candidate: SuggestionCandidate) =>
     ipcRenderer.invoke('authority:approve-candidate', candidate),
   getAuditEvents: () => ipcRenderer.invoke('audit:get-events'),
+  getAudioDevices: () => ipcRenderer.invoke('audio:get-devices'),
+  selectAudioDevice: (deviceId: string) => ipcRenderer.invoke('audio:select-device', deviceId),
+  simulateSpeechInput: (phrase: string) => ipcRenderer.invoke('audio:simulate-speech', phrase),
 
   onAuthorityStateChange: (callback) => {
     const handler = (_event: any, state: AuthorityState) => callback(state);
@@ -57,7 +86,20 @@ const api: PulpitAPI = {
     const handler = (_event: any, event: AuditEvent) => callback(event);
     ipcRenderer.on('audit:new-event', handler);
     return () => ipcRenderer.removeListener('audit:new-event', handler);
+  },
+
+  onAudioLevelChange: (callback) => {
+    const handler = (_event: any, metrics: AudioLevelMetrics) => callback(metrics);
+    ipcRenderer.on('audio:level-changed', handler);
+    return () => ipcRenderer.removeListener('audio:level-changed', handler);
+  },
+
+  onTranscriptEvent: (callback) => {
+    const handler = (_event: any, event: RecognizedTranscriptEvent) => callback(event);
+    ipcRenderer.on('speech:transcript', handler);
+    return () => ipcRenderer.removeListener('speech:transcript', handler);
   }
 };
 
 contextBridge.exposeInMainWorld('pulpitAPI', api);
+
