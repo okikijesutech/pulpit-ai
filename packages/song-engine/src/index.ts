@@ -14,3 +14,5 @@ export * from './SongReviewManager.js';
 export * from './ConsecutiveEvidenceTracker.js';
 export * from './LyricMatcher.js';
 export * from './SongCandidateGenerator.js';
+export * from './sync/ManifestValidator.js';
+export * from './sync/CuratedPackageSync.js';
