@@ -15,6 +15,7 @@
     "@pulpit-ai/audio-engine": "workspace:*",
     "@pulpit-ai/authority-manager": "workspace:*",
     "@pulpit-ai/presentation-contracts": "workspace:*",
+    "@pulpit-ai/scripture-engine": "workspace:*",
     "@pulpit-ai/shared-types": "workspace:*",
     "@pulpit-ai/speech-engine": "workspace:*",
     "lucide-react": "^0.460.0",

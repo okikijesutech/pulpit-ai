@@ -5,7 +5,7 @@ import {
   FreeShowStateSnapshot,
   OperatorMode
 } from '@pulpit-ai/shared-types';
-import { Mic, Radio } from 'lucide-react';
+import { Mic, Radio, BookOpen } from 'lucide-react';
 import { AudioLevelMetrics } from '../../preload/index.js';
 
 interface HeaderProps {
@@ -14,10 +14,12 @@ interface HeaderProps {
   audioDevices: AudioInputDevice[];
   activeDeviceId: string;
   audioLevel: AudioLevelMetrics;
+  activeTranslation?: string;
   onModeChange: (mode: OperatorMode) => void;
   onConnectFreeShow: () => void;
   onDisconnectFreeShow: () => void;
   onSelectAudioDevice: (id: string) => void;
+  onSelectTranslation?: (id: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -26,10 +28,12 @@ export const Header: React.FC<HeaderProps> = ({
   audioDevices,
   activeDeviceId,
   audioLevel,
+  activeTranslation = 'WEB',
   onModeChange,
   onConnectFreeShow,
   onDisconnectFreeShow,
-  onSelectAudioDevice
+  onSelectAudioDevice,
+  onSelectTranslation
 }) => {
   return (
     <header className="h-16 border-b border-slate-800 bg-slate-900/90 px-6 flex items-center justify-between backdrop-blur">
@@ -110,6 +114,24 @@ export const Header: React.FC<HeaderProps> = ({
               {audioLevel.isSilent ? 'MUTE' : `${audioLevel.decibels}dB`}
             </span>
           </div>
+        </div>
+
+        {/* Active Bible Translation Selector */}
+        <div className="flex items-center space-x-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+          <BookOpen className="w-4 h-4 text-indigo-400" />
+          <span className="text-[11px] text-slate-400 uppercase font-semibold">Bible:</span>
+          <select
+            value={activeTranslation}
+            onChange={(e) => onSelectTranslation?.(e.target.value)}
+            className="bg-transparent text-xs font-semibold text-slate-200 border-none outline-none cursor-pointer"
+          >
+            <option value="WEB" className="bg-slate-900 text-slate-100">
+              WEB (World English)
+            </option>
+            <option value="KJV" className="bg-slate-900 text-slate-100">
+              KJV (King James)
+            </option>
+          </select>
         </div>
 
         {/* FreeShow Connection Status */}

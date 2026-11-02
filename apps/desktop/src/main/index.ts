@@ -13,6 +13,12 @@ import {
   WhisperWorkerProcess
 } from '@pulpit-ai/speech-engine';
 import {
+  ScriptureDatabase,
+  ScriptureCandidateGenerator,
+  WEB_PACKAGE,
+  KJV_PACKAGE
+} from '@pulpit-ai/scripture-engine';
+import {
   AllowlistedAction,
   FreeShowCommand,
   OperatorMode,
@@ -30,6 +36,15 @@ const speechSegmenter = new SpeechSegmenter({ sampleRate: 16000 });
 const whisperWorker = new WhisperWorkerProcess();
 const speechEngine = new SpeechRecognitionEngine(whisperWorker);
 const virtualAudio = new VirtualAudioSource(16000);
+
+// Initialize Verified Scripture Storage & Generator
+const scriptureDatabase = new ScriptureDatabase(':memory:');
+scriptureDatabase.loadPackage(WEB_PACKAGE);
+scriptureDatabase.loadPackage(KJV_PACKAGE);
+const scriptureGenerator = new ScriptureCandidateGenerator(scriptureDatabase, {
+  activeTranslation: 'WEB',
+  cooldownMs: 8000
+});
 
 let freeShowAdapter: FreeShowAdapter | null = null;
 let levelMeterTimer: NodeJS.Timeout | null = null;
@@ -69,10 +84,24 @@ function createWindow(): void {
     }
   });
 
-  // Forward recognized transcripts to renderer
+  // Forward recognized transcripts to renderer and process for Scripture
   speechEngine.onTranscript((event) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('speech:transcript', event);
+    }
+    // Ingest normalized speech into Scripture Candidate Generator
+    scriptureGenerator.processTranscript(event.normalizedText);
+  });
+
+  // Forward Scripture suggestion candidates to Audit Logger and renderer
+  scriptureGenerator.onCandidate((candidate) => {
+    auditLogger.log('candidate_created', 'ai', {
+      candidateId: candidate.id,
+      title: candidate.title,
+      confidence: candidate.confidence
+    });
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('scripture:candidate', candidate);
     }
   });
 
@@ -228,6 +257,23 @@ ipcMain.handle('audio:simulate-speech', async (_event, phrase: string) => {
     speechSegmenter.pushFrame(new Int16Array(480));
   }
 });
+
+// Scripture Engine Handlers
+ipcMain.handle('scripture:get-translations', () => {
+  return scriptureDatabase.listTranslations();
+});
+
+ipcMain.handle('scripture:set-translation', (_event, translationId: string) => {
+  scriptureGenerator.setActiveTranslation(translationId);
+  return scriptureGenerator.getActiveTranslation();
+});
+
+ipcMain.handle(
+  'scripture:lookup-passage',
+  (_event, { translation, book, chapter, verseStart, verseEnd }) => {
+    return scriptureDatabase.getPassage(translation, book, chapter, verseStart, verseEnd);
+  }
+);
 
 // App Lifecycle
 app.whenReady().then(() => {

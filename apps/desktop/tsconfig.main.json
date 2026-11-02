@@ -13,6 +13,7 @@
     { "path": "../../packages/authority-manager" },
     { "path": "../../packages/presentation-contracts" },
     { "path": "../../packages/audio-engine" },
-    { "path": "../../packages/speech-engine" }
+    { "path": "../../packages/speech-engine" },
+    { "path": "../../packages/scripture-engine" }
   ]
 }

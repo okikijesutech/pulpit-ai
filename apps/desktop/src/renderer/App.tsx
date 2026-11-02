@@ -50,6 +50,7 @@ export const App: React.FC = () => {
   const [candidates, setCandidates] = useState<SuggestionCandidate[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [transcripts, setTranscripts] = useState<RecognizedTranscriptEvent[]>([]);
+  const [activeTranslation, setActiveTranslation] = useState<string>('WEB');
 
   useEffect(() => {
     if (window.pulpitAPI) {
@@ -74,6 +75,9 @@ export const App: React.FC = () => {
       const unsubTranscript = window.pulpitAPI.onTranscriptEvent((event) => {
         setTranscripts((prev) => [event, ...prev].slice(0, 50));
       });
+      const unsubScripture = window.pulpitAPI.onScriptureCandidate((candidate) => {
+        setCandidates((prev) => [candidate, ...prev.filter((c) => c.title !== candidate.title)]);
+      });
 
       return () => {
         unsubAuth();
@@ -81,6 +85,7 @@ export const App: React.FC = () => {
         unsubAudit();
         unsubAudioLevel();
         unsubTranscript();
+        unsubScripture();
       };
     }
   }, []);
@@ -130,6 +135,20 @@ export const App: React.FC = () => {
     if (window.pulpitAPI) {
       const selected = await window.pulpitAPI.selectAudioDevice(deviceId);
       setActiveDeviceId(selected.id);
+    }
+  };
+
+  const handleSelectTranslation = async (id: string) => {
+    if (window.pulpitAPI) {
+      const active = await window.pulpitAPI.setActiveTranslation(id);
+      setActiveTranslation(active);
+    }
+  };
+
+  const handleManualLookup = async (referenceStr: string) => {
+    if (window.pulpitAPI) {
+      // Simulate input through recognition pipeline to parse and verify against database
+      await window.pulpitAPI.simulateSpeechInput(referenceStr);
     }
   };
 
@@ -196,10 +215,12 @@ export const App: React.FC = () => {
         audioDevices={audioDevices}
         activeDeviceId={activeDeviceId}
         audioLevel={audioLevel}
+        activeTranslation={activeTranslation}
         onModeChange={handleModeChange}
         onConnectFreeShow={handleConnectFreeShow}
         onDisconnectFreeShow={handleDisconnectFreeShow}
         onSelectAudioDevice={handleSelectAudioDevice}
+        onSelectTranslation={handleSelectTranslation}
       />
 
       <ManualLockBanner
@@ -236,6 +257,7 @@ export const App: React.FC = () => {
               isLocked={authorityState.manualLockActive}
               onApprove={handleApproveCandidate}
               onDismiss={handleDismissCandidate}
+              onManualLookup={handleManualLookup}
             />
           </div>
         </div>

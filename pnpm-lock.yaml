@@ -29,6 +29,9 @@ importers:
       '@pulpit-ai/presentation-contracts':
         specifier: workspace:*
         version: link:../../packages/presentation-contracts
+      '@pulpit-ai/scripture-engine':
+        specifier: workspace:*
+        version: link:../../packages/scripture-engine
       '@pulpit-ai/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types

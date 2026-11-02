@@ -46,12 +46,22 @@ export interface PulpitAPI {
   getAudioDevices: () => Promise<AudioInputDevice[]>;
   selectAudioDevice: (deviceId: string) => Promise<AudioInputDevice>;
   simulateSpeechInput: (phrase: string) => Promise<void>;
+  getTranslations: () => Promise<any[]>;
+  setActiveTranslation: (translationId: string) => Promise<string>;
+  lookupPassage: (params: {
+    translation: string;
+    book: string;
+    chapter: number;
+    verseStart: number;
+    verseEnd?: number;
+  }) => Promise<any>;
 
   onAuthorityStateChange: (callback: (state: AuthorityState) => void) => () => void;
   onFreeShowStateChange: (callback: (snapshot: FreeShowStateSnapshot) => void) => () => void;
   onAuditEvent: (callback: (event: AuditEvent) => void) => () => void;
   onAudioLevelChange: (callback: (metrics: AudioLevelMetrics) => void) => () => void;
   onTranscriptEvent: (callback: (event: RecognizedTranscriptEvent) => void) => () => void;
+  onScriptureCandidate: (callback: (candidate: SuggestionCandidate) => void) => () => void;
 }
 
 const api: PulpitAPI = {
@@ -69,6 +79,10 @@ const api: PulpitAPI = {
   getAudioDevices: () => ipcRenderer.invoke('audio:get-devices'),
   selectAudioDevice: (deviceId: string) => ipcRenderer.invoke('audio:select-device', deviceId),
   simulateSpeechInput: (phrase: string) => ipcRenderer.invoke('audio:simulate-speech', phrase),
+  getTranslations: () => ipcRenderer.invoke('scripture:get-translations'),
+  setActiveTranslation: (translationId: string) =>
+    ipcRenderer.invoke('scripture:set-translation', translationId),
+  lookupPassage: (params) => ipcRenderer.invoke('scripture:lookup-passage', params),
 
   onAuthorityStateChange: (callback) => {
     const handler = (_event: any, state: AuthorityState) => callback(state);
@@ -98,6 +112,12 @@ const api: PulpitAPI = {
     const handler = (_event: any, event: RecognizedTranscriptEvent) => callback(event);
     ipcRenderer.on('speech:transcript', handler);
     return () => ipcRenderer.removeListener('speech:transcript', handler);
+  },
+
+  onScriptureCandidate: (callback) => {
+    const handler = (_event: any, candidate: SuggestionCandidate) => callback(candidate);
+    ipcRenderer.on('scripture:candidate', handler);
+    return () => ipcRenderer.removeListener('scripture:candidate', handler);
   }
 };
 
