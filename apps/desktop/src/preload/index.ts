@@ -12,7 +12,9 @@ import {
 import {
   ApprovalOptions,
   SongSearchResult,
-  StagedImportSong
+  StagedImportSong,
+  BackupArchive,
+  RestoreResult
 } from '@pulpit-ai/song-engine';
 
 export interface AudioLevelMetrics {
@@ -114,6 +116,13 @@ export interface PulpitAPI {
     sectionIndex: number
   ) => Promise<{ success: boolean; reason?: string }>;
 
+  // Backup & Disaster Recovery
+  createBackup: () => Promise<BackupArchive>;
+  restoreBackup: (
+    archive: BackupArchive,
+    clearExisting?: boolean
+  ) => Promise<RestoreResult>;
+
   onAuthorityStateChange: (callback: (state: AuthorityState) => void) => () => void;
   onFreeShowStateChange: (callback: (snapshot: FreeShowStateSnapshot) => void) => () => void;
   onAuditEvent: (callback: (event: AuditEvent) => void) => () => void;
@@ -156,6 +165,9 @@ const api: PulpitAPI = {
     ipcRenderer.invoke('songs:reject-staged', { stagedId, reason }),
   projectSongSection: (songTitle, sectionLabel, sectionIndex) =>
     ipcRenderer.invoke('songs:project-section', { songTitle, sectionLabel, sectionIndex }),
+  createBackup: () => ipcRenderer.invoke('backup:create'),
+  restoreBackup: (archive, clearExisting) =>
+    ipcRenderer.invoke('backup:restore', { archive, clearExisting }),
 
   onAuthorityStateChange: (callback) => {
     const handler = (_event: any, state: AuthorityState) => callback(state);

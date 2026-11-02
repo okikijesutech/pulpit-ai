@@ -26,7 +26,9 @@ import {
   SongCandidateGenerator,
   SEED_SONGS,
   ApprovalOptions,
-  StagedImportSong
+  StagedImportSong,
+  BackupManager,
+  BackupArchive
 } from '@pulpit-ai/song-engine';
 import {
   AllowlistedAction,
@@ -484,6 +486,26 @@ ipcMain.handle(
       createdAt: Date.now()
     };
     return await freeShowAdapter.dispatchCommand(slideCommand);
+  }
+);
+
+// Backup & Disaster Recovery Handlers
+ipcMain.handle('backup:create', () => {
+  const auditEvents = auditLogger.getEvents(500);
+  return BackupManager.createBackup(songDatabase, auditEvents, '0.1.0');
+});
+
+ipcMain.handle(
+  'backup:restore',
+  (_event, { archive, clearExisting }: { archive: BackupArchive; clearExisting?: boolean }) => {
+    const res = BackupManager.restoreBackup(archive, songDatabase, clearExisting);
+    if (res.success) {
+      auditLogger.log('candidate_approved', 'operator', {
+        action: 'database_restore',
+        restoredSongCount: res.restoredSongCount
+      });
+    }
+    return res;
   }
 );
 
