@@ -58,6 +58,9 @@ export class ScriptureDatabase {
         redistribution_status TEXT NOT NULL,
         checksum TEXT,
         verification_status TEXT NOT NULL,
+        offline_storage_permission INTEGER NOT NULL DEFAULT 1,
+        redistribution_permission INTEGER NOT NULL DEFAULT 1,
+        ai_processing_permission INTEGER NOT NULL DEFAULT 1,
         imported_at INTEGER NOT NULL
       );
 
@@ -96,8 +99,9 @@ export class ScriptureDatabase {
         INSERT OR REPLACE INTO bible_translations (
           id, name, abbreviation, language, source, edition,
           copyright, license, attribution, redistribution_status,
-          checksum, verification_status, imported_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          checksum, verification_status, offline_storage_permission,
+          redistribution_permission, ai_processing_permission, imported_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       stmt.run(
         meta.id,
@@ -112,6 +116,9 @@ export class ScriptureDatabase {
         meta.redistributionStatus,
         meta.checksum || null,
         meta.verificationStatus,
+        meta.offlineStoragePermission !== false ? 1 : 0,
+        meta.redistributionPermission !== false ? 1 : 0,
+        meta.aiProcessingPermission !== false ? 1 : 0,
         meta.importedAt
       );
     } else {
@@ -146,6 +153,9 @@ export class ScriptureDatabase {
         redistributionStatus: row.redistribution_status,
         checksum: row.checksum,
         verificationStatus: row.verification_status,
+        offlineStoragePermission: row.offline_storage_permission === 1,
+        redistributionPermission: row.redistribution_permission === 1,
+        aiProcessingPermission: row.ai_processing_permission === 1,
         importedAt: row.imported_at
       };
     } else {
@@ -173,6 +183,9 @@ export class ScriptureDatabase {
         redistributionStatus: row.redistribution_status,
         checksum: row.checksum,
         verificationStatus: row.verification_status,
+        offlineStoragePermission: row.offline_storage_permission === 1,
+        redistributionPermission: row.redistribution_permission === 1,
+        aiProcessingPermission: row.ai_processing_permission === 1,
         importedAt: row.imported_at
       }));
     } else {
@@ -272,6 +285,11 @@ export class ScriptureDatabase {
     const canonicalBookName = canonResult.normalizedBookName || canonResult.book.name;
     const translation = this.getTranslation(translationId);
     if (!translation) {
+      return null;
+    }
+
+    // Strict Licensing Check: Only verified translations authorized for AI processing may be queried
+    if (translation.verificationStatus !== 'verified' || translation.aiProcessingPermission === false) {
       return null;
     }
 

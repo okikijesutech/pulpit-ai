@@ -15,6 +15,7 @@
     { "path": "../../packages/audio-engine" },
     { "path": "../../packages/speech-engine" },
     { "path": "../../packages/scripture-engine" },
-    { "path": "../../packages/song-engine" }
+    { "path": "../../packages/song-engine" },
+    { "path": "../../packages/licensing-manager" }
   ]
 }

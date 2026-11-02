@@ -84,6 +84,16 @@ export class CuratedPackageSync {
           license: curated.license || manifest.license,
           ccliNumber: curated.ccliNumber,
           language: curated.language || 'en',
+          licensing: {
+            source: `Curated Shared Package: ${manifest.packageName} (${manifest.packageId})`,
+            copyrightOwner: curated.copyright || (typeof manifest.publisher === 'string' ? manifest.publisher : manifest.publisher?.name) || 'Public Domain',
+            licenseType: curated.license || manifest.license || 'public_domain',
+            attribution: curated.author ? `${curated.canonicalTitle} (${curated.author})` : curated.canonicalTitle,
+            offlineStoragePermission: true,
+            redistributionPermission: true,
+            aiProcessingPermission: true,
+            verificationStatus: 'verified'
+          },
           versions: [
             {
               id: `ver_${songId}_std`,

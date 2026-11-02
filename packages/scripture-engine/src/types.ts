@@ -1,18 +1,22 @@
-import { ScriptureReference } from '@pulpit-ai/shared-types';
+import { ScriptureReference, ContentLicenseMetadata } from '@pulpit-ai/shared-types';
 
 export interface TranslationMetadata {
   id: string; // e.g. 'WEB', 'KJV'
   name: string; // 'World English Bible', 'King James Version'
   abbreviation: string; // 'WEB', 'KJV'
   language: string; // 'en'
-  source?: string;
+  source: string;
   edition?: string;
   copyright: string; // 'Public Domain'
   license: string; // 'Public Domain'
   attribution: string; // 'World English Bible (WEB) — Dedicated to the Public Domain'
   redistributionStatus: 'unrestricted' | 'church_internal' | 'restricted';
   checksum?: string;
-  verificationStatus: 'verified' | 'unverified';
+  verificationStatus: 'verified' | 'unverified' | 'restricted';
+  offlineStoragePermission?: boolean;
+  redistributionPermission?: boolean;
+  aiProcessingPermission?: boolean;
+  licensing?: ContentLicenseMetadata;
   importedAt: number;
 }
 

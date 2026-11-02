@@ -59,6 +59,14 @@ export class SongDatabase {
         license TEXT,
         ccli_number TEXT,
         language TEXT NOT NULL,
+        source TEXT,
+        copyright_owner TEXT,
+        license_type TEXT,
+        attribution TEXT,
+        offline_storage_permission INTEGER DEFAULT 1,
+        redistribution_permission INTEGER DEFAULT 0,
+        ai_processing_permission INTEGER DEFAULT 1,
+        verification_status TEXT DEFAULT 'verified',
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -125,8 +133,11 @@ export class SongDatabase {
         const songStmt = this.db.prepare(`
           INSERT INTO songs (
             id, canonical_title, alt_titles, author, copyright,
-            license, ccli_number, language, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            license, ccli_number, language, source, copyright_owner,
+            license_type, attribution, offline_storage_permission,
+            redistribution_permission, ai_processing_permission,
+            verification_status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         songStmt.run(
@@ -138,6 +149,14 @@ export class SongDatabase {
           song.license || null,
           song.ccliNumber || null,
           song.language || 'en',
+          song.licensing?.source || 'Local Church Library',
+          song.licensing?.copyrightOwner || song.copyright || 'Unknown',
+          song.licensing?.licenseType || song.license || 'custom_restricted',
+          song.licensing?.attribution || (song.author ? `${song.canonicalTitle} - ${song.author}` : song.canonicalTitle),
+          song.licensing?.offlineStoragePermission !== false ? 1 : 0,
+          song.licensing?.redistributionPermission ? 1 : 0,
+          song.licensing?.aiProcessingPermission !== false ? 1 : 0,
+          song.licensing?.verificationStatus || 'verified',
           song.createdAt,
           song.updatedAt
         );
@@ -235,6 +254,17 @@ export class SongDatabase {
         });
       }
 
+      const licensing = songRow.source || songRow.verification_status ? {
+        source: songRow.source || 'Local Church Library',
+        copyrightOwner: songRow.copyright_owner || songRow.copyright || 'Unknown',
+        licenseType: songRow.license_type || songRow.license || 'public_domain',
+        attribution: songRow.attribution || songRow.canonical_title,
+        offlineStoragePermission: songRow.offline_storage_permission === 1,
+        redistributionPermission: songRow.redistribution_permission === 1,
+        aiProcessingPermission: songRow.ai_processing_permission === 1,
+        verificationStatus: (songRow.verification_status || 'verified') as any
+      } : undefined;
+
       return {
         id: songRow.id,
         canonicalTitle: songRow.canonical_title,
@@ -244,6 +274,7 @@ export class SongDatabase {
         license: songRow.license,
         ccliNumber: songRow.ccli_number,
         language: songRow.language,
+        licensing,
         createdAt: songRow.created_at,
         updatedAt: songRow.updated_at,
         versions
@@ -286,7 +317,7 @@ export class SongDatabase {
   /**
    * Searches songs by title, alternative title, or lyric content.
    */
-  public searchSongs(query: string): SongSearchResult[] {
+  public searchSongs(query: string, approvedOnly: boolean = true): SongSearchResult[] {
     if (!query || query.trim().length === 0) return [];
 
     const normQuery = SongDatabase.normalizeLyricText(query);
@@ -296,6 +327,12 @@ export class SongDatabase {
     const allSongs = this.listSongs();
 
     for (const song of allSongs) {
+      // Strict Licensing Filter: Recognition engine searches only verified content with AI permission
+      if (approvedOnly && song.licensing) {
+        if (song.licensing.verificationStatus !== 'verified' || song.licensing.aiProcessingPermission === false) {
+          continue;
+        }
+      }
       const normTitle = SongDatabase.normalizeLyricText(song.canonicalTitle);
       let matchedTitle = false;
       let matchedAltTitle: string | undefined = undefined;

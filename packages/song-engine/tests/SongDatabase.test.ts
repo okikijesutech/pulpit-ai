@@ -94,4 +94,57 @@ describe('SongDatabase', () => {
     expect(updated?.author).toBe('Fanny J. Crosby (Arr. Pulpit AI)');
     expect(db.listSongs().length).toBe(3);
   });
+
+  it('filters out unverified or AI-prohibited songs during recognition search', () => {
+    // Save an unverified draft song
+    const unverifiedSong: Song = {
+      id: 'song_unverified_draft',
+      canonicalTitle: 'Unverified Modern Song',
+      alternativeTitles: [],
+      author: 'Unknown Artist',
+      copyright: 'Copyright Pending',
+      license: 'All rights reserved',
+      language: 'en',
+      licensing: {
+        source: 'Draft File',
+        copyrightOwner: 'Unknown Artist',
+        licenseType: 'custom_restricted',
+        attribution: 'Pending License',
+        offlineStoragePermission: true,
+        redistributionPermission: false,
+        aiProcessingPermission: false,
+        verificationStatus: 'unverified'
+      },
+      versions: [
+        {
+          id: 'ver_draft_1',
+          songId: 'song_unverified_draft',
+          versionName: 'Draft',
+          isDefault: true,
+          sections: [
+            {
+              id: 'sec_draft_v1',
+              type: 'verse',
+              sequenceOrder: 1,
+              label: 'Verse 1',
+              lines: ['This is a secret draft lyric line not yet approved']
+            }
+          ]
+        }
+      ],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    db.saveSong(unverifiedSong);
+
+    // Recognition search must exclude unverified content!
+    const searchRecognition = db.searchSongs('secret draft lyric line', true);
+    expect(searchRecognition.length).toBe(0);
+
+    // Administrative review query (approvedOnly = false) can inspect it
+    const searchAdmin = db.searchSongs('secret draft lyric line', false);
+    expect(searchAdmin.length).toBe(1);
+    expect(searchAdmin[0].song.canonicalTitle).toBe('Unverified Modern Song');
+  });
 });

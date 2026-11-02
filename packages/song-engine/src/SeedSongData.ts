@@ -14,6 +14,16 @@ export const SEED_SONGS: Song[] = [
     copyright: 'Public Domain',
     license: 'Public Domain',
     language: 'en',
+    licensing: {
+      source: 'Olney Hymns (1779)',
+      copyrightOwner: 'Public Domain',
+      licenseType: 'public_domain',
+      attribution: 'John Newton (1779) — Public Domain',
+      offlineStoragePermission: true,
+      redistributionPermission: true,
+      aiProcessingPermission: true,
+      verificationStatus: 'verified'
+    },
     createdAt: Date.now(),
     updatedAt: Date.now(),
     versions: [
@@ -85,6 +95,16 @@ export const SEED_SONGS: Song[] = [
     copyright: 'Public Domain',
     license: 'Public Domain',
     language: 'en',
+    licensing: {
+      source: 'Gospel Hymns No. 1 (1873)',
+      copyrightOwner: 'Public Domain',
+      licenseType: 'public_domain',
+      attribution: 'Fanny J. Crosby (1873) — Public Domain',
+      offlineStoragePermission: true,
+      redistributionPermission: true,
+      aiProcessingPermission: true,
+      verificationStatus: 'verified'
+    },
     createdAt: Date.now(),
     updatedAt: Date.now(),
     versions: [
@@ -144,6 +164,16 @@ export const SEED_SONGS: Song[] = [
     copyright: 'Public Domain',
     license: 'Public Domain',
     language: 'en',
+    licensing: {
+      source: 'Hymns Written and Adapted to the Weekly Church Service of the Year (1826)',
+      copyrightOwner: 'Public Domain',
+      licenseType: 'public_domain',
+      attribution: 'Reginald Heber (1826) — Public Domain',
+      offlineStoragePermission: true,
+      redistributionPermission: true,
+      aiProcessingPermission: true,
+      verificationStatus: 'verified'
+    },
     createdAt: Date.now(),
     updatedAt: Date.now(),
     versions: [

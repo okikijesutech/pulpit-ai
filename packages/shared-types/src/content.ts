@@ -3,6 +3,7 @@
  */
 
 import { FreeShowCommand } from './freeshow.js';
+import { ContentLicenseMetadata } from './licensing.js';
 
 export interface ScriptureReference {
   book: string;
@@ -60,6 +61,7 @@ export interface Song {
   ccliNumber?: string;
   language: string;
   versions: SongVersion[];
+  licensing?: ContentLicenseMetadata;
   createdAt: number;
   updatedAt: number;
 }

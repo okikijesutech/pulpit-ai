@@ -28,6 +28,10 @@ export interface ApproveImportOptions {
   rightsConfirmed: boolean;
   overrideTitle?: string;
   overrideAuthor?: string;
+  copyrightOwner?: string;
+  licenseType?: string;
+  attribution?: string;
+  redistributionPermission?: boolean;
 }
 
 export type StagedImportSong = StagedSongImport;
@@ -149,14 +153,26 @@ export class SongReviewManager {
         lines: sec.lines
       }));
 
+      const title = options.overrideTitle || draft.title;
+      const author = options.overrideAuthor || draft.author;
       savedSong = {
         id: songId,
-        canonicalTitle: options.overrideTitle || draft.title,
+        canonicalTitle: title,
         alternativeTitles: draft.alternativeTitles || [],
-        author: options.overrideAuthor || draft.author,
+        author,
         copyright: draft.copyright,
-        license: draft.license || 'Local Church Use',
+        license: options.licenseType || draft.license || 'church_owned',
         language: draft.language || 'en',
+        licensing: {
+          source: draft.sourceFileName || 'Imported Document',
+          copyrightOwner: options.copyrightOwner || draft.copyright || author || 'Local Church',
+          licenseType: options.licenseType || draft.license || 'church_owned',
+          attribution: options.attribution || (author ? `${title} (${author})` : title),
+          offlineStoragePermission: true,
+          redistributionPermission: options.redistributionPermission ?? false,
+          aiProcessingPermission: true, // Approved by operator
+          verificationStatus: 'verified'
+        },
         versions: [
           {
             id: `ver_${songId}_std`,

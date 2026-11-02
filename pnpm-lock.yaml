@@ -26,6 +26,9 @@ importers:
       '@pulpit-ai/authority-manager':
         specifier: workspace:*
         version: link:../../packages/authority-manager
+      '@pulpit-ai/licensing-manager':
+        specifier: workspace:*
+        version: link:../../packages/licensing-manager
       '@pulpit-ai/presentation-contracts':
         specifier: workspace:*
         version: link:../../packages/presentation-contracts
@@ -96,6 +99,19 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.5)
 
+  packages/licensing-manager:
+    dependencies:
+      '@pulpit-ai/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.5)
+
   packages/presentation-contracts:
     dependencies:
       '@pulpit-ai/authority-manager':
@@ -120,6 +136,9 @@ importers:
 
   packages/scripture-engine:
     dependencies:
+      '@pulpit-ai/licensing-manager':
+        specifier: workspace:*
+        version: link:../licensing-manager
       '@pulpit-ai/shared-types':
         specifier: workspace:*
         version: link:../shared-types
@@ -139,6 +158,9 @@ importers:
 
   packages/song-engine:
     dependencies:
+      '@pulpit-ai/licensing-manager':
+        specifier: workspace:*
+        version: link:../licensing-manager
       '@pulpit-ai/shared-types':
         specifier: workspace:*
         version: link:../shared-types

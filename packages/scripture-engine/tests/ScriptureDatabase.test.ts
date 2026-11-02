@@ -76,4 +76,35 @@ describe('ScriptureDatabase', () => {
     // John 3 has only 36 verses
     expect(db.getPassage('WEB', 'John', 3, 50)).toBeNull();
   });
+
+  it('fails closed when a translation is unverified or has AI processing disabled', () => {
+    // Register an unverified/restricted mock translation (e.g. unlicensed draft)
+    db.registerTranslation({
+      id: 'UTD',
+      name: 'Unverified Translation Draft',
+      abbreviation: 'UTD',
+      language: 'en',
+      source: 'Unknown draft file',
+      copyright: 'Copyright Unknown',
+      license: 'All rights reserved',
+      attribution: 'Pending License',
+      redistributionStatus: 'restricted',
+      verificationStatus: 'unverified',
+      aiProcessingPermission: false,
+      importedAt: Date.now()
+    });
+
+    db.insertVerse({
+      translationId: 'UTD',
+      bookId: 'JHN',
+      bookName: 'John',
+      chapter: 3,
+      verse: 16,
+      text: 'Unverified translation text for John 3:16'
+    });
+
+    // Recognition retrieval must fail closed!
+    const result = db.getPassage('UTD', 'John', 3, 16);
+    expect(result).toBeNull();
+  });
 });

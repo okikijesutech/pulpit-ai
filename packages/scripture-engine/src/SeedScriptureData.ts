@@ -19,6 +19,9 @@ export const WEB_PACKAGE: TranslationPackage = {
     attribution: 'World English Bible (WEB) — Dedicated to the Public Domain',
     redistributionStatus: 'unrestricted',
     verificationStatus: 'verified',
+    offlineStoragePermission: true,
+    redistributionPermission: true,
+    aiProcessingPermission: true,
     importedAt: Date.now()
   },
   verses: [
@@ -106,6 +109,9 @@ export const KJV_PACKAGE: TranslationPackage = {
     attribution: 'King James Version (KJV) — Public Domain',
     redistributionStatus: 'unrestricted',
     verificationStatus: 'verified',
+    offlineStoragePermission: true,
+    redistributionPermission: true,
+    aiProcessingPermission: true,
     importedAt: Date.now()
   },
   verses: [
