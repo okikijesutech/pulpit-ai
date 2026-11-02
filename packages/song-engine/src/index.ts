@@ -13,3 +13,4 @@ export * from './SongDuplicateDetector.js';
 export * from './SongReviewManager.js';
 export * from './ConsecutiveEvidenceTracker.js';
 export * from './LyricMatcher.js';
+export * from './SongCandidateGenerator.js';

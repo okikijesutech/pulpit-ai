@@ -77,7 +77,8 @@ export class ConsecutiveEvidenceTracker {
 
     let isConsecutive = false;
     let consecutiveMatches = 1;
-    let accumulatedConfidence = lineSimilarity * distinctivenessScore;
+    const lineScore = (lineSimilarity * 0.65) + (distinctivenessScore * 0.35);
+    let accumulatedConfidence = lineScore;
 
     if (existing) {
       // Check if this line is strictly the next line or a chorus repeat
@@ -88,14 +89,14 @@ export class ConsecutiveEvidenceTracker {
         // Boost confidence significantly with consecutive evidence
         accumulatedConfidence = Math.min(
           0.99,
-          existing.accumulatedConfidence * 0.4 + (lineSimilarity * distinctivenessScore) * 0.6 + 0.25
+          existing.accumulatedConfidence * 0.35 + lineScore * 0.65 + 0.20
         );
       } else if (delta > 1 && delta <= 3) {
         // Line skipped in transcription (e.g. background music obscured a line)
         consecutiveMatches = existing.consecutiveMatches + 1;
         accumulatedConfidence = Math.min(
           0.95,
-          existing.accumulatedConfidence * 0.5 + (lineSimilarity * distinctivenessScore) * 0.5 + 0.15
+          existing.accumulatedConfidence * 0.45 + lineScore * 0.55 + 0.12
         );
       } else {
         // Jumper or repeat
@@ -111,7 +112,7 @@ export class ConsecutiveEvidenceTracker {
       existing.lastSeenAt = now;
 
       const meetsThreshold =
-        consecutiveMatches >= 2 || (accumulatedConfidence >= 0.85 && distinctivenessScore >= 0.70);
+        consecutiveMatches >= 2 || (accumulatedConfidence >= 0.75 && distinctivenessScore >= 0.45);
 
       return {
         hypothesis: existing,
@@ -138,8 +139,8 @@ export class ConsecutiveEvidenceTracker {
 
     this.hypotheses.set(hypKey, newHyp);
 
-    // Single line only meets threshold if distinctiveness is exceptionally high
-    const meetsThreshold = accumulatedConfidence >= 0.88 && distinctivenessScore >= 0.80;
+    // Single line meets threshold if combined score >= 0.75 and distinctiveness is acceptable
+    const meetsThreshold = accumulatedConfidence >= 0.75 && distinctivenessScore >= 0.45;
 
     return {
       hypothesis: newHyp,
