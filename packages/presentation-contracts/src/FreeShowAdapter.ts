@@ -288,7 +288,7 @@ export class FreeShowAdapter {
       switch (command.action) {
         case 'start_scripture':
           remoteChannel = 'API:start_scripture';
-          remoteData = { reference: dotRef };
+          remoteData = { reference: refDisplay, play: true };
           break;
         case 'next_slide':
           remoteChannel = 'API:next_slide';
@@ -315,6 +315,13 @@ export class FreeShowAdapter {
           channel: remoteChannel,
           data: remoteData
         });
+        if (command.action === 'start_scripture' && dotRef && dotRef !== refDisplay) {
+          this.socket!.emit('REMOTE', {
+            id: this.socket!.id || '',
+            channel: remoteChannel,
+            data: { reference: dotRef, play: true }
+          });
+        }
       }
 
       const payload = {
