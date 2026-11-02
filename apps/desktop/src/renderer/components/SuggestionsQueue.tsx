@@ -77,17 +77,27 @@ export const SuggestionsQueue: React.FC<SuggestionsQueueProps> = ({
             return (
               <div
                 key={cand.id}
-                className="bg-slate-950 border border-slate-800 rounded-lg p-3.5 hover:border-slate-700 transition-all shadow-sm"
+                className={`bg-slate-950 border rounded-lg p-3.5 hover:border-slate-700 transition-all shadow-sm ${
+                  cand.type === 'song'
+                    ? 'border-purple-900/60 bg-purple-950/10'
+                    : 'border-slate-800'
+                }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-2">
                     {cand.type === 'scripture' ? (
                       <BookOpen className="w-4 h-4 text-indigo-400" />
                     ) : (
-                      <Music className="w-4 h-4 text-emerald-400" />
+                      <Music className="w-4 h-4 text-purple-400" />
                     )}
                     <h3 className="text-sm font-bold text-white tracking-tight">{cand.title}</h3>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60 font-mono">
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded font-mono ${
+                        cand.type === 'song'
+                          ? 'bg-purple-950 text-purple-300 border border-purple-800/60'
+                          : 'bg-indigo-950 text-indigo-300 border border-indigo-800/60'
+                      }`}
+                    >
                       {Math.round(cand.confidence * 100)}% Match
                     </span>
                   </div>
@@ -101,7 +111,7 @@ export const SuggestionsQueue: React.FC<SuggestionsQueueProps> = ({
                   </button>
                 </div>
 
-                <p className="text-xs font-serif text-slate-200 mt-2 p-2.5 bg-slate-900/80 rounded border border-slate-800/60 leading-relaxed">
+                <p className="text-xs font-serif text-slate-200 mt-2 p-2.5 bg-slate-900/80 rounded border border-slate-800/60 leading-relaxed whitespace-pre-line">
                   "{cand.contentPreview}"
                 </p>
 
@@ -127,6 +137,8 @@ export const SuggestionsQueue: React.FC<SuggestionsQueueProps> = ({
                     className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md ${
                       isLocked
                         ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                        : cand.type === 'song'
+                        ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-900/40'
                         : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/40'
                     }`}
                   >
@@ -138,7 +150,7 @@ export const SuggestionsQueue: React.FC<SuggestionsQueueProps> = ({
                     ) : (
                       <>
                         <Check className="w-3.5 h-3.5" />
-                        <span>Project to Screen</span>
+                        <span>{cand.type === 'song' ? 'Project Song Show' : 'Project to Screen'}</span>
                       </>
                     )}
                   </button>

@@ -22,6 +22,16 @@ export interface AudioLevelMetrics {
   isSilent: boolean;
 }
 
+export interface AudioActivityMetrics {
+  mode: 'silence' | 'speech' | 'singing';
+  isSinging: boolean;
+  isSpeech: boolean;
+  harmonicity: number;
+  estimatedPitchHz: number | null;
+  pitchStability: number;
+  confidence: number;
+}
+
 export interface RecognizedTranscriptEvent {
   id: string;
   segmentId: string;
@@ -52,6 +62,7 @@ export interface PulpitAPI {
   getAudioDevices: () => Promise<AudioInputDevice[]>;
   selectAudioDevice: (deviceId: string) => Promise<AudioInputDevice>;
   simulateSpeechInput: (phrase: string) => Promise<void>;
+  simulateSingingInput: (lyrics: string) => Promise<void>;
   getTranslations: () => Promise<any[]>;
   setActiveTranslation: (translationId: string) => Promise<string>;
   lookupPassage: (params: {
@@ -107,8 +118,10 @@ export interface PulpitAPI {
   onFreeShowStateChange: (callback: (snapshot: FreeShowStateSnapshot) => void) => () => void;
   onAuditEvent: (callback: (event: AuditEvent) => void) => () => void;
   onAudioLevelChange: (callback: (metrics: AudioLevelMetrics) => void) => () => void;
+  onAudioActivityMode: (callback: (metrics: AudioActivityMetrics) => void) => () => void;
   onTranscriptEvent: (callback: (event: RecognizedTranscriptEvent) => void) => () => void;
   onScriptureCandidate: (callback: (candidate: SuggestionCandidate) => void) => () => void;
+  onSongCandidate: (callback: (candidate: SuggestionCandidate) => void) => () => void;
 }
 
 const api: PulpitAPI = {
@@ -126,6 +139,7 @@ const api: PulpitAPI = {
   getAudioDevices: () => ipcRenderer.invoke('audio:get-devices'),
   selectAudioDevice: (deviceId: string) => ipcRenderer.invoke('audio:select-device', deviceId),
   simulateSpeechInput: (phrase: string) => ipcRenderer.invoke('audio:simulate-speech', phrase),
+  simulateSingingInput: (lyrics: string) => ipcRenderer.invoke('audio:simulate-singing', lyrics),
   getTranslations: () => ipcRenderer.invoke('scripture:get-translations'),
   setActiveTranslation: (translationId: string) =>
     ipcRenderer.invoke('scripture:set-translation', translationId),
@@ -167,6 +181,12 @@ const api: PulpitAPI = {
     return () => ipcRenderer.removeListener('audio:level-changed', handler);
   },
 
+  onAudioActivityMode: (callback) => {
+    const handler = (_event: any, metrics: AudioActivityMetrics) => callback(metrics);
+    ipcRenderer.on('audio:activity-mode', handler);
+    return () => ipcRenderer.removeListener('audio:activity-mode', handler);
+  },
+
   onTranscriptEvent: (callback) => {
     const handler = (_event: any, event: RecognizedTranscriptEvent) => callback(event);
     ipcRenderer.on('speech:transcript', handler);
@@ -177,6 +197,12 @@ const api: PulpitAPI = {
     const handler = (_event: any, candidate: SuggestionCandidate) => callback(candidate);
     ipcRenderer.on('scripture:candidate', handler);
     return () => ipcRenderer.removeListener('scripture:candidate', handler);
+  },
+
+  onSongCandidate: (callback) => {
+    const handler = (_event: any, candidate: SuggestionCandidate) => callback(candidate);
+    ipcRenderer.on('song:candidate', handler);
+    return () => ipcRenderer.removeListener('song:candidate', handler);
   }
 };
 

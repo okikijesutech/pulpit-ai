@@ -5,8 +5,8 @@ import {
   FreeShowStateSnapshot,
   OperatorMode
 } from '@pulpit-ai/shared-types';
-import { Mic, Radio, BookOpen, Music } from 'lucide-react';
-import { AudioLevelMetrics } from '../../preload/index.js';
+import { Mic, Radio, BookOpen, Music, Activity } from 'lucide-react';
+import { AudioLevelMetrics, AudioActivityMetrics } from '../../preload/index.js';
 
 interface HeaderProps {
   currentView?: 'live' | 'songs';
@@ -16,6 +16,7 @@ interface HeaderProps {
   audioDevices: AudioInputDevice[];
   activeDeviceId: string;
   audioLevel: AudioLevelMetrics;
+  audioActivity?: AudioActivityMetrics;
   activeTranslation?: string;
   onModeChange: (mode: OperatorMode) => void;
   onConnectFreeShow: () => void;
@@ -32,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   audioDevices,
   activeDeviceId,
   audioLevel,
+  audioActivity,
   activeTranslation = 'WEB',
   onModeChange,
   onConnectFreeShow,
@@ -146,6 +148,31 @@ export const Header: React.FC<HeaderProps> = ({
               {audioLevel.isSilent ? 'MUTE' : `${audioLevel.decibels}dB`}
             </span>
           </div>
+
+          {/* Live Acoustic Mode Badge (Speech vs Singing) */}
+          {audioActivity && (
+            <div
+              className={`flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all border ${
+                audioActivity.isSinging
+                  ? 'bg-purple-900/60 text-purple-300 border-purple-500/50 shadow-sm shadow-purple-500/30 animate-pulse'
+                  : audioActivity.isSpeech
+                  ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800'
+                  : 'bg-slate-900 text-slate-500 border-slate-800'
+              }`}
+            >
+              {audioActivity.isSinging ? (
+                <>
+                  <Music className="w-3 h-3 text-purple-400" />
+                  <span>Worship / Singing</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3 h-3 text-emerald-400" />
+                  <span>Preaching / Speech</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Active Bible Translation Selector */}

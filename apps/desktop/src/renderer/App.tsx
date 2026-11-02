@@ -19,7 +19,7 @@ import {
   RecognizedTranscriptEvent
 } from './components/LiveTranscriptPanel.js';
 import { SongLibraryPanel } from './components/SongLibraryPanel.js';
-import { AudioLevelMetrics } from '../preload/index.js';
+import { AudioLevelMetrics, AudioActivityMetrics } from '../preload/index.js';
 
 export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'live' | 'songs'>('live');
@@ -48,6 +48,7 @@ export const App: React.FC = () => {
     isClipping: false,
     isSilent: true
   });
+  const [audioActivity, setAudioActivity] = useState<AudioActivityMetrics | undefined>(undefined);
 
   const [candidates, setCandidates] = useState<SuggestionCandidate[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
@@ -74,10 +75,14 @@ export const App: React.FC = () => {
         setAuditEvents((prev) => [ev, ...prev].slice(0, 50));
       });
       const unsubAudioLevel = window.pulpitAPI.onAudioLevelChange(setAudioLevel);
+      const unsubAudioActivity = window.pulpitAPI.onAudioActivityMode(setAudioActivity);
       const unsubTranscript = window.pulpitAPI.onTranscriptEvent((event) => {
         setTranscripts((prev) => [event, ...prev].slice(0, 50));
       });
       const unsubScripture = window.pulpitAPI.onScriptureCandidate((candidate) => {
+        setCandidates((prev) => [candidate, ...prev.filter((c) => c.title !== candidate.title)]);
+      });
+      const unsubSong = window.pulpitAPI.onSongCandidate((candidate) => {
         setCandidates((prev) => [candidate, ...prev.filter((c) => c.title !== candidate.title)]);
       });
 
@@ -86,8 +91,10 @@ export const App: React.FC = () => {
         unsubFS();
         unsubAudit();
         unsubAudioLevel();
+        unsubAudioActivity();
         unsubTranscript();
         unsubScripture();
+        unsubSong();
       };
     }
   }, []);
@@ -209,6 +216,12 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleSimulateSinging = async (lyrics: string) => {
+    if (window.pulpitAPI) {
+      await window.pulpitAPI.simulateSingingInput(lyrics);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
       <Header
@@ -219,6 +232,7 @@ export const App: React.FC = () => {
         audioDevices={audioDevices}
         activeDeviceId={activeDeviceId}
         audioLevel={audioLevel}
+        audioActivity={audioActivity}
         activeTranslation={activeTranslation}
         onModeChange={handleModeChange}
         onConnectFreeShow={handleConnectFreeShow}
@@ -259,6 +273,7 @@ export const App: React.FC = () => {
               <LiveTranscriptPanel
                 transcripts={transcripts}
                 onSimulatePhrase={handleSimulatePhrase}
+                onSimulateSinging={handleSimulateSinging}
               />
             </div>
             <div className="h-1/2 min-h-0">

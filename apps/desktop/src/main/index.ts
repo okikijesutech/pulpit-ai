@@ -6,7 +6,8 @@ import {
   AudioDeviceManager,
   AudioLevelMeter,
   SpeechSegmenter,
-  VirtualAudioSource
+  VirtualAudioSource,
+  SingingActivityDetector
 } from '@pulpit-ai/audio-engine';
 import {
   SpeechRecognitionEngine,
@@ -22,6 +23,7 @@ import {
   SongDatabase,
   SongReviewManager,
   SongImportPipeline,
+  SongCandidateGenerator,
   SEED_SONGS,
   ApprovalOptions,
   StagedImportSong
@@ -44,6 +46,7 @@ const speechSegmenter = new SpeechSegmenter({ sampleRate: 16000 });
 const whisperWorker = new WhisperWorkerProcess();
 const speechEngine = new SpeechRecognitionEngine(whisperWorker);
 const virtualAudio = new VirtualAudioSource(16000);
+const singingActivityDetector = new SingingActivityDetector({ sampleRate: 16000 });
 
 // Initialize Verified Scripture Storage & Generator
 const scriptureDatabase = new ScriptureDatabase(':memory:');
@@ -54,12 +57,16 @@ const scriptureGenerator = new ScriptureCandidateGenerator(scriptureDatabase, {
   cooldownMs: 8000
 });
 
-// Initialize Song Database & Review Manager
+// Initialize Song Database, Candidate Generator & Review Manager
 const songDatabase = new SongDatabase(':memory:');
 for (const seed of SEED_SONGS) {
   songDatabase.saveSong(seed);
 }
 const songReviewManager = new SongReviewManager(songDatabase);
+const songCandidateGenerator = new SongCandidateGenerator(songDatabase, {
+  cooldownMs: 8000,
+  minConfidence: 0.70
+});
 
 let freeShowAdapter: FreeShowAdapter | null = null;
 let levelMeterTimer: NodeJS.Timeout | null = null;
@@ -99,13 +106,17 @@ function createWindow(): void {
     }
   });
 
-  // Forward recognized transcripts to renderer and process for Scripture
+  // Forward recognized transcripts to renderer and process for Scripture and Song
   speechEngine.onTranscript((event) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('speech:transcript', event);
     }
     // Ingest normalized speech into Scripture Candidate Generator
     scriptureGenerator.processTranscript(event.normalizedText);
+
+    // Ingest normalized speech into Song Candidate Generator
+    const isSinging = singingActivityDetector.getCurrentMode() === 'singing';
+    songCandidateGenerator.processTranscript(event.normalizedText, isSinging);
   });
 
   // Forward Scripture suggestion candidates to Audit Logger and renderer
@@ -113,10 +124,24 @@ function createWindow(): void {
     auditLogger.log('candidate_created', 'ai', {
       candidateId: candidate.id,
       title: candidate.title,
-      confidence: candidate.confidence
+      confidence: candidate.confidence,
+      type: 'scripture'
     });
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('scripture:candidate', candidate);
+    }
+  });
+
+  // Forward Song suggestion candidates to Audit Logger and renderer
+  songCandidateGenerator.onCandidate((candidate) => {
+    auditLogger.log('candidate_created', 'ai', {
+      candidateId: candidate.id,
+      title: candidate.title,
+      confidence: candidate.confidence,
+      type: 'song'
+    });
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('song:candidate', candidate);
     }
   });
 
@@ -154,8 +179,10 @@ function startLevelMeterBroadcast(): void {
     // Simulate idle background room noise or active audio level
     const frame = virtualAudio.generateSyntheticSpeechFrame(0.05);
     const metrics = audioLevelMeter.analyze(frame);
+    const activityMetrics = singingActivityDetector.processFrame(frame);
 
     mainWindow.webContents.send('audio:level-changed', metrics);
+    mainWindow.webContents.send('audio:activity-mode', activityMetrics);
   }, 100);
 }
 
@@ -268,6 +295,28 @@ ipcMain.handle('audio:simulate-speech', async (_event, phrase: string) => {
     speechSegmenter.pushFrame(virtualAudio.generateSyntheticSpeechFrame(0.03));
   }
   // Feed 15 silence frames to trigger hangover emission
+  for (let i = 0; i < 15; i++) {
+    speechSegmenter.pushFrame(new Int16Array(480));
+  }
+});
+
+ipcMain.handle('audio:simulate-singing', async (_event, lyrics: string) => {
+  whisperWorker.registerMockTranscript('sim_singing', lyrics);
+
+  // Synthesize harmonic tone frames to activate singing mode detector
+  const toneFrame = new Int16Array(480);
+  for (let i = 0; i < 480; i++) {
+    toneFrame[i] = Math.round(10000 * Math.sin((2 * Math.PI * 220 * i) / 16000));
+  }
+  for (let i = 0; i < 8; i++) {
+    singingActivityDetector.processFrame(toneFrame);
+  }
+
+  // Synthesize audio frames into speech segmenter
+  const frameCount = 30;
+  for (let i = 0; i < frameCount; i++) {
+    speechSegmenter.pushFrame(virtualAudio.generateSyntheticSpeechFrame(0.03));
+  }
   for (let i = 0; i < 15; i++) {
     speechSegmenter.pushFrame(new Int16Array(480));
   }
