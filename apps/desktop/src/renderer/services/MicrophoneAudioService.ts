@@ -99,93 +99,24 @@ export class MicrophoneAudioService {
       this.notify({
         isStreaming: true,
         deviceName,
+        isListeningSpeech: true,
         error: undefined
       });
-
-      // Start continuous speech recognition
-      this.startSpeechRecognition();
 
       return true;
     } catch (err: any) {
       console.warn('Microphone access denied or error:', err);
       this.notify({
         isStreaming: false,
+        isListeningSpeech: false,
         error: err.message || 'Microphone access denied'
       });
       return false;
     }
   }
 
-  private startSpeechRecognition(): void {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      console.log('Browser SpeechRecognition API not supported, using local audio engine.');
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => {
-        this.notify({ isListeningSpeech: true });
-      };
-
-      recognition.onresult = (event: any) => {
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            const transcript = event.results[i][0].transcript.trim();
-            if (transcript.length > 0) {
-              this.notify({ lastTranscript: transcript });
-              if (window.pulpitAPI?.sendDirectTranscript) {
-                window.pulpitAPI.sendDirectTranscript(transcript);
-              }
-            }
-          }
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        // 'no-speech' is expected during pauses between preaching sentences
-        if (event.error !== 'no-speech') {
-          console.warn('Speech recognition warning:', event.error);
-        }
-      };
-
-      recognition.onend = () => {
-        // Automatically restart speech recognition so church preaching is never interrupted
-        if (this.isRunning) {
-          try {
-            recognition.start();
-          } catch {
-            // Ignore if already active
-          }
-        } else {
-          this.notify({ isListeningSpeech: false });
-        }
-      };
-
-      recognition.start();
-      this.speechRecognizer = recognition;
-    } catch (err) {
-      console.warn('SpeechRecognition initialization error:', err);
-    }
-  }
-
   public stop(): void {
     this.isRunning = false;
-
-    if (this.speechRecognizer) {
-      try {
-        this.speechRecognizer.stop();
-      } catch {}
-      this.speechRecognizer = null;
-    }
 
     if (this.processorNode) {
       try {

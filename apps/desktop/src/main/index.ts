@@ -47,6 +47,7 @@ const audioDeviceManager = new AudioDeviceManager();
 const audioLevelMeter = new AudioLevelMeter();
 const speechSegmenter = new SpeechSegmenter({ sampleRate: 16000 });
 const whisperWorker = new WhisperWorkerProcess();
+whisperWorker.warmup();
 const speechEngine = new SpeechRecognitionEngine(whisperWorker);
 const virtualAudio = new VirtualAudioSource(16000);
 const singingActivityDetector = new SingingActivityDetector({ sampleRate: 16000 });

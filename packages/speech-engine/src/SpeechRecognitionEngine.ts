@@ -55,6 +55,9 @@ export class SpeechRecognitionEngine {
 
     try {
       const result: TranscriptionJobResult = await this.worker.transcribeSegment(segment);
+      if (!result.text || result.text.trim().length === 0) {
+        return null;
+      }
       const normalized: NormalizedTranscript = this.normalizer.normalize(result.text);
 
       const event: RecognizedTranscriptEvent = {

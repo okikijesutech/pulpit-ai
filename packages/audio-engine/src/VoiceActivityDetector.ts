@@ -27,7 +27,7 @@ export class VoiceActivityDetector {
   constructor(options: VadOptions = {}) {
     this.sampleRate = options.sampleRate ?? 16000;
     this.frameSize = options.frameSizeSamples ?? 480; // 30ms @ 16kHz
-    this.energyThreshold = options.energyThreshold ?? 0.015; // ~ -36 dBFS
+    this.energyThreshold = options.energyThreshold ?? 0.005; // ~ -46 dBFS (sensitive to room preaching speech)
     this.minZcr = options.minZcr ?? 5; // Min 5 crossings per 30ms
     this.maxZcr = options.maxZcr ?? 220; // Max 220 crossings per 30ms
   }

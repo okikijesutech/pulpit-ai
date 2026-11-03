@@ -39,6 +39,14 @@ export class WhisperWorkerProcess {
     return this.transcriberPromise;
   }
 
+  public async warmup(): Promise<void> {
+    try {
+      await this.getTranscriber();
+    } catch (err) {
+      console.warn('Warmup error in Whisper worker:', err);
+    }
+  }
+
   /**
    * Registers a mock response for a given segment identifier, wildcard ('*'), or synthetic test pattern.
    */
@@ -59,7 +67,7 @@ export class WhisperWorkerProcess {
    */
   public async transcribeSegment(
     segment: SpeechSegment,
-    timeoutMs = 12000
+    timeoutMs = 15000
   ): Promise<TranscriptionJobResult> {
     if (!this.isRunning) {
       throw new Error('Whisper worker is not running.');
@@ -78,14 +86,9 @@ export class WhisperWorkerProcess {
       }
     }
 
-    // Real inference using Xenova Whisper
+    // Real inference using Xenova Whisper ONNX
     try {
-      const transcriber = await Promise.race([
-        this.getTranscriber(),
-        new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error(`Transcriber initialization timed out.`)), 3000)
-        )
-      ]);
+      const transcriber = await this.getTranscriber();
 
       if (transcriber && segment.samples && segment.samples.length > 0) {
         // Convert 16-bit PCM (Int16Array) to Float32Array [-1.0, 1.0]
@@ -117,13 +120,12 @@ export class WhisperWorkerProcess {
         }
       }
     } catch (inferenceErr) {
-      console.warn('Real Whisper inference error, falling back to heuristic:', inferenceErr);
+      console.warn('Real Whisper inference error:', inferenceErr);
     }
 
-    // Default fallback if inference produces empty result or fails
     return {
-      text: 'Praise the Lord church',
-      confidence: 0.85,
+      text: '',
+      confidence: 0,
       latencyMs: Date.now() - startTime
     };
   }
