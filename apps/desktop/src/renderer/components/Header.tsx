@@ -5,7 +5,7 @@ import {
   FreeShowStateSnapshot,
   OperatorMode
 } from '@pulpit-ai/shared-types';
-import { Mic, Radio, BookOpen, Music, Activity } from 'lucide-react';
+import { Mic, MicOff, Radio, BookOpen, Music, Activity } from 'lucide-react';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../../preload/index.js';
 
 interface HeaderProps {
@@ -18,6 +18,8 @@ interface HeaderProps {
   audioLevel: AudioLevelMetrics;
   audioActivity?: AudioActivityMetrics;
   activeTranslation?: string;
+  isMicMuted?: boolean;
+  onToggleMic?: () => void;
   onModeChange: (mode: OperatorMode) => void;
   onConnectFreeShow: () => void;
   onDisconnectFreeShow: () => void;
@@ -35,6 +37,8 @@ export const Header: React.FC<HeaderProps> = ({
   audioLevel,
   audioActivity,
   activeTranslation = 'WEB',
+  isMicMuted = false,
+  onToggleMic,
   onModeChange,
   onConnectFreeShow,
   onDisconnectFreeShow,
@@ -115,13 +119,36 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center space-x-2 flex-shrink-0">
-        {/* Audio Input Device Dropdown & VU Meter */}
+        {/* Audio Input Device Dropdown & VU Meter with Mic On/Off Button */}
         <div className="hidden md:flex items-center space-x-2 bg-slate-950 px-2 py-1.5 rounded-lg border border-slate-800">
-          <Mic className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+          {/* Mic On/Off Toggle Button */}
+          <button
+            type="button"
+            onClick={onToggleMic}
+            title={isMicMuted ? 'Microphone is OFF. Click to turn ON' : 'Microphone is ON. Click to turn OFF'}
+            className={`flex items-center space-x-1.5 px-2 py-0.5 rounded text-[11px] font-semibold transition-all border ${
+              isMicMuted
+                ? 'bg-rose-950/70 text-rose-300 border-rose-800/80 hover:bg-rose-900/90'
+                : 'bg-emerald-950/70 text-emerald-300 border-emerald-800/80 hover:bg-emerald-900/90'
+            }`}
+          >
+            {isMicMuted ? (
+              <>
+                <MicOff className="w-3.5 h-3.5 text-rose-400" />
+                <span>Mic OFF</span>
+              </>
+            ) : (
+              <>
+                <Mic className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                <span>Mic ON</span>
+              </>
+            )}
+          </button>
+
           <select
             value={activeDeviceId}
             onChange={(e) => onSelectAudioDevice(e.target.value)}
-            className="bg-transparent text-xs text-slate-200 border-none outline-none cursor-pointer max-w-[110px] lg:max-w-[150px] truncate"
+            className="bg-transparent text-xs text-slate-200 border-none outline-none cursor-pointer max-w-[100px] lg:max-w-[140px] truncate"
           >
             {audioDevices.map((d) => (
               <option key={d.id} value={d.id} className="bg-slate-900 text-slate-100">
@@ -135,17 +162,21 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-12 h-2 bg-slate-800 rounded-full overflow-hidden flex">
               <div
                 className={`h-full transition-all duration-75 ${
-                  audioLevel.isClipping
+                  isMicMuted
+                    ? 'bg-slate-700'
+                    : audioLevel.isClipping
                     ? 'bg-rose-500'
                     : audioLevel.rmsLevel > 0.4
                     ? 'bg-amber-400'
                     : 'bg-emerald-500'
                 }`}
-                style={{ width: `${Math.min(100, Math.round(audioLevel.rmsLevel * 100 * 2))}%` }}
+                style={{
+                  width: `${isMicMuted ? 0 : Math.min(100, Math.round(audioLevel.rmsLevel * 100 * 2))}%`
+                }}
               />
             </div>
             <span className="text-[10px] text-slate-500 font-mono w-7 text-right">
-              {audioLevel.isSilent ? 'MUT' : `${audioLevel.decibels}`}
+              {isMicMuted || audioLevel.isSilent ? 'MUT' : `${audioLevel.decibels}`}
             </span>
           </div>
 

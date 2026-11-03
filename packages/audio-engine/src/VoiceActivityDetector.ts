@@ -13,27 +13,27 @@ export interface VadOptions {
   sampleRate?: number;
   frameSizeSamples?: number; // e.g. 480 samples = 30ms at 16kHz
   energyThreshold?: number; // Minimum short-time energy for speech
-  minZcr?: number; // Minimum zero crossings (rejects low rumble/DC)
-  maxZcr?: number; // Maximum zero crossings (rejects high-frequency hiss)
+  minZcrPerSecond?: number; // Minimum zero crossings per second (rejects low rumble/DC)
+  maxZcrPerSecond?: number; // Maximum zero crossings per second (rejects ultrasonic hiss)
 }
 
 export class VoiceActivityDetector {
   private readonly sampleRate: number;
   private readonly frameSize: number;
   private readonly energyThreshold: number;
-  private readonly minZcr: number;
-  private readonly maxZcr: number;
+  private readonly minZcrPerSecond: number;
+  private readonly maxZcrPerSecond: number;
 
   constructor(options: VadOptions = {}) {
     this.sampleRate = options.sampleRate ?? 16000;
-    this.frameSize = options.frameSizeSamples ?? 480; // 30ms @ 16kHz
-    this.energyThreshold = options.energyThreshold ?? 0.005; // ~ -46 dBFS (sensitive to room preaching speech)
-    this.minZcr = options.minZcr ?? 5; // Min 5 crossings per 30ms
-    this.maxZcr = options.maxZcr ?? 220; // Max 220 crossings per 30ms
+    this.frameSize = options.frameSizeSamples ?? 480;
+    this.energyThreshold = options.energyThreshold ?? 0.0035; // Sensitive to natural preaching voice
+    this.minZcrPerSecond = options.minZcrPerSecond ?? 30; // Reject DC offset & rumble (< 30 Hz)
+    this.maxZcrPerSecond = options.maxZcrPerSecond ?? 7800; // Allow full human speech spectrum including sibilants
   }
 
   /**
-   * Processes a 30ms frame of 16-bit PCM audio samples.
+   * Processes a frame of 16-bit PCM audio samples.
    */
   public processFrame(frame: Int16Array): VadFrameResult {
     if (frame.length === 0) {
@@ -48,7 +48,7 @@ export class VoiceActivityDetector {
       sumSquares += sampleNorm * sampleNorm;
 
       if (i > 0) {
-        // Check sign change
+        // Sign change detection
         if ((frame[i] >= 0 && frame[i - 1] < 0) || (frame[i] < 0 && frame[i - 1] >= 0)) {
           zeroCrossings++;
         }
@@ -56,12 +56,14 @@ export class VoiceActivityDetector {
     }
 
     const energy = Math.sqrt(sumSquares / frame.length);
+    // Normalize zero crossings to per-second rate regardless of frame buffer size
+    const zcrPerSecond = (zeroCrossings / frame.length) * this.sampleRate;
 
-    // Speech criteria: energy above threshold and ZCR in human phoneme band
+    // Speech criteria: audible energy above ambient threshold and ZCR within human vocal band
     const isSpeech =
       energy >= this.energyThreshold &&
-      zeroCrossings >= this.minZcr &&
-      zeroCrossings <= this.maxZcr;
+      zcrPerSecond >= this.minZcrPerSecond &&
+      zcrPerSecond <= this.maxZcrPerSecond;
 
     return {
       isSpeech,

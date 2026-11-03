@@ -12,9 +12,9 @@ export type SegmentListener = (segment: SpeechSegment) => void;
 
 export interface SpeechSegmenterOptions {
   sampleRate?: number;
-  minSegmentSeconds?: number; // Minimum length of speech to emit (default 1.0s)
-  maxSegmentSeconds?: number; // Maximum length before forced segment cut (default 5.0s)
-  silenceHangoverFrames?: number; // Number of silent frames required to cut a phrase (e.g. 15 frames * 30ms = 450ms)
+  minSegmentSeconds?: number; // Minimum length of speech to emit (default 0.5s)
+  maxSegmentSeconds?: number; // Maximum length before forced segment cut (default 8.0s)
+  silenceHangoverFrames?: number; // Number of silent frames required to cut a phrase (e.g. 12 frames * 64ms = ~768ms)
 }
 
 export class SpeechSegmenter {
@@ -34,9 +34,9 @@ export class SpeechSegmenter {
   constructor(options: SpeechSegmenterOptions = {}) {
     this.sampleRate = options.sampleRate ?? 16000;
     this.vad = new VoiceActivityDetector({ sampleRate: this.sampleRate });
-    this.minSamples = Math.floor((options.minSegmentSeconds ?? 1.0) * this.sampleRate);
-    this.maxSamples = Math.floor((options.maxSegmentSeconds ?? 5.0) * this.sampleRate);
-    this.hangoverFrames = options.silenceHangoverFrames ?? 15; // ~450ms of silence
+    this.minSamples = Math.floor((options.minSegmentSeconds ?? 0.5) * this.sampleRate);
+    this.maxSamples = Math.floor((options.maxSegmentSeconds ?? 8.0) * this.sampleRate);
+    this.hangoverFrames = options.silenceHangoverFrames ?? 12;
   }
 
   public setSourceId(sourceId: string): void {

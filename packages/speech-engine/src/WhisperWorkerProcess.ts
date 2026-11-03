@@ -93,8 +93,21 @@ export class WhisperWorkerProcess {
       if (transcriber && segment.samples && segment.samples.length > 0) {
         // Convert 16-bit PCM (Int16Array) to Float32Array [-1.0, 1.0]
         const float32 = new Float32Array(segment.samples.length);
+        let sumSquares = 0;
         for (let i = 0; i < segment.samples.length; i++) {
-          float32[i] = segment.samples[i] / 32768.0;
+          const val = segment.samples[i] / 32768.0;
+          float32[i] = val;
+          sumSquares += val * val;
+        }
+
+        // Fast RMS silence guard: skip Whisper if below room noise floor
+        const rms = Math.sqrt(sumSquares / float32.length);
+        if (rms < 0.003) {
+          return {
+            text: '',
+            confidence: 0,
+            latencyMs: Date.now() - startTime
+          };
         }
 
         const resultPromise = transcriber(float32, {
@@ -102,7 +115,7 @@ export class WhisperWorkerProcess {
           task: 'transcribe',
           num_beams: 1,
           temperature: 0.0,
-          prompt: 'Bible scripture chapter verse Matthew Mark Luke John Acts Romans Psalms Genesis hymn'
+          max_new_tokens: 96
         });
 
         const timeoutPromise = new Promise<never>((_, reject) => {

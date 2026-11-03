@@ -49,7 +49,7 @@ export class SpeechRecognitionEngine {
    */
   public async processSegment(segment: SpeechSegment): Promise<RecognizedTranscriptEvent | null> {
     if (this.isProcessing) {
-      if (this.segmentQueue.length < 3) {
+      if (this.segmentQueue.length < 10) {
         this.segmentQueue.push(segment);
       }
       return null;
@@ -67,7 +67,7 @@ export class SpeechRecognitionEngine {
           this.processSegment(nextSegment).catch((err) => {
             console.error('Queued segment processing error:', err);
           });
-        }, 10);
+        }, 5);
       }
     }
   }

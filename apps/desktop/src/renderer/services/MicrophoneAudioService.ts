@@ -9,6 +9,7 @@ export interface MicrophoneStatus {
   isStreaming: boolean;
   deviceName: string;
   isListeningSpeech: boolean;
+  isMuted?: boolean;
   lastTranscript?: string;
   error?: string;
 }
@@ -22,12 +23,29 @@ export class MicrophoneAudioService {
   private processorNode: ScriptProcessorNode | null = null;
   private speechRecognizer: any = null;
   private isRunning = false;
+  private isMuted = false;
   private statusListeners: Set<MicrophoneStatusListener> = new Set();
   private status: MicrophoneStatus = {
     isStreaming: false,
     deviceName: 'Internal Microphone',
-    isListeningSpeech: false
+    isListeningSpeech: false,
+    isMuted: false
   };
+
+  public setMuted(muted: boolean): void {
+    this.isMuted = muted;
+    this.notify({ isMuted: this.isMuted });
+  }
+
+  public toggleMuted(): boolean {
+    this.isMuted = !this.isMuted;
+    this.notify({ isMuted: this.isMuted });
+    return this.isMuted;
+  }
+
+  public getIsMuted(): boolean {
+    return this.isMuted;
+  }
 
   public subscribeStatus(listener: MicrophoneStatusListener): () => void {
     this.statusListeners.add(listener);
@@ -79,13 +97,34 @@ export class MicrophoneAudioService {
       processor.onaudioprocess = (e) => {
         if (!this.isRunning) return;
         const inputData = e.inputBuffer.getChannelData(0);
+        const sourceRate = e.inputBuffer.sampleRate || ctx.sampleRate || 16000;
+
+        let samples16k: Float32Array;
+        if (sourceRate === 16000) {
+          samples16k = inputData;
+        } else {
+          // Precise linear interpolation to exactly 16kHz
+          const ratio = sourceRate / 16000;
+          const targetLength = Math.round(inputData.length / ratio);
+          samples16k = new Float32Array(targetLength);
+          for (let i = 0; i < targetLength; i++) {
+            const srcPos = i * ratio;
+            const idx0 = Math.floor(srcPos);
+            const idx1 = Math.min(idx0 + 1, inputData.length - 1);
+            const frac = srcPos - idx0;
+            samples16k[i] = inputData[idx0] * (1 - frac) + inputData[idx1] * frac;
+          }
+        }
 
         // Convert Float32Array [-1.0, 1.0] to 16-bit PCM Int16Array [-32768, 32767]
-        const pcm16 = new Int16Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          const s = Math.max(-1, Math.min(1, inputData[i]));
-          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        const pcm16 = new Int16Array(samples16k.length);
+        if (!this.isMuted) {
+          for (let i = 0; i < samples16k.length; i++) {
+            const s = Math.max(-1, Math.min(1, samples16k[i]));
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+          }
         }
+        // If muted, pcm16 remains all zeroes (silence)
 
         if (window.pulpitAPI?.streamAudioChunk) {
           window.pulpitAPI.streamAudioChunk(pcm16.buffer);

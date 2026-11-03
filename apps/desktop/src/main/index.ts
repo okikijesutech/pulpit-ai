@@ -252,6 +252,7 @@ function createWindow(): void {
 
   // Forward recognized transcripts to renderer and process for Scripture and Song
   speechEngine.onTranscript((event) => {
+    console.log(`[Whisper] Recognized (${event.latencyMs}ms): "${event.rawText}"`);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('speech:transcript', event);
     }
@@ -281,6 +282,7 @@ function createWindow(): void {
 
   // Forward Scripture suggestion candidates to Audit Logger and renderer
   scriptureGenerator.onCandidate((candidate) => {
+    console.log(`[Scripture] Suggested reference: "${candidate.title}"`);
     auditLogger.log('candidate_created', 'ai', {
       candidateId: candidate.id,
       title: candidate.title,
@@ -294,6 +296,7 @@ function createWindow(): void {
 
   // Forward Song suggestion candidates to Audit Logger and renderer
   songCandidateGenerator.onCandidate((candidate) => {
+    console.log(`[Song] Suggested hymn: "${candidate.title}"`);
     auditLogger.log('candidate_created', 'ai', {
       candidateId: candidate.id,
       title: candidate.title,
@@ -307,6 +310,7 @@ function createWindow(): void {
 
   // Connect segmenter to speech recognition engine
   speechSegmenter.onSegment((segment) => {
+    console.log(`[Audio] Speech segment detected: ${(segment.durationSeconds).toFixed(1)}s -> Whisper transcribing...`);
     speechEngine.processSegment(segment).catch((err) => {
       console.error('Speech recognition error:', err);
     });

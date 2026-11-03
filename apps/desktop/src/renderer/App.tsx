@@ -55,6 +55,7 @@ export const App: React.FC = () => {
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [transcripts, setTranscripts] = useState<RecognizedTranscriptEvent[]>([]);
   const [activeTranslation, setActiveTranslation] = useState<string>('WEB');
+  const [isMicMuted, setIsMicMuted] = useState<boolean>(false);
 
   useEffect(() => {
     if (window.pulpitAPI) {
@@ -92,7 +93,14 @@ export const App: React.FC = () => {
         console.warn('Physical mic start error:', err);
       });
 
+      const unsubMic = physicalMicService.subscribeStatus((status) => {
+        if (status.isMuted !== undefined) {
+          setIsMicMuted(status.isMuted);
+        }
+      });
+
       return () => {
+        unsubMic();
         physicalMicService.stop();
         unsubAuth();
         unsubFS();
@@ -105,6 +113,11 @@ export const App: React.FC = () => {
       };
     }
   }, []);
+
+  const handleToggleMic = () => {
+    const nextMuted = physicalMicService.toggleMuted();
+    setIsMicMuted(nextMuted);
+  };
 
   const handleToggleLock = async () => {
     if (window.pulpitAPI) {
@@ -241,6 +254,8 @@ export const App: React.FC = () => {
         audioLevel={audioLevel}
         audioActivity={audioActivity}
         activeTranslation={activeTranslation}
+        isMicMuted={isMicMuted}
+        onToggleMic={handleToggleMic}
         onModeChange={handleModeChange}
         onConnectFreeShow={handleConnectFreeShow}
         onDisconnectFreeShow={handleDisconnectFreeShow}
