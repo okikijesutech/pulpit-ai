@@ -169,9 +169,9 @@ export function normalizeSpokenNumbersInText(text: string): string {
     }
   );
 
-  // Replace hundreds compound: e.g. "one hundred and nineteen" or "one hundred nineteen"
+  // Replace hundreds compound: e.g. "one hundred and nineteen", "one hundred nineteen", "one hundred and 23", "one hundred"
   normalized = normalized.replace(
-    /\b(one|two|three|four|five|six|seven|eight|nine)\s+hundred(?:\s+and)?\s+(\d+|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|one|two|three|four|five|six|seven|eight|nine)\b/gi,
+    /\b(one|two|three|four|five|six|seven|eight|nine)\s+hundred(?:\s+(?:and\s+)?(\d+|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|one|two|three|four|five|six|seven|eight|nine))?\b/gi,
     (match) => {
       const num = parseSpokenNumber(match);
       return num !== null ? String(num) : match;

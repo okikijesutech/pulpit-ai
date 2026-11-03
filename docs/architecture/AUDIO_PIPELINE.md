@@ -37,3 +37,7 @@ flowchart LR
 * Default model: `base.en-q5_1` (57 MB, ~250 MB RAM).
 * Disk-safety guardrails: Requires >= 2 GB free space before downloading any model.
 * Crash containment: If the worker process exits unexpectedly, the host catches the signal, triggers clean restart, and maintains a strict fail-closed authority state (`projectionPermission = false`).
+
+## 6. Transcript Normalization & Scripture Routing
+* **Raw Text Preservation for Parsing:** The Scripture candidate generator and rolling 3-utterance context window receive `event.rawText` directly. Spoken compounds (e.g., *"twenty-three"*, *"one hundred and nineteen"*) are preserved and deterministically parsed as single numerical entities (e.g., 23, 119) rather than split one-by-one digits.
+* **Display & Tokenization Normalizer:** `TranscriptNormalizer` is reserved for UI display and token chips only. It resolves compound spoken numbers (tens + ones, hundreds) into proper integer representations so the operator transcript displays clean numbers without corrupting the underlying canonical parsing pipeline.

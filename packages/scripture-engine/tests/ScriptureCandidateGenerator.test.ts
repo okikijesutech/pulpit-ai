@@ -88,8 +88,8 @@ describe('ScriptureCandidateGenerator', () => {
     const errorListener = vi.fn();
     generator.onError(errorListener);
 
-    // Isaiah 53:5 is canonical, but not in our mini seed dataset
-    const cand = generator.processTranscript('Turn to Isaiah 53:5');
+    // Isaiah 53:6 is canonical, but not in our mini seed dataset
+    const cand = generator.processTranscript('Turn to Isaiah 53:6');
 
     expect(cand).toBeNull();
     expect(errorListener).toHaveBeenCalledTimes(1);

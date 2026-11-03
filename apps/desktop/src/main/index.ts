@@ -257,11 +257,11 @@ function createWindow(): void {
       mainWindow.webContents.send('speech:transcript', event);
     }
 
-    // Ingest individual normalized utterance
-    const individualCand = scriptureGenerator.processTranscript(event.normalizedText);
+    // Ingest individual raw utterance (always rawText to prevent spoken-number corruption)
+    const individualCand = scriptureGenerator.processTranscript(event.rawText);
 
-    // Maintain a rolling context window across utterances (e.g. "John chapter 3" + "verse 16")
-    recentTranscriptHistory.push(event.normalizedText);
+    // Maintain a rolling context window across utterances using rawText (e.g. "John chapter 3" + "verse 16")
+    recentTranscriptHistory.push(event.rawText);
     if (recentTranscriptHistory.length > 3) {
       recentTranscriptHistory.shift();
     }
@@ -275,9 +275,9 @@ function createWindow(): void {
       scriptureGenerator.processTranscript(combined);
     }
 
-    // Ingest normalized speech into Song Candidate Generator
+    // Ingest raw speech into Song Candidate Generator
     const isSinging = singingActivityDetector.getCurrentMode() === 'singing';
-    songCandidateGenerator.processTranscript(event.normalizedText, isSinging);
+    songCandidateGenerator.processTranscript(event.rawText, isSinging);
   });
 
   // Forward Scripture suggestion candidates to Audit Logger and renderer

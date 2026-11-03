@@ -32,6 +32,9 @@ export const WEB_PACKAGE: TranslationPackage = {
     { translationId: 'WEB', bookId: 'GEN', bookName: 'Genesis', chapter: 1, verse: 4, text: 'God saw the light, and saw that it was good. God divided the light from the darkness.' },
     { translationId: 'WEB', bookId: 'GEN', bookName: 'Genesis', chapter: 1, verse: 5, text: 'God called the light "day", and the darkness he called "night". There was evening and there was morning, the first day.' },
 
+    // --- Psalm 20:3 ---
+    { translationId: 'WEB', bookId: 'PSA', bookName: 'Psalms', chapter: 20, verse: 3, text: 'May he remember all your offerings, and accept your burnt sacrifice. Selah.' },
+
     // --- Psalm 23 (Complete Psalm) ---
     { translationId: 'WEB', bookId: 'PSA', bookName: 'Psalms', chapter: 23, verse: 1, text: 'Yahweh is my shepherd: I shall lack nothing.' },
     { translationId: 'WEB', bookId: 'PSA', bookName: 'Psalms', chapter: 23, verse: 2, text: 'He makes me lie down in green pastures. He leads me beside still waters.' },
@@ -40,9 +43,15 @@ export const WEB_PACKAGE: TranslationPackage = {
     { translationId: 'WEB', bookId: 'PSA', bookName: 'Psalms', chapter: 23, verse: 5, text: 'You prepare a table before me in the presence of my enemies. You have anointed my head with oil. My cup runs over.' },
     { translationId: 'WEB', bookId: 'PSA', bookName: 'Psalms', chapter: 23, verse: 6, text: 'Surely goodness and loving kindness shall follow me all the days of my life, and I will dwell in Yahweh’s house forever.' },
 
+    // --- Psalm 119:11 ---
+    { translationId: 'WEB', bookId: 'PSA', bookName: 'Psalms', chapter: 119, verse: 11, text: 'I have hidden your word in my heart, that I might not sin against you.' },
+
     // --- Proverbs 3:5-6 ---
     { translationId: 'WEB', bookId: 'PRO', bookName: 'Proverbs', chapter: 3, verse: 5, text: 'Trust in Yahweh with all your heart, and don’t lean on your own understanding.' },
     { translationId: 'WEB', bookId: 'PRO', bookName: 'Proverbs', chapter: 3, verse: 6, text: 'In all your ways acknowledge him, and he will make your paths straight.' },
+
+    // --- Isaiah 53:5 ---
+    { translationId: 'WEB', bookId: 'ISA', bookName: 'Isaiah', chapter: 53, verse: 5, text: 'But he was pierced for our transgressions. He was crushed for our iniquities. The punishment that brought our peace was on him; and by his wounds we are healed.' },
 
     // --- John 3:1-21 (including John 3:16) ---
     { translationId: 'WEB', bookId: 'JHN', bookName: 'John', chapter: 3, verse: 1, text: 'Now there was a man of the Pharisees named Nicodemus, a ruler of the Jews.' },
@@ -115,6 +124,9 @@ export const KJV_PACKAGE: TranslationPackage = {
     importedAt: Date.now()
   },
   verses: [
+    // --- Psalm 20:3 ---
+    { translationId: 'KJV', bookId: 'PSA', bookName: 'Psalms', chapter: 20, verse: 3, text: 'Remember all thy offerings, and accept thy burnt sacrifice; Selah.' },
+
     // --- Psalm 23:1-6 ---
     { translationId: 'KJV', bookId: 'PSA', bookName: 'Psalms', chapter: 23, verse: 1, text: 'The LORD is my shepherd; I shall not want.' },
     { translationId: 'KJV', bookId: 'PSA', bookName: 'Psalms', chapter: 23, verse: 2, text: 'He maketh me to lie down in green pastures: he leadeth me beside the still waters.' },
@@ -122,6 +134,12 @@ export const KJV_PACKAGE: TranslationPackage = {
     { translationId: 'KJV', bookId: 'PSA', bookName: 'Psalms', chapter: 23, verse: 4, text: 'Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me.' },
     { translationId: 'KJV', bookId: 'PSA', bookName: 'Psalms', chapter: 23, verse: 5, text: 'Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over.' },
     { translationId: 'KJV', bookId: 'PSA', bookName: 'Psalms', chapter: 23, verse: 6, text: 'Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the LORD for ever.' },
+
+    // --- Psalm 119:11 ---
+    { translationId: 'KJV', bookId: 'PSA', bookName: 'Psalms', chapter: 119, verse: 11, text: 'Thy word have I hid in mine heart, that I might not sin against thee.' },
+
+    // --- Isaiah 53:5 ---
+    { translationId: 'KJV', bookId: 'ISA', bookName: 'Isaiah', chapter: 53, verse: 5, text: 'But he was wounded for our transgressions, he was bruised for our iniquities: the chastisement of our peace was upon him; and with his stripes we are healed.' },
 
     // --- John 3:16 ---
     { translationId: 'KJV', bookId: 'JHN', bookName: 'John', chapter: 3, verse: 16, text: 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.' },
