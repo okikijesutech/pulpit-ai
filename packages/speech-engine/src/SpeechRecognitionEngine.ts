@@ -23,6 +23,7 @@ export class SpeechRecognitionEngine {
   private transcriptListeners: Set<TranscriptListener> = new Set();
   private errorListeners: Set<ErrorListener> = new Set();
   private isProcessing = false;
+  private segmentQueue: SpeechSegment[] = [];
 
   constructor(worker?: WhisperWorkerProcess, normalizer?: TranscriptNormalizer) {
     this.worker = worker ?? new WhisperWorkerProcess();
@@ -44,15 +45,34 @@ export class SpeechRecognitionEngine {
 
   /**
    * Processes a speech segment emitted by the audio segmenter.
+   * Queues segments sequentially so continuous preaching speech is never dropped.
    */
   public async processSegment(segment: SpeechSegment): Promise<RecognizedTranscriptEvent | null> {
     if (this.isProcessing) {
-      // Non-blocking drop: prevent unbounded queue buildup on modest 2-core CPU
+      if (this.segmentQueue.length < 3) {
+        this.segmentQueue.push(segment);
+      }
       return null;
     }
 
     this.isProcessing = true;
 
+    try {
+      return await this.executeTranscription(segment);
+    } finally {
+      this.isProcessing = false;
+      if (this.segmentQueue.length > 0) {
+        const nextSegment = this.segmentQueue.shift()!;
+        setTimeout(() => {
+          this.processSegment(nextSegment).catch((err) => {
+            console.error('Queued segment processing error:', err);
+          });
+        }, 10);
+      }
+    }
+  }
+
+  private async executeTranscription(segment: SpeechSegment): Promise<RecognizedTranscriptEvent | null> {
     try {
       const result: TranscriptionJobResult = await this.worker.transcribeSegment(segment);
       if (!result.text || result.text.trim().length === 0) {
@@ -84,8 +104,6 @@ export class SpeechRecognitionEngine {
     } catch (err: any) {
       this.notifyError(err);
       return null;
-    } finally {
-      this.isProcessing = false;
     }
   }
 

@@ -187,7 +187,7 @@ export class ScriptureReferenceParser {
         Math.min(trimmed.length, bookMatch.index + matchedBookText.length + chapterMatch[0].length + 5)
       );
 
-      // In church preaching, "Psalm 23" is a universally understood complete Psalm reference
+      // In church preaching, "Psalm 23" or "John chapter 3" defaults to opening that chapter
       if (canonBook.id === 'PSA') {
         const maxVerses = CanonValidator.getMaxVerses(canonBook.name, chapter) || 1;
         return this.validateAndBuildResult(
@@ -201,16 +201,16 @@ export class ScriptureReferenceParser {
         );
       }
 
-      // For other books, saying "John chapter 3" without verse is incomplete
-      return {
-        hasReference: true,
-        isIncomplete: true,
-        isCanonValid: false,
+      // Default to opening chapter at verse 1
+      return this.validateAndBuildResult(
+        canonBook,
+        chapter,
+        1,
+        undefined,
         rawEvidence,
-        confidence: 0.5,
-        detectedBook: canonBook,
-        validationError: `Reference to ${canonBook.name} chapter ${chapter} is missing explicit verse numbers`
-      };
+        defaultTranslation,
+        0.88
+      );
     }
 
     // --- Incomplete Reference: Book was mentioned, but no valid chapter or verse ---

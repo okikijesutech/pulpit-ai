@@ -277,11 +277,7 @@ export const App: React.FC = () => {
           {/* Center Column (5 cols): Live Transcript Stream & Suggested Content Queue */}
           <div className="col-span-5 flex flex-col gap-6 min-h-0">
             <div className="h-1/2 min-h-0">
-              <LiveTranscriptPanel
-                transcripts={transcripts}
-                onSimulatePhrase={handleSimulatePhrase}
-                onSimulateSinging={handleSimulateSinging}
-              />
+              <LiveTranscriptPanel transcripts={transcripts} />
             </div>
             <div className="h-1/2 min-h-0">
               <SuggestionsQueue

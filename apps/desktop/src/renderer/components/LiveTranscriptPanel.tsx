@@ -15,14 +15,10 @@ export interface RecognizedTranscriptEvent {
 
 interface LiveTranscriptPanelProps {
   transcripts: RecognizedTranscriptEvent[];
-  onSimulatePhrase: (phrase: string) => void;
-  onSimulateSinging?: (lyrics: string) => void;
 }
 
 export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = ({
-  transcripts,
-  onSimulatePhrase,
-  onSimulateSinging
+  transcripts
 }) => {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col h-full shadow-lg">
@@ -88,49 +84,6 @@ export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = ({
             </div>
           ))
         )}
-      </div>
-
-      {/* Test Simulation Quick Triggers */}
-      <div className="pt-3 border-t border-slate-800/60 mt-3 space-y-2">
-        <div>
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block mb-1">
-            Simulate Preaching Speech (Audio Test Rig)
-          </span>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => onSimulatePhrase('Please open your Bibles to John chapter three verse sixteen')}
-              className="p-1.5 text-[11px] bg-slate-800/60 hover:bg-slate-800 rounded border border-slate-700 text-slate-300 truncate text-left transition-colors"
-            >
-              📖 "John chapter three verse sixteen"
-            </button>
-            <button
-              onClick={() => onSimulatePhrase('Turn with me to Psalm twenty-three verse one')}
-              className="p-1.5 text-[11px] bg-slate-800/60 hover:bg-slate-800 rounded border border-slate-700 text-slate-300 truncate text-left transition-colors"
-            >
-              📖 "Psalm twenty-three verse one"
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400 block mb-1">
-            Simulate Singing / Worship Hymns (Acoustic Pitch Rig)
-          </span>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => onSimulateSinging?.('Amazing grace how sweet the sound that saved a wretch like me')}
-              className="p-1.5 text-[11px] bg-purple-950/40 hover:bg-purple-900/50 rounded border border-purple-800/60 text-purple-200 truncate text-left transition-colors"
-            >
-              🎵 "Amazing grace how sweet the sound"
-            </button>
-            <button
-              onClick={() => onSimulateSinging?.('Blessed assurance Jesus is mine O what a foretaste of glory divine')}
-              className="p-1.5 text-[11px] bg-purple-950/40 hover:bg-purple-900/50 rounded border border-purple-800/60 text-purple-200 truncate text-left transition-colors"
-            >
-              🎵 "Blessed assurance Jesus is mine"
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

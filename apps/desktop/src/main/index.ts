@@ -247,13 +247,32 @@ function createWindow(): void {
     }
   });
 
+  const recentTranscriptHistory: string[] = [];
+  let recentTranscriptTimer: NodeJS.Timeout | null = null;
+
   // Forward recognized transcripts to renderer and process for Scripture and Song
   speechEngine.onTranscript((event) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('speech:transcript', event);
     }
-    // Ingest normalized speech into Scripture Candidate Generator
-    scriptureGenerator.processTranscript(event.normalizedText);
+
+    // Ingest individual normalized utterance
+    const individualCand = scriptureGenerator.processTranscript(event.normalizedText);
+
+    // Maintain a rolling context window across utterances (e.g. "John chapter 3" + "verse 16")
+    recentTranscriptHistory.push(event.normalizedText);
+    if (recentTranscriptHistory.length > 3) {
+      recentTranscriptHistory.shift();
+    }
+    if (recentTranscriptTimer) clearTimeout(recentTranscriptTimer);
+    recentTranscriptTimer = setTimeout(() => {
+      recentTranscriptHistory.length = 0;
+    }, 15000);
+
+    if (!individualCand && recentTranscriptHistory.length > 1) {
+      const combined = recentTranscriptHistory.join(' ');
+      scriptureGenerator.processTranscript(combined);
+    }
 
     // Ingest normalized speech into Song Candidate Generator
     const isSinging = singingActivityDetector.getCurrentMode() === 'singing';

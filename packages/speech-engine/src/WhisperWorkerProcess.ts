@@ -101,7 +101,8 @@ export class WhisperWorkerProcess {
           language: 'english',
           task: 'transcribe',
           num_beams: 1,
-          temperature: 0.0
+          temperature: 0.0,
+          prompt: 'Bible scripture chapter verse Matthew Mark Luke John Acts Romans Psalms Genesis hymn'
         });
 
         const timeoutPromise = new Promise<never>((_, reject) => {
