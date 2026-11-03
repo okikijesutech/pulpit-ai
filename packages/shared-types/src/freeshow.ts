@@ -45,6 +45,7 @@ export type FreeShowConnectionStatus =
   | 'disconnected'
   | 'connecting'
   | 'connected'
+  | 'simulated'
   | 'reconnecting'
   | 'error';
 

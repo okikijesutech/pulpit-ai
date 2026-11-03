@@ -142,12 +142,14 @@ export class FreeShowAdapter {
           this.stateSnapshot.lastHeartbeat = Date.now();
           this.updateStatus('connected');
 
-          // Authenticate with FreeShow Remote Server protocol (port 5510)
-          this.socket!.emit('REMOTE', {
-            id: this.socket!.id || '',
-            channel: 'ACCESS',
-            data: this.authKey || '1445'
-          });
+          // Authenticate with FreeShow Remote Server protocol (port 5510) if authKey is configured
+          if (this.authKey) {
+            this.socket!.emit('REMOTE', {
+              id: this.socket!.id || '',
+              channel: 'ACCESS',
+              data: this.authKey
+            });
+          }
 
           resolve(true);
         });
@@ -236,50 +238,116 @@ export class FreeShowAdapter {
    */
   public async dispatchCommand(
     command: FreeShowCommand
-  ): Promise<{ success: boolean; reason?: string }> {
+  ): Promise<{ success: boolean; status?: 'confirmed' | 'sent_unconfirmed' | 'rejected'; reason?: string }> {
     // 1. Central Authority Check
     const decision = this.authorityManager.authorizeCommand(command);
     if (!decision.allowed) {
       return {
         success: false,
+        status: 'rejected',
         reason: decision.reason
       };
     }
 
-    // 2. Ensure connection is active
+    // 2. Validate scripture command reference (strictly no 43.3.16 or John 3:16 fallbacks)
+    let refDisplay: string | undefined = undefined;
+    if (command.action === 'start_scripture') {
+      const rawRef = command.data?.reference;
+      const displayRef = command.data?.referenceDisplay;
+      const book = command.data?.book;
+
+      if (displayRef && typeof displayRef === 'string' && displayRef.trim().length > 0) {
+        refDisplay = displayRef.trim();
+      } else if (rawRef && typeof rawRef === 'string' && rawRef.trim().length > 0) {
+        refDisplay = rawRef.trim();
+      } else if (book && typeof book === 'string' && book.trim().length > 0) {
+        refDisplay = `${book} ${command.data?.chapter}:${command.data?.verseStart ?? command.data?.verse}`;
+      } else {
+        return {
+          success: false,
+          status: 'rejected',
+          reason: 'Command rejected: start_scripture requires a valid, explicit reference.'
+        };
+      }
+    }
+
+    // 3. Ensure connection is active
     if (!this.socket || !this.socket.connected) {
       return {
         success: false,
+        status: 'rejected',
         reason: 'FreeShow socket is not connected.'
       };
     }
 
-    // 3. Dispatch to FreeShow
+    // 4. Dispatch to FreeShow
     return new Promise((resolve) => {
       let resolved = false;
-      const done = (res: { success: boolean; reason?: string }) => {
+      let outputListener: ((msg: any) => void) | null = null;
+      let dataListener: ((raw: any) => void) | null = null;
+      let unconfirmedTimer: NodeJS.Timeout | null = null;
+
+      const cleanup = () => {
+        if (outputListener && this.socket) {
+          this.socket.off('REMOTE', outputListener);
+          outputListener = null;
+        }
+        if (dataListener && this.socket) {
+          this.socket.off('data', dataListener);
+          dataListener = null;
+        }
+        if (unconfirmedTimer) {
+          clearTimeout(unconfirmedTimer);
+          unconfirmedTimer = null;
+        }
+      };
+
+      const finish = (res: { success: boolean; status?: 'confirmed' | 'sent_unconfirmed' | 'rejected'; reason?: string }) => {
         if (!resolved) {
           resolved = true;
+          cleanup();
           resolve(res);
         }
       };
 
-      // Failsafe timer: if server doesn't provide an ack callback, treat as delivered within 300ms
-      const timer = setTimeout(() => {
-        done({ success: true });
-      }, 300);
+      // Failsafe timer: if server does not acknowledge or emit matching output event within 1200ms,
+      // report sent_unconfirmed (NEVER report fake success after 300ms)
+      unconfirmedTimer = setTimeout(() => {
+        finish({
+          success: false,
+          status: 'sent_unconfirmed',
+          reason: 'sent_unconfirmed: Command was dispatched to FreeShow but no acknowledgment or matching output event was received.'
+        });
+      }, 1200);
 
-      const dotRef = typeof command.data?.reference === 'string' && command.data.reference.includes('.')
-        ? command.data.reference
-        : '43.3.16';
+      const text = String(command.data?.text ?? command.data?.fullText ?? refDisplay ?? '');
 
-      const refDisplay = command.data?.referenceDisplay
-        ? String(command.data.referenceDisplay)
-        : (typeof command.data?.reference === 'string' && !command.data.reference.includes('.')
-            ? command.data.reference
-            : (command.data?.book ? `${command.data.book} ${command.data.chapter}:${command.data.verse}` : 'John 3:16'));
+      // Listen for matching FreeShow output event (port 5510 Remote protocol)
+      outputListener = (msg: any) => {
+        if (!msg || typeof msg !== 'object') return;
+        if (msg.channel === 'OUT' && msg.data) {
+          const projectedText = this.extractFreeShowText(msg.data) || '';
+          if (refDisplay && (projectedText.includes(refDisplay) || (command.data?.text && projectedText.includes(String(command.data.text))))) {
+            finish({ success: true, status: 'confirmed' });
+          } else if (command.action === 'clear_all' || command.action === 'clear_slide') {
+            finish({ success: true, status: 'confirmed' });
+          }
+        }
+      };
+      this.socket!.on('REMOTE', outputListener);
 
-      const text = String(command.data?.text ?? command.data?.fullText ?? refDisplay);
+      // Listen for mock/REST data event broadcast
+      dataListener = (raw: any) => {
+        if (!raw) return;
+        if (refDisplay && (String(raw.show_id || '').includes(refDisplay) || String(raw.slide_text || '').includes(refDisplay))) {
+          finish({ success: true, status: 'confirmed' });
+        } else if ((command.action === 'clear_all' || command.action === 'clear_slide') && raw.is_cleared) {
+          finish({ success: true, status: 'confirmed' });
+        } else if (command.action === 'next_slide' || command.action === 'previous_slide' || command.action === 'restore_output') {
+          finish({ success: true, status: 'confirmed' });
+        }
+      };
+      this.socket!.on('data', dataListener);
 
       // Dispatch to FreeShow Remote Server protocol (port 5510)
       let remoteChannel: string | null = null;
@@ -309,41 +377,30 @@ export class FreeShowAdapter {
           break;
       }
 
+      // Emit REMOTE command exactly ONCE
       if (remoteChannel) {
         this.socket!.emit('REMOTE', {
           id: this.socket!.id || '',
           channel: remoteChannel,
           data: remoteData
         });
-        if (command.action === 'start_scripture' && dotRef && dotRef !== refDisplay) {
-          this.socket!.emit('REMOTE', {
-            id: this.socket!.id || '',
-            channel: remoteChannel,
-            data: { reference: dotRef, play: true }
-          });
-        }
       }
 
-      const payload = {
-        action: command.action,
-        data: command.data
-      };
-
-      // Emit action with callback
-      this.socket!.emit('action', payload, (response: any) => {
-        clearTimeout(timer);
+      // Emit action with callback for port 5505 / mock server
+      this.socket!.emit('action', { action: command.action, data: command.data }, (response: any) => {
         if (response && response.success !== false) {
-          done({ success: true });
-        } else {
-          done({
+          finish({ success: true, status: 'confirmed' });
+        } else if (response && response.success === false) {
+          finish({
             success: false,
+            status: 'rejected',
             reason: response?.error || 'FreeShow returned an error.'
           });
         }
       });
 
-      // Optimistically update snapshot so presentation display reflects approved projection
-      if (command.action === 'start_scripture') {
+      // Update local state snapshot for operator preview
+      if (command.action === 'start_scripture' && refDisplay) {
         this.stateSnapshot.currentShowId = `Scripture: ${refDisplay}`;
         this.stateSnapshot.currentSlideText = text;
         this.stateSnapshot.isOutputCleared = false;

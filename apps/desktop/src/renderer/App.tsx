@@ -268,6 +268,23 @@ export const App: React.FC = () => {
         onToggleLock={handleToggleLock}
       />
 
+      {/* Persistent SIMULATED Banner in Development / Mock Mode */}
+      {freeShowSnapshot.status === 'simulated' && (
+        <div className="bg-amber-950/80 border-b border-amber-600/60 px-4 py-1.5 flex items-center justify-between text-xs text-amber-200">
+          <div className="flex items-center space-x-2">
+            <span className="font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500 text-slate-950 text-[10px] uppercase shadow-sm">
+              SIMULATED
+            </span>
+            <span className="font-medium text-[11px]">
+              Virtual FreeShow Mock Server is active (port 5510). Projection commands are simulated locally; no physical projector will display output.
+            </span>
+          </div>
+          <span className="text-[10px] text-amber-400/80 font-mono hidden sm:inline uppercase tracking-widest">
+            Dev Test Rig
+          </span>
+        </div>
+      )}
+
       {currentView === 'songs' ? (
         <SongLibraryPanel
           freeShowConnected={freeShowSnapshot.connected}

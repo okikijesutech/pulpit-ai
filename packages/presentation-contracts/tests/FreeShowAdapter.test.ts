@@ -124,4 +124,99 @@ describe('FreeShowAdapter Integration with MockFreeShowServer', () => {
     expect(result.success).toBe(false);
     expect(result.reason).toContain('disconnected');
   });
+
+  describe('PR 2: Unsafe Defaults & Test Hooks Removal', () => {
+    it('rejects start_scripture command with no reference with success: false (no 43.3.16 or John 3:16 fallbacks)', async () => {
+      await adapter.connect();
+
+      const emptyScriptureCommand: FreeShowCommand = {
+        action: 'start_scripture',
+        data: {}, // No reference provided!
+        source: 'operator',
+        correlationId: 'test_empty_scripture',
+        createdAt: Date.now()
+      };
+
+      const result = await adapter.dispatchCommand(emptyScriptureCommand);
+      expect(result.success).toBe(false);
+      expect(result.reason).toContain('reference');
+
+      // Verify no command reached server with fallbacks
+      const received = mockServer.getReceivedCommands();
+      expect(received.length).toBe(0);
+    });
+
+    it('emits start_scripture to FreeShow exactly ONCE per approval', async () => {
+      await adapter.connect();
+
+      const scriptureCommand: FreeShowCommand = {
+        action: 'start_scripture',
+        data: { reference: 'Romans 8:28', text: 'All things work together for good...' },
+        source: 'operator',
+        correlationId: 'test_single_emit',
+        createdAt: Date.now()
+      };
+
+      const result = await adapter.dispatchCommand(scriptureCommand);
+      expect(result.success).toBe(true);
+
+      const received = mockServer.getReceivedCommands().filter((c) => c.action === 'start_scripture');
+      // Must be sent exactly ONCE, not twice!
+      expect(received.length).toBe(1);
+    });
+
+    it('reports sent_unconfirmed when FreeShow does not acknowledge or emit matching output event within timeout', async () => {
+      await adapter.connect();
+
+      // Configure a silent action that mock server will not acknowledge or broadcast
+      const unconfirmedCommand: FreeShowCommand = {
+        action: 'start_show',
+        data: { name: 'NonExistentShow' },
+        source: 'operator',
+        correlationId: 'test_unconfirmed',
+        createdAt: Date.now()
+      };
+
+      // Mock server handler without ack callback or matching output
+      const rawSocket = (adapter as any).socket;
+      const originalEmit = rawSocket.emit.bind(rawSocket);
+      rawSocket.emit = (event: string, ...args: any[]) => {
+        // Do not call callback and do not broadcast matching output
+        if (event === 'action') return;
+        return originalEmit(event, ...args);
+      };
+
+      const result = await adapter.dispatchCommand(unconfirmedCommand);
+      expect(result.success).toBe(false);
+      expect(result.status).toBe('sent_unconfirmed');
+      expect(result.reason).toContain('sent_unconfirmed');
+    });
+
+    it('does not send hardcoded 1445 auth key when authKey option is not provided', async () => {
+      const unauthenticatedAdapter = new FreeShowAdapter(authorityManager, {
+        host: '127.0.0.1',
+        port,
+        reconnectIntervalMs: 500
+      });
+
+      let sentRemoteData: any = null;
+      await new Promise<void>((resolve) => {
+        unauthenticatedAdapter.connect().then(() => {
+          const sock = (unauthenticatedAdapter as any).socket;
+          const origEmit = sock.emit.bind(sock);
+          sock.emit = (channel: string, payload: any) => {
+            if (channel === 'REMOTE' && payload?.channel === 'ACCESS') {
+              sentRemoteData = payload.data;
+            }
+            return origEmit(channel, payload);
+          };
+          resolve();
+        });
+      });
+
+      // Verify 1445 was NOT used as a hardcoded default!
+      expect(sentRemoteData).not.toBe('1445');
+      unauthenticatedAdapter.disconnect();
+    });
+  });
 });

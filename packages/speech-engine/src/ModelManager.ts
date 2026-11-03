@@ -72,9 +72,13 @@ export class ModelManager {
       }
 
       return { allowed: true, freeBytes };
-    } catch {
-      // In non-POSIX environments or tests where statfs fails, fallback safely
-      return { allowed: true, freeBytes: 10 * 1024 * 1024 * 1024 };
+    } catch (err: any) {
+      // Fail closed to prevent disk exhaustion when filesystem stats cannot be determined
+      return {
+        allowed: false,
+        freeBytes: 0,
+        reason: `Failing closed: cannot verify disk space (${err?.message || 'statfs failed'}).`
+      };
     }
   }
 

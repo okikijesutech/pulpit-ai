@@ -225,17 +225,38 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* FreeShow Connection Status - ALWAYS VISIBLE WITH flex-shrink-0 */}
-        <div className="flex items-center space-x-2 bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800 flex-shrink-0">
+        <div
+          className={`flex items-center space-x-2 bg-slate-950 px-2.5 py-1.5 rounded-lg border flex-shrink-0 ${
+            freeShowSnapshot.status === 'simulated'
+              ? 'border-amber-600/60 bg-amber-950/20'
+              : 'border-slate-800'
+          }`}
+          title={
+            freeShowSnapshot.status === 'simulated'
+              ? 'Virtual FreeShow Mock Server active (Simulation Mode for local testing)'
+              : freeShowSnapshot.connected
+              ? 'Connected to physical FreeShow host'
+              : 'Disconnected from FreeShow'
+          }
+        >
           <div className="flex items-center space-x-1.5">
             <div
               className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                freeShowSnapshot.connected
+                freeShowSnapshot.status === 'simulated'
+                  ? 'bg-amber-400 shadow-md shadow-amber-400/50 animate-pulse'
+                  : freeShowSnapshot.connected
                   ? 'bg-emerald-500 shadow-md shadow-emerald-500/50 animate-pulse'
                   : 'bg-rose-500'
               }`}
             />
-            <span className="text-xs font-semibold whitespace-nowrap">
-              FreeShow: {freeShowSnapshot.connected ? 'Connected' : 'Disconnected'}
+            <span
+              className={`text-xs font-semibold whitespace-nowrap ${
+                freeShowSnapshot.status === 'simulated'
+                  ? 'text-amber-300 font-bold'
+                  : ''
+              }`}
+            >
+              FreeShow: {freeShowSnapshot.status === 'simulated' ? 'SIMULATED' : freeShowSnapshot.connected ? 'Connected' : 'Disconnected'}
             </span>
             <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">:5510</span>
           </div>
@@ -243,7 +264,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={freeShowSnapshot.connected ? onDisconnectFreeShow : onConnectFreeShow}
             className={`text-xs px-2 py-0.5 rounded border transition-colors whitespace-nowrap flex-shrink-0 ${
-              freeShowSnapshot.connected
+              freeShowSnapshot.status === 'simulated'
+                ? 'border-amber-700/80 text-amber-300 hover:bg-amber-900/60'
+                : freeShowSnapshot.connected
                 ? 'border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white'
                 : 'border-emerald-600 text-emerald-400 hover:bg-emerald-950'
             }`}

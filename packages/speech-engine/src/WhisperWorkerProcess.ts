@@ -62,6 +62,13 @@ export class WhisperWorkerProcess {
   }
 
   /**
+   * Clears any registered mock transcriptions to prevent leakage across tests or into real audio inference.
+   */
+  public clearMockTranscripts(): void {
+    this.mockTranscriptions.clear();
+  }
+
+  /**
    * Executes transcription on a 16-bit PCM speech segment.
    * Uses real Whisper ONNX inference when available, with strict timeout protection.
    */
@@ -76,8 +83,18 @@ export class WhisperWorkerProcess {
     const startTime = Date.now();
 
     // Check mock transcriptions first (essential for automated unit tests)
+    if (this.mockTranscriptions.has('*')) {
+      const text = this.mockTranscriptions.get('*')!;
+      this.mockTranscriptions.delete('*'); // Single-use so it never leaks into subsequent segments
+      return {
+        text,
+        confidence: 0.94,
+        latencyMs: Date.now() - startTime
+      };
+    }
+
     for (const [pattern, mocked] of this.mockTranscriptions.entries()) {
-      if (pattern === '*' || segment.id.includes(pattern) || segment.sourceId.includes(pattern)) {
+      if (segment.id.includes(pattern) || segment.sourceId.includes(pattern)) {
         return {
           text: mocked,
           confidence: 0.94,

@@ -38,14 +38,24 @@ describe('SpeechEngine Unit Tests', () => {
       expect(info!.recommendedRamMb).toBeLessThanOrEqual(250);
     });
 
-    it('enforces disk space safety checks', async () => {
-      // Configure manager requiring 100 GB free space (which this 11 GB laptop does not have)
-      const strictManager = new ModelManager(100 * 1024 * 1024 * 1024);
-      const check = await strictManager.checkDiskSpace('C:\\', 57 * 1024 * 1024);
+    it('enforces disk space safety checks on any OS', async () => {
+      // Configure manager requiring 1000 TB free space (which no consumer machine has)
+      const strictManager = new ModelManager(1000 * 1024 * 1024 * 1024 * 1024);
+      const check = await strictManager.checkDiskSpace(process.cwd(), 57 * 1024 * 1024);
 
       // Should safely reject
       expect(check.allowed).toBe(false);
       expect(check.reason).toContain('Insufficient disk space');
+    });
+
+    it('fails closed when statfs throws an error', async () => {
+      const manager = new ModelManager();
+      // An invalid path that causes statfs to throw ENOENT
+      const check = await manager.checkDiskSpace('/nonexistent/directory/that/does/not/exist/fail_closed_test', 57 * 1024 * 1024);
+
+      // MUST FAIL CLOSED: allowed must be false
+      expect(check.allowed).toBe(false);
+      expect(check.reason).toContain('Failing closed');
     });
   });
 

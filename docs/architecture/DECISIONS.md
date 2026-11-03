@@ -21,3 +21,16 @@
 * **Status:** Confirmed & Approved
 * **Context:** Modern Bible translations and contemporary worship lyrics are protected by copyright law and cannot be bundled in open-source distributions.
 * **Decision:** Bundle the World English Bible (WEB) and King James Version (KJV) alongside pre-1928 public domain hymns. Provide an extensible `.pulpit-bible` and file import pipeline for local church licenses.
+
+## ADR-004: Removal of Unsafe Presentation Defaults, Synthetic Timers, and Test Hooks
+* **Date:** 2026-11-03
+* **Status:** Confirmed & Approved
+* **Context:** Initial prototypes used fallback default references (`John 3:16`, `43.3.16`), hardcoded authentication keys (`1445`), a 300ms synthetic timer falsely claiming command success, and development mocks that could leak into live audio inference or production builds.
+* **Decision:**
+  * Reject commands lacking an explicit, validated scripture reference (`success: false`). Never default to John 3:16 or any other verse.
+  * Emit presentation commands exactly once per operator approval.
+  * Require verified confirmation: directly via socket callback or by observing matching output events on FreeShow's broadcast channel. If unconfirmed after 1200ms, report fail-closed status `sent_unconfirmed`.
+  * Read authentication credentials from operator configuration or detect them from local settings; never hardcode credentials.
+  * Forbid automatic startup of `MockFreeShowServer` in production builds (`app.isPackaged || NODE_ENV === 'production'`). In dev, visibly display a persistent `SIMULATED` banner and `FreeShow: SIMULATED` status.
+  * Restrict audio simulation test rigs behind development mode and clear mock registers immediately upon use to protect live microphone inference.
+  * Disk space checks in `ModelManager` fail closed when filesystem stats throw errors.

@@ -34,6 +34,7 @@ import {
 import {
   AllowlistedAction,
   FreeShowCommand,
+  FreeShowStateSnapshot,
   OperatorMode,
   SuggestionCandidate
 } from '@pulpit-ai/shared-types';
@@ -373,16 +374,23 @@ function initFreeShow(port = 5510): FreeShowAdapter {
   }
 
   const detectedPassword = detectFreeShowPassword();
+  // PR 2: Read authKey from operator settings or detected password (no hard-coded '1445')
+  const authKey = process.env.FREESHOW_AUTH_KEY || detectedPassword || undefined;
 
   freeShowAdapter = new FreeShowAdapter(authorityManager, {
     host: '127.0.0.1',
     port,
-    authKey: detectedPassword || '1445'
+    authKey
   });
 
   freeShowAdapter.subscribe((snapshot) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('freeshow:state-changed', snapshot);
+      // In dev, show persistent simulated status if connected through mock server; never report plain "connected"
+      const effectiveSnapshot: FreeShowStateSnapshot = {
+        ...snapshot,
+        status: (virtualMockServer && snapshot.connected) ? 'simulated' : snapshot.status
+      };
+      mainWindow.webContents.send('freeshow:state-changed', effectiveSnapshot);
     }
   });
 
@@ -411,13 +419,17 @@ ipcMain.handle('freeshow:connect', async (_event, port = 5510) => {
     connected = await adapter.connect();
   }
   if (!connected) {
-    // Automatically launch Virtual FreeShow Mock Server for seamless local testing
-    if (!virtualMockServer) {
-      virtualMockServer = new MockFreeShowServer({ port: 5510 });
-      await virtualMockServer.start();
+    // PR 2: Mock server: Don’t auto-start it in production.
+    const isProduction = app.isPackaged || process.env.NODE_ENV === 'production';
+    if (!isProduction) {
+      // Automatically launch Virtual FreeShow Mock Server for seamless local dev testing
+      if (!virtualMockServer) {
+        virtualMockServer = new MockFreeShowServer({ port: 5510 });
+        await virtualMockServer.start();
+      }
+      adapter = initFreeShow(5510);
+      connected = await adapter.connect();
     }
-    adapter = initFreeShow(5510);
-    connected = await adapter.connect();
   }
   return connected;
 });
@@ -429,7 +441,12 @@ ipcMain.handle('freeshow:disconnect', () => {
 });
 
 ipcMain.handle('freeshow:get-snapshot', () => {
-  return freeShowAdapter ? freeShowAdapter.getSnapshot() : null;
+  if (!freeShowAdapter) return null;
+  const snapshot = freeShowAdapter.getSnapshot();
+  if (virtualMockServer && snapshot.connected) {
+    return { ...snapshot, status: 'simulated' as const };
+  }
+  return snapshot;
 });
 
 ipcMain.handle(
@@ -514,23 +531,46 @@ ipcMain.on('speech:direct-transcript', (_event, { text, isSinging }: { text: str
 });
 
 ipcMain.handle('audio:simulate-speech', async (_event, phrase: string) => {
+  const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
+  if (!isDev) {
+    console.warn('[Security] audio:simulate-speech rejected in production environment.');
+    return { success: false, reason: 'Simulation handlers are disabled in production' };
+  }
+
   whisperWorker.registerMockTranscript('*', phrase);
-  speechEngine.ingestDirectTranscript(phrase);
+  try {
+    speechEngine.ingestDirectTranscript(phrase);
+  } finally {
+    // Clear mock registry after use so it cannot override real inference
+    whisperWorker.clearMockTranscripts();
+  }
+  return { success: true };
 });
 
 ipcMain.handle('audio:simulate-singing', async (_event, lyrics: string) => {
+  const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
+  if (!isDev) {
+    console.warn('[Security] audio:simulate-singing rejected in production environment.');
+    return { success: false, reason: 'Simulation handlers are disabled in production' };
+  }
+
   whisperWorker.registerMockTranscript('*', lyrics);
+  try {
+    // Synthesize harmonic tone frames to activate singing mode detector
+    const toneFrame = new Int16Array(480);
+    for (let i = 0; i < 480; i++) {
+      toneFrame[i] = Math.round(10000 * Math.sin((2 * Math.PI * 220 * i) / 16000));
+    }
+    for (let i = 0; i < 8; i++) {
+      singingActivityDetector.processFrame(toneFrame);
+    }
 
-  // Synthesize harmonic tone frames to activate singing mode detector
-  const toneFrame = new Int16Array(480);
-  for (let i = 0; i < 480; i++) {
-    toneFrame[i] = Math.round(10000 * Math.sin((2 * Math.PI * 220 * i) / 16000));
+    speechEngine.ingestDirectTranscript(lyrics);
+  } finally {
+    // Clear mock registry after use so it cannot override real inference
+    whisperWorker.clearMockTranscripts();
   }
-  for (let i = 0; i < 8; i++) {
-    singingActivityDetector.processFrame(toneFrame);
-  }
-
-  speechEngine.ingestDirectTranscript(lyrics);
+  return { success: true };
 });
 
 // Scripture Engine Handlers
