@@ -17,8 +17,7 @@ import {
 import {
   ScriptureDatabase,
   ScriptureCandidateGenerator,
-  WEB_PACKAGE,
-  KJV_PACKAGE
+  loadFullBiblePackages
 } from '@pulpit-ai/scripture-engine';
 import {
   SongDatabase,
@@ -53,10 +52,9 @@ const speechEngine = new SpeechRecognitionEngine(whisperWorker);
 const virtualAudio = new VirtualAudioSource(16000);
 const singingActivityDetector = new SingingActivityDetector({ sampleRate: 16000 });
 
-// Initialize Verified Scripture Storage & Generator
+// Initialize Verified Scripture Storage & Generator with full verified Bible data
 const scriptureDatabase = new ScriptureDatabase(':memory:');
-scriptureDatabase.loadPackage(WEB_PACKAGE);
-scriptureDatabase.loadPackage(KJV_PACKAGE);
+loadFullBiblePackages(scriptureDatabase);
 const scriptureGenerator = new ScriptureCandidateGenerator(scriptureDatabase, {
   activeTranslation: 'WEB',
   cooldownMs: 8000

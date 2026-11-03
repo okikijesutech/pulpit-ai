@@ -16,6 +16,13 @@
     "**/node_modules/@pulpit-ai/speech-engine/bin/**/*",
     "**/node_modules/@pulpit-ai/speech-engine/models/**/*"
   ],
+  "extraResources": [
+    {
+      "from": "../../packages/scripture-engine/data",
+      "to": "data",
+      "filter": ["*.json"]
+    }
+  ],
   "win": {
     "target": [
       {

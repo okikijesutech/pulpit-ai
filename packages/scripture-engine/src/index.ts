@@ -4,5 +4,6 @@ export * from './CanonValidator.js';
 export * from './ScriptureReferenceParser.js';
 export * from './types.js';
 export * from './ScriptureDatabase.js';
+export * from './FullBibleData.js';
 export * from './SeedScriptureData.js';
 export * from './ScriptureCandidateGenerator.js';

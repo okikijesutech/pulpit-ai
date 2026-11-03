@@ -32,25 +32,37 @@ Pulpit AI implements a complete 66-book Protestant canon table (`@pulpit-ai/scri
 
 Modern copyrighted translations (e.g. NIV, ESV, NLT, NKJV) and contemporary worship songs cannot be bundled in open-source distributions without explicit commercial licenses from copyright holders.
 
-Pulpit AI bundles two verified **public-domain** translations:
+Pulpit AI bundles two verified **public-domain** translations comprising the complete 66-book Protestant Canon (1,189 chapters, 31,102 verses each):
 
 ### 1. World English Bible (WEB)
 - **ID / Abbreviation**: `WEB`
 - **Language**: English (`en`)
-- **Source**: eBible.org / Rainbow Missions, Inc.
+- **Source**: eBible.org (`eng-web`)
+- **Edition**: 2020 Revision
 - **Copyright**: Public Domain
 - **License**: Dedicated to the Public Domain by Michael Paul Johnson.
-- **Required Attribution**: `World English Bible (WEB) — Dedicated to the Public Domain`
+- **Required Attribution**: `World English Bible (WEB) — Public Domain (eBible.org)`
 - **Redistribution Status**: Unrestricted worldwide.
+- **Data File**: `packages/scripture-engine/data/web.json`
+- **SHA-256 Checksum**: `dcb353839f089070a305ff6ae21718240d3f4e738c4f55e516a285e3c1c21f23`
+- **Integrity Guarantee**: Fail-closed verification on load. Any discrepancy halts application startup.
 
 ### 2. King James Version (KJV)
 - **ID / Abbreviation**: `KJV`
 - **Language**: English (`en`)
-- **Source**: 1611 / 1769 Oxford Standard Text
-- **Edition**: 1769 Blayney Edition
-- **Copyright**: Public Domain (Crown rights in UK, unrestricted worldwide)
+- **Source**: eBible.org (`eng-kjv`)
+- **Edition**: 1769 Oxford Standard Text (Dr. Benjamin Blayney)
+- **Copyright**: Public Domain (worldwide outside UK Crown patent)
+- **License**: Public Domain (1769 Oxford Standard Text)
 - **Required Attribution**: `King James Version (KJV) — Public Domain`
-- **Redistribution Status**: Unrestricted.
+- **Redistribution Status**: Unrestricted worldwide.
+- **Data File**: `packages/scripture-engine/data/kjv.json`
+- **SHA-256 Checksum**: `8699e3d8191cc1328f621a3ca36b0a2716171d9735cbed0859a659addf1eaff9`
+- **Integrity Guarantee**: Fail-closed verification on load. Any discrepancy halts application startup.
+
+### 3. Verification & Seed Policy
+- **Startup Loading**: `apps/desktop/src/main/index.ts` loads the complete verified datasets (`web.json` and `kjv.json`) at startup via `loadFullBiblePackages()`.
+- **Seed Data Scope**: The historical 55-verse dataset in `SeedScriptureData.ts` is strictly isolated to fast unit tests and never loaded in production runtimes.
 
 ---
 

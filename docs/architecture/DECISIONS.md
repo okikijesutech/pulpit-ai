@@ -45,3 +45,15 @@
   * Suggestion approvals are strictly single-use; replay attempts are rejected.
   * Candidates carry an automatic 2-minute (120-second) expiry window.
   * Manual Lock active state unconditionally blocks approval of any candidate.
+
+## ADR-006: Full Bible Data Acquisition and Cryptographic Fail-Closed Verification (PR 4)
+* **Date:** 2026-11-03
+* **Status:** Confirmed & Approved
+* **Context:** Early prototypes embedded a small 55-verse TypeScript seed file (`SeedScriptureData.ts`). In production church use, this resulted in missing verses for legitimate sermon references outside the sample set. Furthermore, Scripture datasets required tamper-evident cryptographic verification to ensure biblical integrity.
+* **Decision:**
+  * Sourced the full 66-book Protestant Canon (1,189 chapters, 31,102 verses) from official eBible.org VPL datasets for both the World English Bible (WEB, 2020 Revision) and the King James Version (KJV, 1769 Oxford Standard Text).
+  * Converted verses out of TypeScript code into versioned JSON data files (`web.json` and `kjv.json`) stored in `packages/scripture-engine/data/`.
+  * Assigned authentic SHA-256 cryptographic checksums to each package metadata (`metadata.checksum` calculated over `JSON.stringify(verses)`).
+  * Implemented fail-closed loading in `ScriptureDatabase`: during startup, package checksums are computed and compared against `metadata.checksum`. Any checksum mismatch or missing checksum immediately throws and refuses to register the translation or insert verses into storage.
+  * Confirmed public domain licenses: WEB dedicated to Public Domain by Michael Paul Johnson; KJV 1769 Oxford Standard Text in Public Domain worldwide.
+  * Reserved the 55-verse `SeedScriptureData.ts` exclusively for isolated, fast unit tests. All desktop startup and production workflows load the verified full Bible data files.

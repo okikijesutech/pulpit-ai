@@ -6,6 +6,8 @@
  * Never generates or invents verses; retrieves verified text only.
  */
 
+import { createHash } from 'node:crypto';
+import { readFileSync, existsSync } from 'node:fs';
 import { CanonValidator } from './CanonValidator.js';
 import {
   TranslationMetadata,
@@ -87,6 +89,9 @@ export class ScriptureDatabase {
 
       CREATE INDEX IF NOT EXISTS idx_verses_lookup 
       ON bible_verses(translation_id, book_name, chapter, verse);
+
+      CREATE INDEX IF NOT EXISTS idx_verses_chapter_lookup 
+      ON bible_verses(translation_id, book_id, chapter);
     `);
   }
 
@@ -251,11 +256,142 @@ export class ScriptureDatabase {
   }
 
   /**
-   * Loads an entire translation package.
+   * Loads an entire translation package with fail-closed cryptographic checksum verification.
+   * If metadata.checksum is present or options.requireChecksum is true, the SHA-256 hash
+   * of JSON.stringify(pkg.verses) must strictly match metadata.checksum.
+   * Mismatch or missing checksum throws an Error and refuses to insert any verses.
    */
-  public loadPackage(pkg: TranslationPackage): void {
+  public loadPackage(pkg: TranslationPackage, options: { requireChecksum?: boolean } = {}): void {
+    const requireChecksum = options.requireChecksum ?? false;
+    const hasChecksum = typeof pkg.metadata?.checksum === 'string' && pkg.metadata.checksum.trim().length > 0;
+
+    if (requireChecksum || hasChecksum) {
+      if (!hasChecksum) {
+        throw new Error(
+          `Refusing to load translation '${pkg.metadata?.id || 'UNKNOWN'}': missing required cryptographic SHA-256 checksum.`
+        );
+      }
+      const computedHash = createHash('sha256').update(JSON.stringify(pkg.verses)).digest('hex');
+      if (computedHash.toLowerCase() !== pkg.metadata.checksum!.trim().toLowerCase()) {
+        throw new Error(
+          `Cryptographic checksum mismatch for translation '${pkg.metadata.id}': expected '${pkg.metadata.checksum}', got '${computedHash}'. Refusing to load corrupted or unverified Scripture data.`
+        );
+      }
+    }
+
     this.registerTranslation(pkg.metadata);
     this.insertVersesBatch(pkg.verses);
+  }
+
+  /**
+   * Loads a translation package directly from a versioned JSON file on disk,
+   * verifying its cryptographic SHA-256 checksum before inserting into the database.
+   */
+  public loadPackageFromFile(filePath: string, options: { requireChecksum?: boolean } = { requireChecksum: true }): TranslationPackage {
+    if (!existsSync(filePath)) {
+      throw new Error(`Scripture package file not found at: ${filePath}`);
+    }
+    const raw = readFileSync(filePath, 'utf-8');
+    const pkg: TranslationPackage = JSON.parse(raw);
+    this.loadPackage(pkg, options);
+    return pkg;
+  }
+
+  /**
+   * Returns the count of loaded verses for a specific book and chapter.
+   */
+  public getVerseCount(translationId: string, bookNameOrId: string, chapter: number): number {
+    const canonResult = CanonValidator.validateReference(bookNameOrId, chapter, 1);
+    if (!canonResult.book) return 0;
+    const transKey = translationId.toUpperCase();
+
+    if (this.db) {
+      const stmt = this.db.prepare(`
+        SELECT COUNT(*) as count 
+        FROM bible_verses 
+        WHERE translation_id = ? 
+          AND book_id = ? 
+          AND chapter = ?
+      `);
+      const row = stmt.get(
+        transKey,
+        canonResult.book.id.toUpperCase(),
+        chapter
+      );
+      return row ? Number(row.count) : 0;
+    } else {
+      let count = 0;
+      for (const [key] of this.inMemoryFallback.verses) {
+        const prefix = `${transKey}:${canonResult.book.name.toLowerCase()}:${chapter}:`;
+        if (key.startsWith(prefix)) {
+          count++;
+        }
+      }
+      return count;
+    }
+  }
+
+  /**
+   * Returns a map of all chapter verse counts for a translation: key `${bookId}:${chapter}` -> count.
+   * Extremely efficient for bulk validation against canonical bounds.
+   */
+  public getAllChapterVerseCounts(translationId: string): Map<string, number> {
+    const counts = new Map<string, number>();
+    const transKey = translationId.toUpperCase();
+
+    if (this.db) {
+      const stmt = this.db.prepare(`
+        SELECT book_id, chapter, COUNT(*) as count 
+        FROM bible_verses 
+        WHERE translation_id = ? 
+        GROUP BY book_id, chapter
+      `);
+      const rows = stmt.all(transKey);
+      for (const row of rows) {
+        counts.set(`${row.book_id.toUpperCase()}:${row.chapter}`, Number(row.count));
+      }
+    } else {
+      for (const [key] of this.inMemoryFallback.verses) {
+        if (key.startsWith(`${transKey}:`)) {
+          const parts = key.split(':');
+          if (parts.length >= 4) {
+            const canonResult = CanonValidator.validateReference(parts[1], Number(parts[2]), 1);
+            if (canonResult.book) {
+              const mapKey = `${canonResult.book.id}:${parts[2]}`;
+              counts.set(mapKey, (counts.get(mapKey) || 0) + 1);
+            }
+          }
+        }
+      }
+    }
+
+    return counts;
+  }
+
+  /**
+   * Returns the total count of loaded verses for a given translation.
+   */
+  public getTotalVerseCount(translationId: string): number {
+    const translation = this.getTranslation(translationId);
+    if (!translation) return 0;
+
+    if (this.db) {
+      const stmt = this.db.prepare(`
+        SELECT COUNT(*) as count 
+        FROM bible_verses 
+        WHERE UPPER(translation_id) = ?
+      `);
+      const row = stmt.get(translation.abbreviation.toUpperCase());
+      return row ? Number(row.count) : 0;
+    } else {
+      let count = 0;
+      for (const [key] of this.inMemoryFallback.verses) {
+        if (key.startsWith(`${translation.abbreviation.toUpperCase()}:`)) {
+          count++;
+        }
+      }
+      return count;
+    }
   }
 
   /**
