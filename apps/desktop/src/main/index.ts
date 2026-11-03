@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
-import { join } from 'node:path';
-import { existsSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { AuthorityManager } from '@pulpit-ai/authority-manager';
 import { FreeShowAdapter, MockFreeShowServer } from '@pulpit-ai/presentation-contracts';
 import {
@@ -74,8 +74,132 @@ const songCandidateGenerator = new SongCandidateGenerator(songDatabase, {
 let freeShowAdapter: FreeShowAdapter | null = null;
 let virtualMockServer: MockFreeShowServer | null = null;
 let levelMeterTimer: NodeJS.Timeout | null = null;
+let isRealMicStreaming = false;
+
+function syncHymnsToFreeShow(): void {
+  try {
+    const documentsPath = join(process.env.USERPROFILE || '', 'Documents', 'FreeShow', 'Shows');
+    const appData = process.env.APPDATA || '';
+    const showsJsonPath = join(appData, 'FreeShow', 'shows.json');
+
+    if (!existsSync(documentsPath)) {
+      mkdirSync(documentsPath, { recursive: true });
+    }
+
+    let showsIndex: Record<string, any> = {};
+    if (existsSync(showsJsonPath)) {
+      try {
+        showsIndex = JSON.parse(readFileSync(showsJsonPath, 'utf8'));
+      } catch {
+        showsIndex = {};
+      }
+    }
+
+    for (const song of SEED_SONGS) {
+      const showId = song.id;
+      const title = song.canonicalTitle;
+      const primaryVersion = song.versions.find((v) => v.isDefault) || song.versions[0];
+      if (!primaryVersion) continue;
+
+      const slidesObj: Record<string, any> = {};
+      const layoutSlides: { id: string }[] = [];
+
+      primaryVersion.sections.forEach((sec, idx) => {
+        const slideId = `slide_${sec.id || idx}`;
+        layoutSlides.push({ id: slideId });
+
+        const verseText = sec.lines.join('\n');
+        slidesObj[slideId] = {
+          group: sec.label,
+          color: null,
+          settings: {},
+          notes: '',
+          items: [
+            {
+              style: 'top: 60px; left: 60px; width: 1800px; height: 860px; display: flex; align-items: center; justify-content: center;',
+              align: 'text-align: center;',
+              lines: [
+                {
+                  align: 'text-align: center;',
+                  text: [
+                    {
+                      value: verseText,
+                      style: 'font-size: 75px; font-weight: bold; color: #ffffff;'
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              style: 'top: 940px; left: 60px; width: 1800px; height: 80px;',
+              align: 'text-align: left;',
+              lines: [
+                {
+                  align: 'text-align: left;',
+                  text: [
+                    {
+                      value: `${title} — ${sec.label}`,
+                      style: 'font-size: 32px; color: rgba(255, 255, 255, 0.7);'
+                    }
+                  ]
+                }
+              ],
+              decoration: true
+            }
+          ]
+        };
+      });
+
+      const showData = [
+        showId,
+        {
+          name: title,
+          category: 'song',
+          settings: { activeLayout: 'default', template: 'song' },
+          timestamps: { created: Date.now(), modified: Date.now(), used: Date.now() },
+          quickAccess: {},
+          meta: { author: song.author, copyright: song.copyright },
+          slides: slidesObj,
+          layouts: {
+            default: {
+              name: 'Default',
+              notes: '',
+              slides: layoutSlides
+            }
+          },
+          media: {}
+        }
+      ];
+
+      const filePath = join(documentsPath, `${title}.show`);
+      writeFileSync(filePath, JSON.stringify(showData), 'utf8');
+
+      // Register both showId and title in FreeShow index for seamless lookup
+      showsIndex[showId] = {
+        name: title,
+        category: 'song',
+        timestamps: { created: Date.now(), modified: Date.now(), used: Date.now() },
+        quickAccess: {}
+      };
+      showsIndex[title] = {
+        name: title,
+        category: 'song',
+        timestamps: { created: Date.now(), modified: Date.now(), used: Date.now() },
+        quickAccess: {}
+      };
+    }
+
+    if (existsSync(dirname(showsJsonPath))) {
+      writeFileSync(showsJsonPath, JSON.stringify(showsIndex), 'utf8');
+    }
+  } catch (err) {
+    console.warn('FreeShow song sync warning:', err);
+  }
+}
 
 function createWindow(): void {
+  syncHymnsToFreeShow();
+
   mainWindow = new BrowserWindow({
     width: 1360,
     height: 840,
@@ -89,6 +213,18 @@ function createWindow(): void {
       nodeIntegration: false,
       sandbox: true
     }
+  });
+
+  // Explicitly permit media access for physical microphone audio ingestion
+  mainWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
+    if (permission === 'media') {
+      callback(true);
+      return;
+    }
+    callback(false);
+  });
+  mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission) => {
+    return permission === 'media';
   });
 
   // Strict Content Security Policy
@@ -178,10 +314,10 @@ function createWindow(): void {
 
 function startLevelMeterBroadcast(): void {
   levelMeterTimer = setInterval(() => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (!mainWindow || mainWindow.isDestroyed() || isRealMicStreaming) return;
 
-    // Simulate idle background room noise or active audio level
-    const frame = virtualAudio.generateSyntheticSpeechFrame(0.05);
+    // Simulate idle background room noise or active audio level only when physical mic is not streaming
+    const frame = virtualAudio.generateSyntheticSpeechFrame(0.01);
     const metrics = audioLevelMeter.analyze(frame);
     const activityMetrics = singingActivityDetector.processFrame(frame);
 
@@ -322,6 +458,35 @@ ipcMain.handle('audio:select-device', (_event, deviceId: string) => {
   const device = audioDeviceManager.selectActiveDevice(deviceId);
   speechSegmenter.setSourceId(deviceId);
   return device;
+});
+
+// Live Physical Microphone Streaming Handler
+ipcMain.on('audio:stream-chunk', (_event, buffer: ArrayBuffer) => {
+  isRealMicStreaming = true;
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  const int16 = new Int16Array(buffer);
+  const metrics = audioLevelMeter.analyze(int16);
+  const activityMetrics = singingActivityDetector.processFrame(int16);
+  speechSegmenter.pushFrame(int16);
+
+  mainWindow.webContents.send('audio:level-changed', metrics);
+  mainWindow.webContents.send('audio:activity-mode', activityMetrics);
+});
+
+// Live Physical Microphone Direct Speech Transcript Handler
+ipcMain.on('speech:direct-transcript', (_event, { text, isSinging }: { text: string; isSinging?: boolean }) => {
+  if (!text || text.trim().length === 0) return;
+  if (isSinging) {
+    const toneFrame = new Int16Array(480);
+    for (let i = 0; i < 480; i++) {
+      toneFrame[i] = Math.round(10000 * Math.sin((2 * Math.PI * 220 * i) / 16000));
+    }
+    for (let i = 0; i < 8; i++) {
+      singingActivityDetector.processFrame(toneFrame);
+    }
+  }
+  speechEngine.ingestDirectTranscript(text.trim(), 'physical_mic');
 });
 
 ipcMain.handle('audio:simulate-speech', async (_event, phrase: string) => {

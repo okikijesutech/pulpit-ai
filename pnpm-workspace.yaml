@@ -6,6 +6,7 @@ packages:
 onlyBuiltDependencies:
   - esbuild
   - electron
+  - sharp
 
 allowBuilds:
   electron: true

@@ -20,6 +20,7 @@ import {
 } from './components/LiveTranscriptPanel.js';
 import { SongLibraryPanel } from './components/SongLibraryPanel.js';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../preload/index.js';
+import { physicalMicService } from './services/MicrophoneAudioService.js';
 
 export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'live' | 'songs'>('live');
@@ -86,7 +87,13 @@ export const App: React.FC = () => {
         setCandidates((prev) => [candidate, ...prev.filter((c) => c.title !== candidate.title)]);
       });
 
+      // Start physical microphone audio capture
+      physicalMicService.start().catch((err) => {
+        console.warn('Physical mic start error:', err);
+      });
+
       return () => {
+        physicalMicService.stop();
         unsubAuth();
         unsubFS();
         unsubAudit();

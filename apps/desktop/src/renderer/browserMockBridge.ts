@@ -587,6 +587,12 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
       }
       return false;
     },
+    streamAudioChunk: (_chunk: any) => {},
+    sendDirectTranscript: (text: string, _isSinging?: boolean) => {
+      if (text) {
+        window.pulpitAPI.simulateSpeechInput(text);
+      }
+    },
     createBackup: async () => {
       const b = {
         id: `backup_${Date.now()}`,

@@ -116,6 +116,10 @@ export interface PulpitAPI {
     sectionIndex: number
   ) => Promise<{ success: boolean; reason?: string }>;
 
+  // Live Physical Microphone & Speech Stream
+  streamAudioChunk: (chunk: ArrayBuffer) => void;
+  sendDirectTranscript: (text: string, isSinging?: boolean) => void;
+
   // Backup & Disaster Recovery
   createBackup: () => Promise<BackupArchive>;
   restoreBackup: (
@@ -165,6 +169,9 @@ const api: PulpitAPI = {
     ipcRenderer.invoke('songs:reject-staged', { stagedId, reason }),
   projectSongSection: (songTitle, sectionLabel, sectionIndex) =>
     ipcRenderer.invoke('songs:project-section', { songTitle, sectionLabel, sectionIndex }),
+  streamAudioChunk: (chunk: ArrayBuffer) => ipcRenderer.send('audio:stream-chunk', chunk),
+  sendDirectTranscript: (text: string, isSinging?: boolean) =>
+    ipcRenderer.send('speech:direct-transcript', { text, isSinging }),
   createBackup: () => ipcRenderer.invoke('backup:create'),
   restoreBackup: (archive, clearExisting) =>
     ipcRenderer.invoke('backup:restore', { archive, clearExisting }),
