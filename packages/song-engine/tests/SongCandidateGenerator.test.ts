@@ -61,18 +61,20 @@ describe('SongCandidateGenerator and Authority Integration Tests', () => {
     expect(third).not.toBeNull();
   });
 
-  it('integrates with AuthorityManager: Human operator approves AI song candidate', () => {
+  it('integrates with AuthorityManager: Human operator approves AI song candidate by ID', () => {
     const candidate = generator.processTranscript('Blessed assurance Jesus is mine', true, 300000);
     expect(candidate).not.toBeNull();
 
     if (!candidate) return;
 
-    // Operator approves candidate via AuthorityManager
-    const approvedCommand = authorityManager.approveCandidate(candidate);
+    // Register candidate in AuthorityManager and approve strictly by ID
+    authorityManager.registerCandidate(candidate);
+    const approval = authorityManager.approveCandidate(candidate.id);
 
-    expect(approvedCommand).not.toBeNull();
-    expect(approvedCommand?.action).toBe('start_show');
-    expect(approvedCommand?.data).toEqual(
+    expect(approval.success).toBe(true);
+    expect(approval.command).toBeDefined();
+    expect(approval.command?.action).toBe('start_show');
+    expect(approval.command?.data).toEqual(
       expect.objectContaining({ name: 'Blessed Assurance' })
     );
 
@@ -86,13 +88,16 @@ describe('SongCandidateGenerator and Authority Integration Tests', () => {
     expect(candidate).not.toBeNull();
     if (!candidate) return;
 
+    authorityManager.registerCandidate(candidate);
+
     // Engage manual lock
     authorityManager.setManualLock(true);
 
     // Operator attempt to approve AI candidate while locked
-    const approvedCommand = authorityManager.approveCandidate(candidate);
+    const approval = authorityManager.approveCandidate(candidate.id);
 
-    // MUST be null (fail-closed, projection forbidden under lock)
-    expect(approvedCommand).toBeNull();
+    // MUST fail closed (projection forbidden under lock)
+    expect(approval.success).toBe(false);
+    expect(approval.command).toBeUndefined();
   });
 });

@@ -94,6 +94,17 @@ To eliminate external network attack vectors:
 
 ---
 
-## 5. Tamper-Evident Audit Trail
+## 5. Candidate Lifecycle & ID-Only Approval (PR 3)
+
+To prevent renderer-side command injection and forged projection payloads:
+1. **Server-Side Candidate Registry:** When Scripture or Song candidate generators detect a reference or hymn, the candidate is registered directly in the main process `CandidateRegistry` within `AuthorityManager`. The full action payload remains secured inside the main process.
+2. **Approval by ID, Not by Payload:** The IPC channel `authority:approve-candidate` strictly requires a `candidateId: string`. Any request passing a payload object, modified command parameters, or un-registered ID is immediately rejected fail-closed and audited with `security` severity.
+3. **Single-Use Guard (Replay Defense):** Once a candidate ID is approved and consumed, it is marked as `used`. Any subsequent approval attempt using the same ID is rejected with a replay warning and logged in the audit trail.
+4. **Time-To-Live (2-Minute Expiry):** Candidates carry a strict 120-second (2-minute) lifetime. If an operator does not approve a suggestion within 2 minutes of recognition, it expires automatically and cannot be projected.
+5. **Lock Active Precedence:** If the operator has engaged the Manual Safety Lock, any attempt to approve a candidate is blocked regardless of registry state or candidate validity.
+
+---
+
+## 6. Tamper-Evident Audit Trail
 
 Every state transition, mode change, lock engagement, candidate creation, approval, and rejection is recorded in an in-memory and persistent SQLite audit log with cryptographic timestamps and actor provenance (`operator`, `ai`, or `system`).

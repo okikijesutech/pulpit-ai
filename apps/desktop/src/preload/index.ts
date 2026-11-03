@@ -58,7 +58,7 @@ export interface PulpitAPI {
     data?: any
   ) => Promise<{ success: boolean; reason?: string }>;
   approveCandidate: (
-    candidate: SuggestionCandidate
+    candidateId: string
   ) => Promise<{ success: boolean; reason?: string }>;
   getAuditEvents: () => Promise<AuditEvent[]>;
   getAudioDevices: () => Promise<AudioInputDevice[]>;
@@ -146,8 +146,8 @@ const api: PulpitAPI = {
   getFreeShowSnapshot: () => ipcRenderer.invoke('freeshow:get-snapshot'),
   dispatchOperatorCommand: (action: AllowlistedAction, data?: any) =>
     ipcRenderer.invoke('freeshow:dispatch-command', { action, data }),
-  approveCandidate: (candidate: SuggestionCandidate) =>
-    ipcRenderer.invoke('authority:approve-candidate', candidate),
+  approveCandidate: (candidateId: string) =>
+    ipcRenderer.invoke('authority:approve-candidate', candidateId),
   getAuditEvents: () => ipcRenderer.invoke('audit:get-events'),
   getAudioDevices: () => ipcRenderer.invoke('audio:get-devices'),
   selectAudioDevice: (deviceId: string) => ipcRenderer.invoke('audio:select-device', deviceId),

@@ -281,9 +281,11 @@ function createWindow(): void {
     songCandidateGenerator.processTranscript(event.rawText, isSinging);
   });
 
-  // Forward Scripture suggestion candidates to Audit Logger and renderer
+  // Forward Scripture suggestion candidates to Audit Logger, Registry, and renderer
   scriptureGenerator.onCandidate((candidate) => {
     console.log(`[Scripture] Suggested reference: "${candidate.title}"`);
+    // PR 3: Register candidate in main process authority registry with 2-minute validity
+    authorityManager.registerCandidate(candidate);
     auditLogger.log('candidate_created', 'ai', {
       candidateId: candidate.id,
       title: candidate.title,
@@ -295,9 +297,11 @@ function createWindow(): void {
     }
   });
 
-  // Forward Song suggestion candidates to Audit Logger and renderer
+  // Forward Song suggestion candidates to Audit Logger, Registry, and renderer
   songCandidateGenerator.onCandidate((candidate) => {
     console.log(`[Song] Suggested hymn: "${candidate.title}"`);
+    // PR 3: Register candidate in main process authority registry with 2-minute validity
+    authorityManager.registerCandidate(candidate);
     auditLogger.log('candidate_created', 'ai', {
       candidateId: candidate.id,
       title: candidate.title,
@@ -470,20 +474,21 @@ ipcMain.handle(
 
 ipcMain.handle(
   'authority:approve-candidate',
-  async (_event, candidate: SuggestionCandidate) => {
+  async (_event, candidateId: string) => {
     if (!freeShowAdapter) {
       return { success: false, reason: 'FreeShow adapter not initialized' };
     }
 
-    const approvedCommand = authorityManager.approveCandidate(candidate);
-    if (!approvedCommand) {
+    // PR 3: Approve strictly by candidateId. Looks up stored payload from registry.
+    const approval = authorityManager.approveCandidate(candidateId);
+    if (!approval.success || !approval.command) {
       return {
         success: false,
-        reason: 'Approval blocked by Authority Manager (Lock active or invalid state)'
+        reason: approval.reason || 'Approval blocked by Authority Manager'
       };
     }
 
-    return await freeShowAdapter.dispatchCommand(approvedCommand);
+    return await freeShowAdapter.dispatchCommand(approval.command);
   }
 );
 

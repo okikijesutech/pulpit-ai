@@ -7,16 +7,23 @@ import {
   SuggestionCandidate
 } from '@pulpit-ai/shared-types';
 import { AuditLogger } from './AuditLogger.js';
+import { CandidateRegistry, CandidateRegistryOptions } from './CandidateRegistry.js';
 
 export type StateListener = (state: Readonly<AuthorityState>) => void;
+
+export interface AuthorityManagerOptions {
+  candidateTtlMs?: number;
+}
 
 export class AuthorityManager {
   private state: AuthorityState;
   private readonly auditLogger: AuditLogger;
+  private readonly candidateRegistry: CandidateRegistry;
   private listeners: Set<StateListener> = new Set();
 
-  constructor(auditLogger?: AuditLogger) {
+  constructor(auditLogger?: AuditLogger, options?: AuthorityManagerOptions) {
     this.auditLogger = auditLogger ?? new AuditLogger();
+    this.candidateRegistry = new CandidateRegistry({ ttlMs: options?.candidateTtlMs });
     this.state = {
       operatorMode: 'suggestions', // Non-negotiable default
       listeningEnabled: true,
@@ -264,33 +271,89 @@ export class AuthorityManager {
   }
 
   /**
-   * Converts a vetted suggestion candidate into an approved operator command.
-   * This is how suggestions are safely projected: Operator clicks 'Approve',
-   * which scopes permission to this specific action only.
+   * Registers a generated candidate in the central authority registry.
    */
-  public approveCandidate(candidate: SuggestionCandidate): FreeShowCommand | null {
+  public registerCandidate(candidate: SuggestionCandidate, registeredAt?: number): void {
+    this.candidateRegistry.registerCandidate(candidate, registeredAt);
+  }
+
+  /**
+   * Returns the candidate registry instance.
+   */
+  public getCandidateRegistry(): CandidateRegistry {
+    return this.candidateRegistry;
+  }
+
+  /**
+   * Approves a candidate strictly by ID (PR 3: Approve by id, not by payload).
+   * Looks up the stored payload, and makes approval single-use with an expiry (~2 minutes).
+   * Unknown, used, expired, or forged IDs/payloads are rejected and audited.
+   */
+  public approveCandidate(
+    candidateId: string,
+    now?: number
+  ): { success: boolean; command?: FreeShowCommand; reason?: string } {
+    // 1. Validate that input is strictly a candidateId string (reject forged payload objects)
+    if (typeof candidateId !== 'string' || candidateId.trim().length === 0) {
+      this.auditLogger.log(
+        'candidate_rejected',
+        'operator',
+        { candidateId, reason: 'Approval rejected: Expected candidateId string, received object or invalid ID (forged payload rejected)' },
+        'security'
+      );
+      return {
+        success: false,
+        reason: 'Approval rejected: Forged payload or invalid candidate ID format.'
+      };
+    }
+
+    // 2. Emergency manual lock check
     if (this.state.manualLockActive) {
       this.auditLogger.log(
         'candidate_rejected',
         'operator',
-        { candidateId: candidate.id, reason: 'Manual Lock active' },
+        { candidateId, reason: 'Manual Safety Lock is active' },
         'warning'
       );
-      return null;
+      return {
+        success: false,
+        reason: 'Manual Safety Lock is active. AI projection is blocked.'
+      };
     }
 
+    // 3. Consume candidate from server-side registry (checks existence, replay, and 2-min expiry)
+    const consumeResult = this.candidateRegistry.consumeCandidate(candidateId, now);
+    if (!consumeResult.success || !consumeResult.candidate) {
+      const isSecurity = consumeResult.code === 'UNKNOWN_OR_FORGED';
+      this.auditLogger.log(
+        'candidate_rejected',
+        'operator',
+        { candidateId, reason: consumeResult.reason, code: consumeResult.code },
+        isSecurity ? 'security' : 'warning'
+      );
+      return {
+        success: false,
+        reason: consumeResult.reason || 'Candidate approval rejected'
+      };
+    }
+
+    const candidate = consumeResult.candidate;
     candidate.status = 'approved';
     this.auditLogger.log('candidate_approved', 'operator', { candidateId: candidate.id });
 
-    // Return the command tagged with source = 'operator' and correlationId
+    // 4. Return the command tagged with source = 'operator' using the GENUINE stored actionPayload
+    const timestamp = now ?? Date.now();
     const approvedCommand: FreeShowCommand = {
       ...candidate.actionPayload,
       source: 'operator',
-      correlationId: `corr_appr_${candidate.id}_${Date.now()}`,
-      createdAt: Date.now()
+      correlationId: `corr_appr_${candidate.id}_${timestamp}`,
+      createdAt: timestamp
     };
 
-    return approvedCommand;
+    return {
+      success: true,
+      command: approvedCommand
+    };
   }
 
   /**

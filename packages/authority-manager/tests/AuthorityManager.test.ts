@@ -114,7 +114,7 @@ describe('AuthorityManager', () => {
     expect(decision.reason).toContain('Manual Safety Lock is active');
   });
 
-  it('allows safe candidate approval workflow (scoped operator approval)', () => {
+  it('allows safe candidate approval workflow (scoped operator approval by ID)', () => {
     manager.setFreeShowConnected(true);
 
     const candidate: SuggestionCandidate = {
@@ -135,14 +135,18 @@ describe('AuthorityManager', () => {
       }
     };
 
-    // Operator approves the suggestion
-    const approvedCommand = manager.approveCandidate(candidate);
-    expect(approvedCommand).not.toBeNull();
-    expect(approvedCommand!.source).toBe('operator');
+    // Register candidate in registry
+    manager.registerCandidate(candidate);
+
+    // Operator approves the suggestion strictly by ID
+    const approval = manager.approveCandidate(candidate.id);
+    expect(approval.success).toBe(true);
+    expect(approval.command).toBeDefined();
+    expect(approval.command!.source).toBe('operator');
     expect(candidate.status).toBe('approved');
 
     // Passing the approved command through the authority manager
-    const decision = manager.authorizeCommand(approvedCommand!);
+    const decision = manager.authorizeCommand(approval.command!);
     expect(decision.allowed).toBe(true);
   });
 
@@ -168,8 +172,11 @@ describe('AuthorityManager', () => {
       }
     };
 
-    const approvedCommand = manager.approveCandidate(candidate);
-    expect(approvedCommand).toBeNull();
+    manager.registerCandidate(candidate);
+    const approval = manager.approveCandidate(candidate.id);
+    expect(approval.success).toBe(false);
+    expect(approval.command).toBeUndefined();
+    expect(approval.reason).toContain('Manual Safety Lock');
   });
 
   it('notifies listeners reactively on state transitions', () => {

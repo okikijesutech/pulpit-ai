@@ -194,7 +194,7 @@ export const App: React.FC = () => {
 
   const handleApproveCandidate = async (candidate: SuggestionCandidate) => {
     if (window.pulpitAPI) {
-      const res = await window.pulpitAPI.approveCandidate(candidate);
+      const res = await window.pulpitAPI.approveCandidate(candidate.id);
       if (res.success) {
         setCandidates((prev) => prev.filter((c) => c.id !== candidate.id));
       } else {

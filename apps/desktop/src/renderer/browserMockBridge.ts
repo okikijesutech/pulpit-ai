@@ -305,18 +305,16 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
       emitAudit('action_dispatched', { action, data });
       return { success: true };
     },
-    approveCandidate: async (candidate: SuggestionCandidate) => {
+    approveCandidate: async (candidateId: string) => {
       if (authorityState.manualLockActive) {
         return { success: false, reason: 'Projection inhibited: Manual Lock is active.' };
       }
       freeShowSnapshot.isCleared = false;
-      freeShowSnapshot.currentShowId = candidate.title;
-      freeShowSnapshot.currentSlideText = candidate.contentPreview;
+      freeShowSnapshot.currentShowId = `Approved: ${candidateId}`;
+      freeShowSnapshot.currentSlideText = `Candidate ${candidateId} projected`;
       emitFreeShow();
       emitAudit('candidate_approved', {
-        title: candidate.title,
-        type: candidate.type,
-        preview: candidate.contentPreview
+        candidateId
       });
       return { success: true };
     },
