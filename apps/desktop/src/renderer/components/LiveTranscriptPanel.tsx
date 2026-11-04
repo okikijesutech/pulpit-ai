@@ -9,7 +9,7 @@ export interface RecognizedTranscriptEvent {
   rawText: string;
   normalizedText: string;
   tokens: string[];
-  confidence: number;
+  confidence: number | null;
   latencyMs: number;
 }
 
@@ -62,7 +62,7 @@ export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = ({
                   </span>
                   <span className="flex items-center space-x-1 text-emerald-400 font-mono">
                     <CheckCircle className="w-3 h-3" />
-                    <span>{Math.round(t.confidence * 100)}%</span>
+                    <span>{t.confidence !== null ? `${Math.round(t.confidence * 100)}%` : '—'}</span>
                   </span>
                 </div>
               </div>

@@ -12,7 +12,8 @@ import {
 } from '@pulpit-ai/audio-engine';
 import {
   SpeechRecognitionEngine,
-  WhisperWorkerProcess
+  WhisperWorkerProcess,
+  ModelManager
 } from '@pulpit-ai/speech-engine';
 import {
   ScriptureDatabase,
@@ -46,6 +47,7 @@ const auditLogger = authorityManager.getAuditLogger();
 const audioDeviceManager = new AudioDeviceManager();
 const audioLevelMeter = new AudioLevelMeter();
 const speechSegmenter = new SpeechSegmenter({ sampleRate: 16000 });
+const modelManager = new ModelManager();
 const whisperWorker = new WhisperWorkerProcess();
 whisperWorker.warmup();
 const speechEngine = new SpeechRecognitionEngine(whisperWorker);
@@ -489,6 +491,12 @@ ipcMain.on('audio:report-state', (_event, state: string) => {
   if (state === 'disconnected') {
     mainWindow.webContents.send('audio:level-changed', AudioLevelMeter.disconnectedMetrics());
   }
+});
+
+// Explicit model download permission and disk safety check (PR 7)
+ipcMain.handle('models:check-download', async (_event, modelId: string) => {
+  const modelsDir = join(app.getPath('userData'), 'models');
+  return await modelManager.requestDownloadPermission(modelId, modelsDir);
 });
 
 // Live Physical Microphone Direct Speech Transcript Handler

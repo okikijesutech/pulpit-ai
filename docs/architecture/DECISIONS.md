@@ -82,3 +82,20 @@
   * **Hardware Disconnect Detection (< 1s):** Handled `track.onended` and `navigator.mediaDevices.ondevicechange` to transition to an explicit `NO AUDIO` / `'disconnected'` state within 1 second.
   * **Switch Flush:** Switching input sources immediately flushes pending frames from `SpeechSegmenter` via `flush()`, avoiding cross-source audio leakage.
   * **Synthetic Meter Removal:** Removed fake background noise timer from `main/index.ts`. Real level meter explicitly distinguishes `muted` (`MUT`), `silent` (`SIL`), `active` (dBFS), and `disconnected` (`OFF`).
+
+## ADR-009: Native Speech Engine, Cryptographic Model Integrity, and Phantom Phrase Filtering (PR 7)
+* **Date:** 2026-11-04
+* **Status:** Accepted
+* **Context:**
+  * Speech-to-text inference previously used simulated mock inference or lacked external process boundaries.
+  * Model files lacked authentic cryptographic checksums and size records.
+  * Whisper models frequently hallucinate polite closing phrases (`"Thank you."`) or musical indicators (`"[MUSIC]"`) during ambient pauses in sanctuary acoustics.
+  * Confidence scores were artificially hardcoded (e.g., `0.94`, `0.92`) rather than reflecting real inference probability.
+* **Decision:**
+  * **Native Subprocess Inference:** Execute speech inference strictly outside the Electron main process via a dedicated native `whisper.cpp` / `whisper-cli` worker process.
+  * **Official Model Checksums & Size Verification:** Record official SHA-256 hashes and exact byte sizes for `tiny.en-q5_1`, `base.en-q5_1`, and `small.en-q5_1`. Stream and verify hashes with fail-closed rejection on mismatch.
+  * **Gated Model Downloads & Disk Space Verification:** Prohibit automatic/silent network downloads. Require explicit operator authorization (`requestDownloadPermission`) with a mandatory >= 2 GB safety margin check on target storage before initiating any download.
+  * **Phantom Phrase Interception:** Introduce `PhantomPhraseFilter` to detect and discard hallucinated bracketed tokens (`[MUSIC]`, `[BLANK_AUDIO]`, `[applause]`), repetitive subtitle/credit tags (`Subtitles by...`), and ambient noise loops (`Thank you.`) before they reach transcript feeds or scripture parsers.
+  * **Real Confidence Reporting:** Model transcripts must carry actual token confidence or `null` (`confidence: number | null`). Remove synthetic scores; the UI renders `—` when confidence is unavailable.
+  * **Canonical Prompt Seeding:** Prime `whisper.cpp` with a canonical prompt containing all 66 Protestant canon books and sermon cues ("chapter", "verse", "turn to") to bias beam search toward correct biblical terminology.
+  * **Packaging & Binary Distribution:** Configure `electron-builder.json` `asarUnpack` to unpack native binaries and models (`bin/**/*`, `@pulpit-ai/speech-engine/bin/**/*`, `@pulpit-ai/speech-engine/models/**/*`) so they execute cleanly in packaged environments. Align UI labels to `"whisper.cpp (AVX2)"`.

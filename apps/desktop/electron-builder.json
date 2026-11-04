@@ -14,7 +14,8 @@
   "asar": true,
   "asarUnpack": [
     "**/node_modules/@pulpit-ai/speech-engine/bin/**/*",
-    "**/node_modules/@pulpit-ai/speech-engine/models/**/*"
+    "**/node_modules/@pulpit-ai/speech-engine/models/**/*",
+    "bin/**/*"
   ],
   "extraResources": [
     {

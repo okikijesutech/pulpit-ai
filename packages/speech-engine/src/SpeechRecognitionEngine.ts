@@ -1,6 +1,7 @@
 import { SpeechSegment } from '@pulpit-ai/audio-engine';
 import { WhisperWorkerProcess, TranscriptionJobResult } from './WhisperWorkerProcess.js';
 import { TranscriptNormalizer, NormalizedTranscript } from './TranscriptNormalizer.js';
+import { PhantomPhraseFilter } from './PhantomPhraseFilter.js';
 
 export interface RecognizedTranscriptEvent {
   id: string;
@@ -10,7 +11,7 @@ export interface RecognizedTranscriptEvent {
   rawText: string;
   normalizedText: string;
   tokens: string[];
-  confidence: number;
+  confidence: number | null;
   latencyMs: number;
 }
 
@@ -78,6 +79,12 @@ export class SpeechRecognitionEngine {
       if (!result.text || result.text.trim().length === 0) {
         return null;
       }
+
+      // PR 7: Discard hallucinated phantom phrases (e.g. "[MUSIC]", "Thank you.")
+      if (PhantomPhraseFilter.isPhantomPhrase(result.text)) {
+        return null;
+      }
+
       const normalized: NormalizedTranscript = this.normalizer.normalize(result.text);
 
       const event: RecognizedTranscriptEvent = {
@@ -88,7 +95,7 @@ export class SpeechRecognitionEngine {
         rawText: normalized.rawText,
         normalizedText: normalized.normalizedText,
         tokens: normalized.tokens,
-        confidence: result.confidence,
+        confidence: result.confidence !== undefined ? result.confidence : null,
         latencyMs: result.latencyMs
       };
 
@@ -111,7 +118,15 @@ export class SpeechRecognitionEngine {
    * Directly ingests a transcript (e.g. from an audio simulation or direct feed),
    * normalizes it, and broadcasts to listeners.
    */
-  public ingestDirectTranscript(rawText: string, sourceId = 'simulated_mic'): RecognizedTranscriptEvent {
+  public ingestDirectTranscript(rawText: string, sourceId = 'simulated_mic'): RecognizedTranscriptEvent | null {
+    if (!rawText || rawText.trim().length === 0) {
+      return null;
+    }
+
+    if (PhantomPhraseFilter.isPhantomPhrase(rawText)) {
+      return null;
+    }
+
     const normalized: NormalizedTranscript = this.normalizer.normalize(rawText);
 
     const event: RecognizedTranscriptEvent = {
@@ -122,7 +137,7 @@ export class SpeechRecognitionEngine {
       rawText: normalized.rawText,
       normalizedText: normalized.normalizedText,
       tokens: normalized.tokens,
-      confidence: 0.96,
+      confidence: null, // Real confidence or none
       latencyMs: 14
     };
 

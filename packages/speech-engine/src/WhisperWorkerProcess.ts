@@ -1,25 +1,95 @@
 import { SpeechSegment } from '@pulpit-ai/audio-engine';
+import { spawn } from 'node:child_process';
+import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 export interface TranscriptionJobResult {
   text: string;
-  confidence: number;
+  confidence: number | null;
   latencyMs: number;
 }
 
 export type WorkerCrashListener = (exitCode: number | null, signal: string | null) => void;
 
+/**
+ * Initial decoder prompt primed with canonical Protestant books and liturgical cues.
+ * Biases acoustic attention heads towards Biblical proper nouns.
+ */
+export const CANONICAL_PROMPT_BIAS =
+  'Genesis, Exodus, Leviticus, Numbers, Deuteronomy, Joshua, Judges, Ruth, ' +
+  '1 Samuel, 2 Samuel, 1 Kings, 2 Kings, 1 Chronicles, 2 Chronicles, Ezra, Nehemiah, Esther, Job, Psalms, Proverbs, ' +
+  'Ecclesiastes, Song of Solomon, Isaiah, Jeremiah, Lamentations, Ezekiel, Daniel, Hosea, Joel, Amos, Obadiah, ' +
+  'Jonah, Micah, Nahum, Habakkuk, Zephaniah, Haggai, Zechariah, Malachi, Matthew, Mark, Luke, John, Acts, Romans, ' +
+  '1 Corinthians, 2 Corinthians, Galatians, Ephesians, Philippians, Colossians, 1 Thessalonians, 2 Thessalonians, ' +
+  '1 Timothy, 2 Timothy, Titus, Philemon, Hebrews, James, 1 Peter, 2 Peter, 1 John, 2 John, 3 John, Jude, Revelation. ' +
+  'Chapter, verse, church, pastor, Bible, scripture, turn to, read.';
+
 export class WhisperWorkerProcess {
   private isRunning = false;
   private crashListeners: Set<WorkerCrashListener> = new Set();
-  private mockTranscriptions: Map<string, string> = new Map();
+  private mockResults: Map<string, Partial<TranscriptionJobResult>> = new Map();
   private transcriberPromise: Promise<any> | null = null;
+  private customBinaryPath?: string;
+  private customModelPath?: string;
 
-  constructor() {
+  constructor(options: { binaryPath?: string; modelPath?: string } = {}) {
     this.isRunning = true;
+    this.customBinaryPath = options.binaryPath;
+    this.customModelPath = options.modelPath;
   }
 
   public isHealthy(): boolean {
     return this.isRunning;
+  }
+
+  public getInitialPrompt(): string {
+    return CANONICAL_PROMPT_BIAS;
+  }
+
+  public setNextResult(result: Partial<TranscriptionJobResult>): void {
+    this.mockResults.set('*', result);
+  }
+
+  public setNextTranscript(text: string): void {
+    this.mockResults.set('*', { text, confidence: null });
+  }
+
+  public registerMockTranscript(pattern: string, text: string, confidence: number | null = null): void {
+    this.mockResults.set(pattern, { text, confidence });
+  }
+
+  public clearMockTranscripts(): void {
+    this.mockResults.clear();
+  }
+
+  /**
+   * Resolves the native whisper.cpp executable path.
+   */
+  public resolveBinaryPath(): string | null {
+    if (this.customBinaryPath && existsSync(this.customBinaryPath)) {
+      return this.customBinaryPath;
+    }
+
+    if (process.env.WHISPER_BIN_PATH && existsSync(process.env.WHISPER_BIN_PATH)) {
+      return process.env.WHISPER_BIN_PATH;
+    }
+
+    const binaryName = process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli';
+    const candidatePaths = [
+      join(process.cwd(), 'bin', binaryName),
+      join(process.cwd(), 'packages', 'speech-engine', 'bin', binaryName),
+      join(__dirname, '..', 'bin', binaryName),
+      join(__dirname, '..', '..', 'bin', binaryName),
+      // Packaged app path
+      join((process as any).resourcesPath || '', 'app.asar.unpacked', 'node_modules', '@pulpit-ai', 'speech-engine', 'bin', binaryName)
+    ];
+
+    for (const p of candidatePaths) {
+      if (existsSync(p)) return p;
+    }
+
+    return null;
   }
 
   private async getTranscriber(): Promise<any> {
@@ -31,7 +101,7 @@ export class WhisperWorkerProcess {
             quantized: true
           });
         } catch (err) {
-          console.warn('Xenova Whisper pipeline load deferred or failed, falling back:', err);
+          console.warn('Whisper ONNX fallback pipeline load deferred or failed:', err);
           return null;
         }
       })();
@@ -41,36 +111,17 @@ export class WhisperWorkerProcess {
 
   public async warmup(): Promise<void> {
     try {
-      await this.getTranscriber();
+      const nativeBin = this.resolveBinaryPath();
+      if (!nativeBin) {
+        await this.getTranscriber();
+      }
     } catch (err) {
       console.warn('Warmup error in Whisper worker:', err);
     }
   }
 
   /**
-   * Registers a mock response for a given segment identifier, wildcard ('*'), or synthetic test pattern.
-   */
-  public registerMockTranscript(pattern: string, text: string): void {
-    this.mockTranscriptions.set(pattern, text);
-  }
-
-  /**
-   * Sets the next transcript to be returned for any incoming segment.
-   */
-  public setNextTranscript(text: string): void {
-    this.mockTranscriptions.set('*', text);
-  }
-
-  /**
-   * Clears any registered mock transcriptions to prevent leakage across tests or into real audio inference.
-   */
-  public clearMockTranscripts(): void {
-    this.mockTranscriptions.clear();
-  }
-
-  /**
-   * Executes transcription on a 16-bit PCM speech segment.
-   * Uses real Whisper ONNX inference when available, with strict timeout protection.
+   * Executes transcription on a 16-bit PCM speech segment outside the Electron main thread.
    */
   public async transcribeSegment(
     segment: SpeechSegment,
@@ -82,33 +133,41 @@ export class WhisperWorkerProcess {
 
     const startTime = Date.now();
 
-    // Check mock transcriptions first (essential for automated unit tests)
-    if (this.mockTranscriptions.has('*')) {
-      const text = this.mockTranscriptions.get('*')!;
-      this.mockTranscriptions.delete('*'); // Single-use so it never leaks into subsequent segments
+    // 1. Check registered mock results first (vital for automated test suites)
+    if (this.mockResults.has('*')) {
+      const mock = this.mockResults.get('*')!;
+      this.mockResults.delete('*'); // Single-use consumption
       return {
-        text,
-        confidence: 0.94,
-        latencyMs: Date.now() - startTime
+        text: mock.text ?? '',
+        confidence: mock.confidence !== undefined ? mock.confidence : null,
+        latencyMs: mock.latencyMs ?? Date.now() - startTime
       };
     }
 
-    for (const [pattern, mocked] of this.mockTranscriptions.entries()) {
+    for (const [pattern, mock] of this.mockResults.entries()) {
       if (segment.id.includes(pattern) || segment.sourceId.includes(pattern)) {
         return {
-          text: mocked,
-          confidence: 0.94,
-          latencyMs: Date.now() - startTime
+          text: mock.text ?? '',
+          confidence: mock.confidence !== undefined ? mock.confidence : null,
+          latencyMs: mock.latencyMs ?? Date.now() - startTime
         };
       }
     }
 
-    // Real inference using Xenova Whisper ONNX
+    // 2. Try Native whisper.cpp Subprocess if binary and model are present
+    const nativeBin = this.resolveBinaryPath();
+    if (nativeBin && this.customModelPath && existsSync(this.customModelPath)) {
+      try {
+        return await this.transcribeWithSubprocess(nativeBin, this.customModelPath, segment, timeoutMs, startTime);
+      } catch (nativeErr) {
+        console.warn('[WhisperWorkerProcess] Native whisper execution error, attempting fallback:', nativeErr);
+      }
+    }
+
+    // 3. Fallback to in-process ONNX if available
     try {
       const transcriber = await this.getTranscriber();
-
       if (transcriber && segment.samples && segment.samples.length > 0) {
-        // Convert 16-bit PCM (Int16Array) to Float32Array [-1.0, 1.0]
         const float32 = new Float32Array(segment.samples.length);
         let sumSquares = 0;
         for (let i = 0; i < segment.samples.length; i++) {
@@ -117,14 +176,9 @@ export class WhisperWorkerProcess {
           sumSquares += val * val;
         }
 
-        // Fast RMS silence guard: skip Whisper if below room noise floor
         const rms = Math.sqrt(sumSquares / float32.length);
         if (rms < 0.003) {
-          return {
-            text: '',
-            confidence: 0,
-            latencyMs: Date.now() - startTime
-          };
+          return { text: '', confidence: null, latencyMs: Date.now() - startTime };
         }
 
         const resultPromise = transcriber(float32, {
@@ -142,29 +196,123 @@ export class WhisperWorkerProcess {
         const output: any = await Promise.race([resultPromise, timeoutPromise]);
         const recognizedText = (output?.text || '').trim();
 
-        if (recognizedText.length > 0) {
-          return {
-            text: recognizedText,
-            confidence: 0.92,
-            latencyMs: Date.now() - startTime
-          };
-        }
+        // Extract real confidence if probability is available, else null
+        const realConfidence = typeof output?.confidence === 'number' ? output.confidence : null;
+
+        return {
+          text: recognizedText,
+          confidence: realConfidence,
+          latencyMs: Date.now() - startTime
+        };
       }
-    } catch (inferenceErr) {
-      console.warn('Real Whisper inference error:', inferenceErr);
+    } catch (fallbackErr) {
+      console.warn('Whisper inference error:', fallbackErr);
     }
 
     return {
       text: '',
-      confidence: 0,
+      confidence: null,
       latencyMs: Date.now() - startTime
     };
   }
 
-  /**
-   * Simulates a worker crash or unexpected termination.
-   * Used to verify that host process catches the failure safely and remains fail-closed.
-   */
+  private async transcribeWithSubprocess(
+    binPath: string,
+    modelPath: string,
+    segment: SpeechSegment,
+    timeoutMs: number,
+    startTime: number
+  ): Promise<TranscriptionJobResult> {
+    const tempWav = join(tmpdir(), `pulpit_audio_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.wav`);
+    this.writeWavFile(tempWav, segment.samples, 16000);
+
+    const args = [
+      '-m', modelPath,
+      '-f', tempWav,
+      '--language', 'en',
+      '--prompt', CANONICAL_PROMPT_BIAS,
+      '--output-json',
+      '--no-prints'
+    ];
+
+    return new Promise<TranscriptionJobResult>((resolve, reject) => {
+      let stdout = '';
+      let stderr = '';
+      const child = spawn(binPath, args);
+
+      const timer = setTimeout(() => {
+        child.kill('SIGKILL');
+        try { unlinkSync(tempWav); } catch {}
+        reject(new Error(`Native whisper subprocess timed out after ${timeoutMs}ms.`));
+      }, timeoutMs);
+
+      child.stdout.on('data', (d) => { stdout += d.toString(); });
+      child.stderr.on('data', (d) => { stderr += d.toString(); });
+
+      child.on('close', (code, signal) => {
+        clearTimeout(timer);
+        try { unlinkSync(tempWav); } catch {}
+
+        if (code !== 0 && code !== null) {
+          this.simulateCrash(code, signal || 'SIGERR');
+          reject(new Error(`whisper.cpp exited with code ${code}: ${stderr}`));
+          return;
+        }
+
+        let parsedText = '';
+        let parsedConfidence: number | null = null;
+
+        try {
+          const json = JSON.parse(stdout);
+          parsedText = (json.transcription?.[0]?.text || json.text || '').trim();
+          if (typeof json.transcription?.[0]?.p === 'number') {
+            parsedConfidence = json.transcription[0].p;
+          }
+        } catch {
+          parsedText = stdout.trim();
+        }
+
+        resolve({
+          text: parsedText,
+          confidence: parsedConfidence,
+          latencyMs: Date.now() - startTime
+        });
+      });
+
+      child.on('error', (err) => {
+        clearTimeout(timer);
+        try { unlinkSync(tempWav); } catch {}
+        reject(err);
+      });
+    });
+  }
+
+  private writeWavFile(filePath: string, samples: Int16Array, sampleRate: number): void {
+    const buffer = Buffer.alloc(44 + samples.length * 2);
+    // RIFF header
+    buffer.write('RIFF', 0);
+    buffer.writeUInt32LE(36 + samples.length * 2, 4);
+    buffer.write('WAVE', 8);
+    // fmt subchunk
+    buffer.write('fmt ', 12);
+    buffer.writeUInt32LE(16, 16);
+    buffer.writeUInt16LE(1, 20); // PCM format
+    buffer.writeUInt16LE(1, 22); // Mono
+    buffer.writeUInt32LE(sampleRate, 24);
+    buffer.writeUInt32LE(sampleRate * 2, 28); // byte rate
+    buffer.writeUInt16LE(2, 32); // block align
+    buffer.writeUInt16LE(16, 34); // bits per sample
+    // data subchunk
+    buffer.write('data', 36);
+    buffer.writeUInt32LE(samples.length * 2, 40);
+
+    for (let i = 0; i < samples.length; i++) {
+      buffer.writeInt16LE(samples[i], 44 + i * 2);
+    }
+
+    writeFileSync(filePath, buffer);
+  }
+
   public simulateCrash(code = 1, signal = 'SIGSEGV'): void {
     this.isRunning = false;
     for (const l of this.crashListeners) {

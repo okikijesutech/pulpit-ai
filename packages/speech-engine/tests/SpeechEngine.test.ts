@@ -29,13 +29,61 @@ describe('SpeechEngine Unit Tests', () => {
   });
 
   describe('ModelManager', () => {
-    it('retrieves metadata for default quantized model', () => {
+    it('retrieves metadata and real official SHA-256 checksums for ggml models', () => {
       const manager = new ModelManager();
-      const info = manager.getModelInfo('base.en-q5_1');
+      const baseInfo = manager.getModelInfo('base.en-q5_1');
+      const tinyInfo = manager.getModelInfo('tiny.en-q5_1');
+      const smallInfo = manager.getModelInfo('small.en-q5_1');
 
-      expect(info).not.toBeNull();
-      expect(info!.sizeBytes).toBeLessThan(60 * 1024 * 1024); // Under 60MB
-      expect(info!.recommendedRamMb).toBeLessThanOrEqual(250);
+      expect(baseInfo).not.toBeNull();
+      expect(baseInfo!.sizeBytes).toBe(59721011);
+      // Real official SHA-256 checksum (64 hex characters, not mock)
+      expect(baseInfo!.expectedSha256).toBe('4baf70dd0d7c4247ba2b81fafd9c01005ac77c2f9ef064e00dcf195d0e2fdd2f');
+      expect(baseInfo!.expectedSha256).toMatch(/^[a-f0-9]{64}$/);
+
+      expect(tinyInfo).not.toBeNull();
+      expect(tinyInfo!.sizeBytes).toBe(32166155);
+      expect(tinyInfo!.expectedSha256).toBe('c77c5766f1cef09b6b7d47f21b546cbddd4157886b3b5d6d4f709e91e66c7c2b');
+
+      expect(smallInfo).not.toBeNull();
+      expect(smallInfo!.sizeBytes).toBe(190098681);
+      expect(smallInfo!.expectedSha256).toBe('bfdff4894dcb76bbf647d56263ea2a96645423f1669176f4844a1bf8e478ad30');
+    });
+
+    it('validates model file integrity via SHA-256 checksum verification', async () => {
+      const manager = new ModelManager();
+      // Test with dummy file
+      const { writeFileSync, unlinkSync } = await import('node:fs');
+      const { join } = await import('node:path');
+      const { tmpdir } = await import('node:os');
+      const testFile = join(tmpdir(), `test_model_${Date.now()}.bin`);
+
+      try {
+        writeFileSync(testFile, 'test model binary content');
+        const { createHash } = await import('node:crypto');
+        const realHash = createHash('sha256').update('test model binary content').digest('hex');
+
+        // Valid checksum
+        const isValid = await manager.verifyModelFile(testFile, realHash);
+        expect(isValid).toBe(true);
+
+        // Mismatched checksum
+        const isInvalid = await manager.verifyModelFile(testFile, '0000000000000000000000000000000000000000000000000000000000000000');
+        expect(isInvalid).toBe(false);
+      } finally {
+        try { unlinkSync(testFile); } catch {}
+      }
+    });
+
+    it('requires explicit download prompt permission with disk space safety check', async () => {
+      const manager = new ModelManager(2 * 1024 * 1024 * 1024); // 2 GB safety margin
+
+      // Check against current directory
+      const prompt = await manager.requestDownloadPermission('base.en-q5_1', process.cwd());
+      expect(prompt.modelInfo).not.toBeNull();
+      expect(prompt.modelInfo?.id).toBe('base.en-q5_1');
+      expect(typeof prompt.allowed).toBe('boolean');
+      expect(typeof prompt.freeBytes).toBe('number');
     });
 
     it('enforces disk space safety checks on any OS', async () => {
@@ -108,6 +156,120 @@ describe('SpeechEngine Unit Tests', () => {
       expect(errorCaught!.message).toContain('crashed with code 139');
       // Worker should have been automatically restarted
       expect(worker.isHealthy()).toBe(true);
+    });
+
+    describe('PR 7: Phantom Phrase Filtering', () => {
+      const phantomPhrases = [
+        '[MUSIC]',
+        '[music]',
+        '(music)',
+        '[applause]',
+        '[laughter]',
+        '[BLANK_AUDIO]',
+        'Thank you.',
+        'Thank you',
+        'Thank you very much.',
+        'Thanks for watching!',
+        'Subtitles by congregation'
+      ];
+
+      for (const phrase of phantomPhrases) {
+        it(`filters out hallucinated phantom phrase: "${phrase}"`, async () => {
+          worker.setNextTranscript(phrase);
+
+          const segment: SpeechSegment = {
+            id: 'ambient_noise_seg',
+            samples: new Int16Array(16000),
+            durationSeconds: 1.0,
+            sourceId: 'mic',
+            timestamp: Date.now()
+          };
+
+          let emitted = false;
+          const unsub = engine.onTranscript(() => {
+            emitted = true;
+          });
+
+          const result = await engine.processSegment(segment);
+          unsub();
+
+          // Must be discarded: returns null and does not emit event
+          expect(result).toBeNull();
+          expect(emitted).toBe(false);
+        });
+      }
+
+      it('does NOT filter genuine preaching speech containing common polite words', async () => {
+        worker.setNextTranscript('Thank you Lord for John chapter three verse sixteen');
+
+        const segment: SpeechSegment = {
+          id: 'preach_seg',
+          samples: new Int16Array(16000),
+          durationSeconds: 1.0,
+          sourceId: 'mic',
+          timestamp: Date.now()
+        };
+
+        const result = await engine.processSegment(segment);
+        expect(result).not.toBeNull();
+        expect(result!.rawText).toBe('Thank you Lord for John chapter three verse sixteen');
+      });
+    });
+
+    describe('PR 7: Real Confidence or None', () => {
+      it('retains real confidence when provided by inference engine', async () => {
+        worker.setNextResult({
+          text: 'Romans eight twenty-eight',
+          confidence: 0.88,
+          latencyMs: 120
+        });
+
+        const segment: SpeechSegment = {
+          id: 'romans_seg',
+          samples: new Int16Array(16000),
+          durationSeconds: 1.0,
+          sourceId: 'mic',
+          timestamp: Date.now()
+        };
+
+        const result = await engine.processSegment(segment);
+        expect(result).not.toBeNull();
+        expect(result!.confidence).toBe(0.88);
+      });
+
+      it('reports confidence as null (or undefined) when no real confidence is available', async () => {
+        worker.setNextResult({
+          text: 'Isaiah fifty-three verse five',
+          confidence: null,
+          latencyMs: 140
+        });
+
+        const segment: SpeechSegment = {
+          id: 'isaiah_seg',
+          samples: new Int16Array(16000),
+          durationSeconds: 1.0,
+          sourceId: 'mic',
+          timestamp: Date.now()
+        };
+
+        const result = await engine.processSegment(segment);
+        expect(result).not.toBeNull();
+        // Must be null, NEVER fabricated 0.94 / 0.92
+        expect(result!.confidence).toBeNull();
+      });
+    });
+
+    describe('PR 7: Canonical Protestant Initial Prompt', () => {
+      it('seeds the initial prompt with Protestant canon books to bias attention heads', () => {
+        const prompt = worker.getInitialPrompt();
+        expect(prompt).toContain('Genesis');
+        expect(prompt).toContain('Matthew');
+        expect(prompt).toContain('Romans');
+        expect(prompt).toContain('Habakkuk');
+        expect(prompt).toContain('Revelation');
+        expect(prompt.toLowerCase()).toContain('chapter');
+        expect(prompt.toLowerCase()).toContain('verse');
+      });
     });
   });
 });

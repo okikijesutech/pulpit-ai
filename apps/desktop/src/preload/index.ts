@@ -45,7 +45,7 @@ export interface RecognizedTranscriptEvent {
   rawText: string;
   normalizedText: string;
   tokens: string[];
-  confidence: number;
+  confidence: number | null;
   latencyMs: number;
 }
 
