@@ -1,0 +1,77 @@
+[
+  {
+    "id": "preaching_accented_john316",
+    "filename": "preaching_accented_john316.wav",
+    "category": "accented_preaching",
+    "durationSeconds": 3,
+    "groundTruthTranscript": "Turn in your Bibles to John chapter 3 verse 16",
+    "expectedReference": "John 3:16",
+    "expectedMode": "speech",
+    "expectedBook": "John",
+    "expectedChapter": 3,
+    "expectedVerse": 16
+  },
+  {
+    "id": "preaching_accented_romans828",
+    "filename": "preaching_accented_romans828.wav",
+    "category": "accented_preaching",
+    "durationSeconds": 2.5,
+    "groundTruthTranscript": "We know that all things work together Romans chapter 8 verse 28",
+    "expectedReference": "Romans 8:28",
+    "expectedMode": "speech",
+    "expectedBook": "Romans",
+    "expectedChapter": 8,
+    "expectedVerse": 28
+  },
+  {
+    "id": "preaching_quiet_psalm23",
+    "filename": "preaching_quiet_psalm23.wav",
+    "category": "quiet_preaching",
+    "durationSeconds": 2.5,
+    "groundTruthTranscript": "The Lord is my shepherd Psalm 23 verse 1",
+    "expectedReference": "Psalms 23:1",
+    "expectedMode": "speech",
+    "expectedBook": "Psalms",
+    "expectedChapter": 23,
+    "expectedVerse": 1
+  },
+  {
+    "id": "preaching_noisy_matthew53",
+    "filename": "preaching_noisy_matthew53.wav",
+    "category": "noisy_preaching",
+    "durationSeconds": 3,
+    "groundTruthTranscript": "Blessed are the poor in spirit Matthew chapter 5 verse 3",
+    "expectedReference": "Matthew 5:3",
+    "expectedMode": "speech",
+    "expectedBook": "Matthew",
+    "expectedChapter": 5,
+    "expectedVerse": 3
+  },
+  {
+    "id": "choir_worship_amazing_grace",
+    "filename": "choir_worship_amazing_grace.wav",
+    "category": "choir",
+    "durationSeconds": 3,
+    "groundTruthTranscript": "",
+    "expectedReference": null,
+    "expectedMode": "singing"
+  },
+  {
+    "id": "instrument_organ_pad",
+    "filename": "instrument_organ_pad.wav",
+    "category": "instrument",
+    "durationSeconds": 2.5,
+    "groundTruthTranscript": "",
+    "expectedReference": null,
+    "expectedMode": "singing"
+  },
+  {
+    "id": "ambient_silence",
+    "filename": "ambient_silence.wav",
+    "category": "silence",
+    "durationSeconds": 2,
+    "groundTruthTranscript": "",
+    "expectedReference": null,
+    "expectedMode": "silence"
+  }
+]

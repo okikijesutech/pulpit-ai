@@ -114,3 +114,24 @@
   * **Trailing Book Boundary Overlap & Extension:** When Whisper recognizes a biblical book name near the end of an utterance, `SpeechSegmenter` extends silence hangover by 15 frames and flags a 1.5-second trailing overlap, prepending the book name audio into the subsequent utterance so the citation is preserved intact.
   * **Singing Separation:** Modeled via `SingingActivityDetector`. When singing is active (`mode === 'singing'`), frames are diverted away from `SpeechSegmenter`, and in-progress speech is cleanly flushed, keeping worship singing separate from speech recognition.
   * **Pipeline Reconciliation:** Reconciled `AUDIO_PIPELINE.md` with real parameters (0.5s min, 6.0s max, 450ms hangover, 250ms pre-roll, 1500ms overlap).
+
+## ADR-011: Audio Fixtures, End-to-End Pipeline Integration, and Benchmarking (PR 9)
+* **Date:** 2026-11-05
+* **Status:** Accepted
+* **Context:**
+  * Testing previously relied on individual module unit tests or mocked inputs without end-to-end WAV audio clips representing real church acoustics.
+  * Objective quality benchmarks (Word Error Rate, scripture reference precision and recall, false-positive suggestion rate, and processing latency) were not automated.
+* **Decision:**
+  * **Calibrated WAV Fixtures (`tests/fixtures/`):** Maintain standardized 16-bit 16kHz mono audio clips with `manifest.json` metadata covering:
+    - Accented preaching with spoken scripture citations (`preaching_accented_john316.wav`, `preaching_accented_romans828.wav`)
+    - Quiet sanctuary preaching (`preaching_quiet_psalm23.wav`)
+    - Noisy preaching speech with room HVAC hum (`preaching_noisy_matthew53.wav`)
+    - Sustained choir singing (`choir_worship_amazing_grace.wav`)
+    - Sustained instrumental pad/organ chords (`instrument_organ_pad.wav`)
+    - Ambient room silence (`ambient_silence.wav`)
+  * **End-to-End Integration Suite (`tests/WavToCandidate.test.ts`):** Verifies that real audio streams flowing through VAD, speech segmentation, transcription, and candidate generation resolve to canonical scripture references with 100% precision and recall while discarding singing and musical chords.
+  * **Automated Evaluation Script (`scripts/evaluate_pipeline.ts` / `pnpm run evaluate`):** Generates objective accuracy and latency reports:
+    - Word Error Rate (WER) using Levenshtein distance
+    - Reference Precision and Recall (target >= 95%)
+    - Wrong-Suggestion Rate (target <= 5%)
+    - Mean and peak processing latency
