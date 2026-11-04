@@ -57,3 +57,15 @@
   * Implemented fail-closed loading in `ScriptureDatabase`: during startup, package checksums are computed and compared against `metadata.checksum`. Any checksum mismatch or missing checksum immediately throws and refuses to register the translation or insert verses into storage.
   * Confirmed public domain licenses: WEB dedicated to Public Domain by Michael Paul Johnson; KJV 1769 Oxford Standard Text in Public Domain worldwide.
   * Reserved the 55-verse `SeedScriptureData.ts` exclusively for isolated, fast unit tests. All desktop startup and production workflows load the verified full Bible data files.
+
+## ADR-007: Scripture Parser Guards, Cue Requirements, and Rolling Window Rules (PR 5)
+* **Date:** 2026-11-04
+* **Status:** Confirmed & Approved
+* **Context:** In live preaching, colloquial speech patterns frequently collided with biblical book names and numbers (e.g., "mark 10 times" or "job 2 weeks ago" spuriously suggested Mark 10:1 or Job 2:1). Whole-chapter citations silently defaulted to verse 1 instead of presenting the chapter accurately. In multiline utterances, only the first reference was parsed. Additionally, subsequent conversational phrases (e.g. "Amen church", "Praise the Lord") caused the rolling window to re-parse and re-emit old references after the 10-second cooldown expired.
+* **Decision:**
+  * Require a structural or spoken cue for bare numbers (a colon `:`, `"chapter"`, `"verse"`, or explicit phrases such as `"turn to"`, `"open to"`, `"read from"`).
+  * Cue-less matches receive lower confidence and a `needsReview: true` flag. Non-scriptural unit words (e.g. "times", "weeks", "days", "years", "percent") immediately reject matches.
+  * Whole-chapter results are explicitly labeled as `"whole chapter, no verse given"` and retrieve all chapter verses, never silently defaulting non-Psalm books to verse 1.
+  * `ScriptureReferenceParser.parseAll()` scans and returns all explicit references found within a segment.
+  * Encapsulate rolling context window processing in `ScriptureCandidateGenerator.processUtterance()`. Re-parse the rolling window ONLY when the newest segment adds a book or number, preventing old references from re-triggering after cooldown expiry on conversational words.
+  * When a rolling utterance refines a whole-chapter suggestion (e.g. "John chapter 3" followed by "verse 16"), the specific verse candidate supersedes the whole-chapter suggestion, ensuring a single final candidate.

@@ -82,7 +82,10 @@ export const App: React.FC = () => {
         setTranscripts((prev) => [event, ...prev].slice(0, 50));
       });
       const unsubScripture = window.pulpitAPI.onScriptureCandidate((candidate) => {
-        setCandidates((prev) => [candidate, ...prev.filter((c) => c.title !== candidate.title)]);
+        setCandidates((prev) => [
+          candidate,
+          ...prev.filter((c) => (!candidate.supersedesId || c.id !== candidate.supersedesId) && c.title !== candidate.title)
+        ]);
       });
       const unsubSong = window.pulpitAPI.onSongCandidate((candidate) => {
         setCandidates((prev) => [candidate, ...prev.filter((c) => c.title !== candidate.title)]);

@@ -104,8 +104,12 @@ ON bible_verses(translation_id, book_name, chapter, verse);
 
 ---
 
-## 5. Candidate Generation & Cooldown Engine
+## 5. Candidate Generation, Parser Guards & Cooldown Engine
 
-1. **Confidence Threshold**: References must meet confidence $\ge 0.70$ (default $0.85$–$0.95$).
-2. **Duplicate Suppression**: A 10-second cooldown window suppresses identical references from spamming the operator queue during passionate repetition in preaching.
-3. **Dispatch Payload**: Formats an allowlisted `start_scripture` command parameterized with reference, formatted text, and mandatory legal attribution.
+1. **Confidence Threshold & Cue Requirements**: References must meet confidence $\ge 0.70$ (default $0.85$–$0.95$). Bare numbers require a structural or spoken cue (`:`, `chapter`, `verse`, or phrases like `turn to`, `open to`, `read from`). Cue-less bare matches receive lower confidence and a `needsReview: true` flag. Non-scriptural unit words (e.g. `times`, `weeks`, `days`, `years`, `percent`) immediately disqualify false matches.
+2. **Whole-Chapter Representation**: Whole-chapter citations without verses are labeled as `"whole chapter, no verse given"` and retrieve the full chapter range, never silently defaulting non-Psalm books to verse 1.
+3. **Multi-Reference Segment Scanning**: `ScriptureReferenceParser.parseAll()` extracts all explicit references spoken within a single speech segment.
+4. **Guarded Rolling Context Window**: Utterances are maintained in a 15-second rolling window. The rolling window is re-parsed **only** when the newest speech segment adds a canon book or number, preventing conversational phrases ("Amen church", "Praise the Lord") from re-triggering old references after the 10-second cooldown expires.
+5. **Candidate Refinement**: When a rolling segment refines an earlier whole-chapter suggestion (e.g. "John chapter 3" followed by "verse 16"), the specific verse candidate supersedes the whole-chapter suggestion, producing a single final candidate in the operator queue.
+6. **Duplicate Suppression**: A 10-second cooldown window suppresses identical references from spamming the operator queue during passionate repetition in preaching.
+7. **Dispatch Payload**: Formats an allowlisted `start_scripture` command parameterized with reference, formatted text, and mandatory legal attribution.

@@ -12,6 +12,9 @@ export interface ScriptureReference {
   verseEnd?: number;
   translation: string;
   rawSpokenText: string;
+  label?: string; // e.g. "whole chapter, no verse given"
+  isWholeChapter?: boolean;
+  needsReview?: boolean;
 }
 
 export interface ScriptureVerse {
@@ -92,4 +95,7 @@ export interface SuggestionCandidate {
   detectedAt: number;
   actionPayload: FreeShowCommand;
   status: CandidateStatus;
+  needsReview?: boolean;
+  isWholeChapter?: boolean;
+  supersedesId?: string;
 }

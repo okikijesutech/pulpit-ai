@@ -246,9 +246,6 @@ function createWindow(): void {
     }
   });
 
-  const recentTranscriptHistory: string[] = [];
-  let recentTranscriptTimer: NodeJS.Timeout | null = null;
-
   // Forward recognized transcripts to renderer and process for Scripture and Song
   speechEngine.onTranscript((event) => {
     console.log(`[Whisper] Recognized (${event.latencyMs}ms): "${event.rawText}"`);
@@ -256,23 +253,8 @@ function createWindow(): void {
       mainWindow.webContents.send('speech:transcript', event);
     }
 
-    // Ingest individual raw utterance (always rawText to prevent spoken-number corruption)
-    const individualCand = scriptureGenerator.processTranscript(event.rawText);
-
-    // Maintain a rolling context window across utterances using rawText (e.g. "John chapter 3" + "verse 16")
-    recentTranscriptHistory.push(event.rawText);
-    if (recentTranscriptHistory.length > 3) {
-      recentTranscriptHistory.shift();
-    }
-    if (recentTranscriptTimer) clearTimeout(recentTranscriptTimer);
-    recentTranscriptTimer = setTimeout(() => {
-      recentTranscriptHistory.length = 0;
-    }, 15000);
-
-    if (!individualCand && recentTranscriptHistory.length > 1) {
-      const combined = recentTranscriptHistory.join(' ');
-      scriptureGenerator.processTranscript(combined);
-    }
+    // Ingest raw speech through guarded Scripture candidate generator with guarded rolling context window
+    scriptureGenerator.processUtterance(event.rawText);
 
     // Ingest raw speech into Song Candidate Generator
     const isSinging = singingActivityDetector.getCurrentMode() === 'singing';

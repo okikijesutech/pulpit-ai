@@ -100,6 +100,16 @@ export const SuggestionsQueue: React.FC<SuggestionsQueueProps> = ({
                     >
                       {Math.round(cand.confidence * 100)}% Match
                     </span>
+                    {cand.needsReview && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60">
+                        Needs Review
+                      </span>
+                    )}
+                    {cand.isWholeChapter && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60">
+                        Whole Chapter
+                      </span>
+                    )}
                   </div>
 
                   <button
