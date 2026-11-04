@@ -56,6 +56,7 @@ export const App: React.FC = () => {
   const [transcripts, setTranscripts] = useState<RecognizedTranscriptEvent[]>([]);
   const [activeTranslation, setActiveTranslation] = useState<string>('WEB');
   const [isMicMuted, setIsMicMuted] = useState<boolean>(false);
+  const [micError, setMicError] = useState<string | null>(null);
 
   useEffect(() => {
     if (window.pulpitAPI) {
@@ -65,10 +66,26 @@ export const App: React.FC = () => {
         if (snap) setFreeShowSnapshot(snap);
       }).catch(console.error);
       window.pulpitAPI.getAuditEvents().then(setAuditEvents).catch(console.error);
-      window.pulpitAPI.getAudioDevices().then((devs) => {
-        setAudioDevices(devs);
-        if (devs.length > 0) setActiveDeviceId(devs[0].id);
-      }).catch(console.error);
+
+      // PR 6: Enumerate real physical audio devices
+      physicalMicService
+        .enumerateDevices()
+        .then((devs) => {
+          if (devs.length > 0) {
+            setAudioDevices(devs);
+            setActiveDeviceId(devs[0].id);
+            window.pulpitAPI.updateAudioDevices(devs).catch(console.error);
+          } else {
+            window.pulpitAPI
+              .getAudioDevices()
+              .then((stored) => {
+                setAudioDevices(stored);
+                if (stored.length > 0) setActiveDeviceId(stored[0].id);
+              })
+              .catch(console.error);
+          }
+        })
+        .catch(console.error);
 
       // Reactive event subscriptions
       const unsubAuth = window.pulpitAPI.onAuthorityStateChange(setAuthorityState);
@@ -100,6 +117,11 @@ export const App: React.FC = () => {
         if (status.isMuted !== undefined) {
           setIsMicMuted(status.isMuted);
         }
+        if (status.error) {
+          setMicError(status.error);
+        } else {
+          setMicError(null);
+        }
       });
 
       return () => {
@@ -118,8 +140,8 @@ export const App: React.FC = () => {
   }, []);
 
   const handleToggleMic = () => {
-    const nextMuted = physicalMicService.toggleMuted();
-    setIsMicMuted(nextMuted);
+    const next = physicalMicService.toggleMuted();
+    setIsMicMuted(next);
   };
 
   const handleToggleLock = async () => {
@@ -164,10 +186,8 @@ export const App: React.FC = () => {
   };
 
   const handleSelectAudioDevice = async (deviceId: string) => {
-    if (window.pulpitAPI) {
-      const selected = await window.pulpitAPI.selectAudioDevice(deviceId);
-      setActiveDeviceId(selected.id);
-    }
+    setActiveDeviceId(deviceId);
+    await physicalMicService.switchDevice(deviceId);
   };
 
   const handleSelectTranslation = async (id: string) => {
@@ -233,18 +253,6 @@ export const App: React.FC = () => {
     setCandidates((prev) => [mockCand, ...prev]);
   };
 
-  const handleSimulatePhrase = async (phrase: string) => {
-    if (window.pulpitAPI) {
-      await window.pulpitAPI.simulateSpeechInput(phrase);
-    }
-  };
-
-  const handleSimulateSinging = async (lyrics: string) => {
-    if (window.pulpitAPI) {
-      await window.pulpitAPI.simulateSingingInput(lyrics);
-    }
-  };
-
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
       <Header
@@ -270,6 +278,24 @@ export const App: React.FC = () => {
         isLocked={authorityState.manualLockActive}
         onToggleLock={handleToggleLock}
       />
+
+      {/* Hardware Disconnection / No Audio Banner */}
+      {micError && (
+        <div className="bg-rose-950/90 border-b border-rose-600/70 px-4 py-1.5 flex items-center justify-between text-xs text-rose-200">
+          <div className="flex items-center space-x-2">
+            <span className="font-bold px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] uppercase shadow-sm">
+              NO AUDIO
+            </span>
+            <span className="font-medium text-[11px]">{micError}</span>
+          </div>
+          <button
+            onClick={() => physicalMicService.start()}
+            className="text-[11px] font-semibold underline hover:text-white"
+          >
+            Reconnect Mic
+          </button>
+        </div>
+      )}
 
       {/* Persistent SIMULATED Banner in Development / Mock Mode */}
       {freeShowSnapshot.status === 'simulated' && (

@@ -70,4 +70,45 @@ describe('SpeechSegmenter', () => {
     // Crucial check: The emitted segment is strictly tagged with device_mixer_B and did NOT merge device A
     expect(emitted[0].sourceId).toBe('device_mixer_B');
   });
+
+  it('flushes in-progress speech immediately when flush() is invoked', () => {
+    const segmenter = new SpeechSegmenter({ sampleRate: 16000, minSegmentSeconds: 0.5 });
+    const emitted: SpeechSegment[] = [];
+    segmenter.onSegment((seg) => emitted.push(seg));
+
+    // Feed 0.8s of speech (27 frames @ 30ms = ~810ms > minSamples)
+    for (let i = 0; i < 27; i++) {
+      segmenter.pushFrame(synth.generateSyntheticSpeechFrame(0.03));
+    }
+
+    expect(emitted.length).toBe(0); // Still active utterance
+
+    // Explicit flush
+    const flushed = segmenter.flush();
+    expect(flushed).not.toBeNull();
+    expect(emitted.length).toBe(1);
+    expect(emitted[0].durationSeconds).toBeGreaterThanOrEqual(0.7);
+
+    // After flush, buffer is empty
+    expect(segmenter.flush()).toBeNull();
+  });
+
+  it('switching sources flushes in-progress segmenter buffer cleanly', () => {
+    const segmenter = new SpeechSegmenter({ sampleRate: 16000, minSegmentSeconds: 0.5 });
+    const emitted: SpeechSegment[] = [];
+    segmenter.onSegment((seg) => emitted.push(seg));
+
+    // Feed 0.8s of speech on device A
+    segmenter.setSourceId('device_A');
+    for (let i = 0; i < 27; i++) {
+      segmenter.pushFrame(synth.generateSyntheticSpeechFrame(0.03));
+    }
+
+    // Switch to device B - should flush device A speech rather than leaving it dangling or corrupting
+    const flushed = segmenter.setSourceId('device_B');
+    expect(flushed).not.toBeNull();
+    expect(flushed?.sourceId).toBe('device_A');
+    expect(emitted.length).toBe(1);
+    expect(emitted[0].sourceId).toBe('device_A');
+  });
 });

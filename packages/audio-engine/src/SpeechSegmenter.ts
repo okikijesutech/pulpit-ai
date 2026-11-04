@@ -39,12 +39,27 @@ export class SpeechSegmenter {
     this.hangoverFrames = options.silenceHangoverFrames ?? 12;
   }
 
-  public setSourceId(sourceId: string): void {
+  public setSourceId(sourceId: string): SpeechSegment | null {
     if (this.currentSourceId !== sourceId) {
-      // Discard in-progress segment to prevent cross-device contamination
-      this.reset();
+      // Switching sources flushes in-progress segmenter buffer cleanly
+      const flushed = this.flush();
       this.currentSourceId = sourceId;
+      return flushed;
     }
+    return null;
+  }
+
+  /**
+   * Flushes any in-progress accumulated speech frames immediately.
+   * If accumulated speech exceeds minimum samples, emits and returns the segment;
+   * otherwise, resets the accumulated buffer.
+   */
+  public flush(): SpeechSegment | null {
+    if (this.accumulatedSampleCount >= this.minSamples) {
+      return this.emitSegment();
+    }
+    this.reset();
+    return null;
   }
 
   /**
@@ -82,8 +97,8 @@ export class SpeechSegmenter {
     }
   }
 
-  private emitSegment(): void {
-    if (this.accumulatedSampleCount === 0) return;
+  private emitSegment(): SpeechSegment | null {
+    if (this.accumulatedSampleCount === 0) return null;
 
     // Concat all accumulated frames into one contiguous Int16Array
     const combined = new Int16Array(this.accumulatedSampleCount);
@@ -111,6 +126,8 @@ export class SpeechSegmenter {
         console.error('Error in SpeechSegmenter listener:', err);
       }
     }
+
+    return segment;
   }
 
   public onSegment(listener: SegmentListener): () => void {

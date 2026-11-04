@@ -73,7 +73,6 @@ const songCandidateGenerator = new SongCandidateGenerator(songDatabase, {
 
 let freeShowAdapter: FreeShowAdapter | null = null;
 let virtualMockServer: MockFreeShowServer | null = null;
-let levelMeterTimer: NodeJS.Timeout | null = null;
 let isRealMicStreaming = false;
 
 function syncHymnsToFreeShow(): void {
@@ -233,7 +232,7 @@ function createWindow(): void {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* http://localhost:*;"
+          "default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* http://localhost:*;"
         ]
       }
     });
@@ -301,9 +300,6 @@ function createWindow(): void {
     });
   });
 
-  // Start periodic audio level meter broadcast (100ms)
-  startLevelMeterBroadcast();
-
   // Load the UI
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
   if (isDev && process.env.VITE_DEV_SERVER_URL) {
@@ -314,25 +310,7 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
-    if (levelMeterTimer) {
-      clearInterval(levelMeterTimer);
-      levelMeterTimer = null;
-    }
   });
-}
-
-function startLevelMeterBroadcast(): void {
-  levelMeterTimer = setInterval(() => {
-    if (!mainWindow || mainWindow.isDestroyed() || isRealMicStreaming) return;
-
-    // Simulate idle background room noise or active audio level only when physical mic is not streaming
-    const frame = virtualAudio.generateSyntheticSpeechFrame(0.01);
-    const metrics = audioLevelMeter.analyze(frame);
-    const activityMetrics = singingActivityDetector.processFrame(frame);
-
-    mainWindow.webContents.send('audio:level-changed', metrics);
-    mainWindow.webContents.send('audio:activity-mode', activityMetrics);
-  }, 100);
 }
 
 function detectFreeShowPassword(): string | undefined {
@@ -480,24 +458,37 @@ ipcMain.handle('audio:get-devices', () => {
   return audioDeviceManager.getDevices();
 });
 
+ipcMain.handle('audio:update-devices', (_event, devices: any[]) => {
+  audioDeviceManager.updateAvailableDevices(devices);
+  return audioDeviceManager.getDevices();
+});
+
 ipcMain.handle('audio:select-device', (_event, deviceId: string) => {
   const device = audioDeviceManager.selectActiveDevice(deviceId);
   speechSegmenter.setSourceId(deviceId);
   return device;
 });
 
-// Live Physical Microphone Streaming Handler
-ipcMain.on('audio:stream-chunk', (_event, buffer: ArrayBuffer) => {
+// Live Physical Microphone Streaming Handler (PR 6: Clean Audio & Mute/Silent/Active States)
+ipcMain.on('audio:stream-chunk', (_event, buffer: ArrayBuffer, isMuted = false) => {
   isRealMicStreaming = true;
   if (!mainWindow || mainWindow.isDestroyed()) return;
 
   const int16 = new Int16Array(buffer);
-  const metrics = audioLevelMeter.analyze(int16);
+  const metrics = audioLevelMeter.analyze(int16, isMuted);
   const activityMetrics = singingActivityDetector.processFrame(int16);
   speechSegmenter.pushFrame(int16);
 
   mainWindow.webContents.send('audio:level-changed', metrics);
   mainWindow.webContents.send('audio:activity-mode', activityMetrics);
+});
+
+// Explicit audio state report (e.g. disconnected hardware)
+ipcMain.on('audio:report-state', (_event, state: string) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (state === 'disconnected') {
+    mainWindow.webContents.send('audio:level-changed', AudioLevelMeter.disconnectedMetrics());
+  }
 });
 
 // Live Physical Microphone Direct Speech Transcript Handler
@@ -757,9 +748,6 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (levelMeterTimer) {
-    clearInterval(levelMeterTimer);
-  }
   if (freeShowAdapter) {
     freeShowAdapter.disconnect();
   }

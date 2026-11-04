@@ -69,3 +69,16 @@
   * `ScriptureReferenceParser.parseAll()` scans and returns all explicit references found within a segment.
   * Encapsulate rolling context window processing in `ScriptureCandidateGenerator.processUtterance()`. Re-parse the rolling window ONLY when the newest segment adds a book or number, preventing old references from re-triggering after cooldown expiry on conversational words.
   * When a rolling utterance refines a whole-chapter suggestion (e.g. "John chapter 3" followed by "verse 16"), the specific verse candidate supersedes the whole-chapter suggestion, ensuring a single final candidate.
+
+## ADR-008: Real Audio Capture, AudioWorklet Threading, and Hardware Disconnect Guards (PR 6)
+* **Date:** 2026-11-04
+* **Status:** Accepted
+* **Context:**
+  * Audio capture previously relied on a hard-coded device list in `AudioDeviceManager`, deprecated `ScriptProcessorNode` running on the main UI thread (causing buffer dropouts and missing words during React renders), synthetic level meter timers that broadcast fake background noise in `main/index.ts`, and browser DSP (`echoCancellation`, `noiseSuppression`, `autoGainControl`) that aggressively muffled preaching vocals.
+* **Decision:**
+  * **Dynamic Hardware Enumeration:** Device discovery queries `navigator.mediaDevices.enumerateDevices()`, filtering strictly for `audioinput`.
+  * **Acoustic DSP Bypass:** Set `echoCancellation: false`, `noiseSuppression: false`, and `autoGainControl: false` in `getUserMedia` to acquire raw, natural acoustic dynamics for church speech and worship singing.
+  * **AudioWorklet Architecture:** Migrated capture from deprecated `ScriptProcessorNode` to a dedicated `AudioWorkletNode` running `PcmCaptureProcessor` in the audio rendering thread with zero-copy buffer transfer.
+  * **Hardware Disconnect Detection (< 1s):** Handled `track.onended` and `navigator.mediaDevices.ondevicechange` to transition to an explicit `NO AUDIO` / `'disconnected'` state within 1 second.
+  * **Switch Flush:** Switching input sources immediately flushes pending frames from `SpeechSegmenter` via `flush()`, avoiding cross-source audio leakage.
+  * **Synthetic Meter Removal:** Removed fake background noise timer from `main/index.ts`. Real level meter explicitly distinguishes `muted` (`MUT`), `silent` (`SIL`), `active` (dBFS), and `disconnected` (`OFF`).

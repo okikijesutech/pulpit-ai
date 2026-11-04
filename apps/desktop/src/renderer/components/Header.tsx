@@ -157,12 +157,14 @@ export const Header: React.FC<HeaderProps> = ({
             ))}
           </select>
 
-          {/* VU Level Meter Bar */}
-          <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-800">
+          {/* VU Level Meter Bar (PR 6: Distinguish Muted, Silent, Active, Disconnected) */}
+          <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-800" title={`Audio Input State: ${audioLevel.state ?? (isMicMuted ? 'muted' : 'active')}`}>
             <div className="w-12 h-2 bg-slate-800 rounded-full overflow-hidden flex">
               <div
                 className={`h-full transition-all duration-75 ${
-                  isMicMuted
+                  audioLevel.state === 'disconnected'
+                    ? 'bg-rose-900/40'
+                    : isMicMuted || audioLevel.state === 'muted'
                     ? 'bg-slate-700'
                     : audioLevel.isClipping
                     ? 'bg-rose-500'
@@ -171,12 +173,24 @@ export const Header: React.FC<HeaderProps> = ({
                     : 'bg-emerald-500'
                 }`}
                 style={{
-                  width: `${isMicMuted ? 0 : Math.min(100, Math.round(audioLevel.rmsLevel * 100 * 2))}%`
+                  width: `${
+                    audioLevel.state === 'disconnected' || isMicMuted || audioLevel.state === 'muted'
+                      ? 0
+                      : Math.min(100, Math.round(audioLevel.rmsLevel * 100 * 2))
+                  }%`
                 }}
               />
             </div>
-            <span className="text-[10px] text-slate-500 font-mono w-7 text-right">
-              {isMicMuted || audioLevel.isSilent ? 'MUT' : `${audioLevel.decibels}`}
+            <span className="text-[10px] font-mono w-7 text-right">
+              {audioLevel.state === 'disconnected' ? (
+                <span className="text-rose-400 font-bold">OFF</span>
+              ) : isMicMuted || audioLevel.state === 'muted' ? (
+                <span className="text-amber-400">MUT</span>
+              ) : audioLevel.state === 'silent' || audioLevel.isSilent ? (
+                <span className="text-slate-500">SIL</span>
+              ) : (
+                <span className="text-emerald-400">{audioLevel.decibels}</span>
+              )}
             </span>
           </div>
 

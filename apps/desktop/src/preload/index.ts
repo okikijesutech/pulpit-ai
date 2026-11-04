@@ -17,11 +17,14 @@ import {
   RestoreResult
 } from '@pulpit-ai/song-engine';
 
+export type AudioStreamState = 'active' | 'silent' | 'muted' | 'disconnected';
+
 export interface AudioLevelMetrics {
   rmsLevel: number;
   decibels: number;
   isClipping: boolean;
   isSilent: boolean;
+  state?: AudioStreamState;
 }
 
 export interface AudioActivityMetrics {
@@ -62,7 +65,9 @@ export interface PulpitAPI {
   ) => Promise<{ success: boolean; reason?: string }>;
   getAuditEvents: () => Promise<AuditEvent[]>;
   getAudioDevices: () => Promise<AudioInputDevice[]>;
+  updateAudioDevices: (devices: AudioInputDevice[]) => Promise<AudioInputDevice[]>;
   selectAudioDevice: (deviceId: string) => Promise<AudioInputDevice>;
+  reportAudioState: (state: AudioStreamState) => void;
   simulateSpeechInput: (phrase: string) => Promise<void>;
   simulateSingingInput: (lyrics: string) => Promise<void>;
   getTranslations: () => Promise<any[]>;
@@ -150,7 +155,10 @@ const api: PulpitAPI = {
     ipcRenderer.invoke('authority:approve-candidate', candidateId),
   getAuditEvents: () => ipcRenderer.invoke('audit:get-events'),
   getAudioDevices: () => ipcRenderer.invoke('audio:get-devices'),
+  updateAudioDevices: (devices: AudioInputDevice[]) =>
+    ipcRenderer.invoke('audio:update-devices', devices),
   selectAudioDevice: (deviceId: string) => ipcRenderer.invoke('audio:select-device', deviceId),
+  reportAudioState: (state: AudioStreamState) => ipcRenderer.send('audio:report-state', state),
   simulateSpeechInput: (phrase: string) => ipcRenderer.invoke('audio:simulate-speech', phrase),
   simulateSingingInput: (lyrics: string) => ipcRenderer.invoke('audio:simulate-singing', lyrics),
   getTranslations: () => ipcRenderer.invoke('scripture:get-translations'),
@@ -169,7 +177,8 @@ const api: PulpitAPI = {
     ipcRenderer.invoke('songs:reject-staged', { stagedId, reason }),
   projectSongSection: (songTitle, sectionLabel, sectionIndex) =>
     ipcRenderer.invoke('songs:project-section', { songTitle, sectionLabel, sectionIndex }),
-  streamAudioChunk: (chunk: ArrayBuffer) => ipcRenderer.send('audio:stream-chunk', chunk),
+  streamAudioChunk: (chunk: ArrayBuffer, isMuted?: boolean) =>
+    ipcRenderer.send('audio:stream-chunk', chunk, isMuted),
   sendDirectTranscript: (text: string, isSinging?: boolean) =>
     ipcRenderer.send('speech:direct-transcript', { text, isSinging }),
   createBackup: () => ipcRenderer.invoke('backup:create'),

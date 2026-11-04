@@ -14,7 +14,22 @@ flowchart LR
     G --> H[Recognized Speech Event]
 ```
 
-## 2. Audio Acquisition & Ring Buffer
+## 2. Audio Acquisition, AudioWorklet & Device Management
+* **Real Hardware Enumeration:** Device lists are dynamically queried from the operating system via `navigator.mediaDevices.enumerateDevices()` filtering strictly for `audioinput` devices.
+* **Pure Acoustic Preaching Speech (DSP Bypass):** In church acoustic environments, browser voice DSP (noise suppression, echo cancellation, auto gain control) distorts preaching vocals, clips quiet phrases, and corrupts Whisper accuracy. All DSP is disabled:
+  ```ts
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false
+  ```
+* **Off-Thread AudioWorklet:** Replaced deprecated `ScriptProcessorNode` with a dedicated `AudioWorkletNode` running `PcmCaptureProcessor` in the audio rendering thread. This eliminates frame dropouts and audio underruns caused by React UI rendering and Electron IPC.
+* **Hardware Disconnect Detection (< 1s):** Both `track.onended` and `navigator.mediaDevices.addEventListener('devicechange', ...)` actively monitor the physical audio stream. If an audio cable or USB interface is unplugged, the app immediately transitions to an error / `NO AUDIO` state within 1 second.
+* **Device Switch Flush:** Switching active input sources automatically flushes in-progress frames from the segmenter (`SpeechSegmenter.flush()`), emits completed utterances tagged to the old device, and resets buffer memory so no fragments leak across sources.
+* **Distinct Level Meter States:** Replaced synthetic background noise timers with real RMS dynamics monitoring distinguishing four distinct states:
+  * `muted` (`MUT`): Software/hardware mic toggle is off.
+  * `silent` (`SIL`): Mic is open but sound level is below ambient noise floor (~-46 dBFS).
+  * `active` (e.g. `-24 dBFS`): Active preaching or worship acoustic speech above noise floor.
+  * `disconnected` (`OFF`): Hardware unplugged, missing, or stream terminated.
 * **Standard Format:** 16-bit signed PCM mono at 16,000 Hz.
 * **Bounded Volatile Buffer:** 10 seconds capacity (~320 KB RAM). If reading is delayed, the oldest unread frames are dropped to prevent memory growth.
 * **Zero Disk Storage:** No raw audio is ever persisted to SSD or sent to external cloud networks.

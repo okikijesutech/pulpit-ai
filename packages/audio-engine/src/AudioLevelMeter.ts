@@ -3,12 +3,9 @@
  * Computes RMS signal level, peak amplitude, silence detection, and digital clipping.
  */
 
-export interface AudioLevelMetrics {
-  rmsLevel: number; // 0.0 (silence) to 1.0 (full scale)
-  decibels: number; // -Infinity to 0 dBFS
-  isClipping: boolean;
-  isSilent: boolean;
-}
+import { AudioLevelMetrics, AudioStreamState } from '@pulpit-ai/shared-types';
+
+export type { AudioLevelMetrics, AudioStreamState };
 
 export class AudioLevelMeter {
   private readonly silenceThresholdRms: number;
@@ -24,15 +21,40 @@ export class AudioLevelMeter {
   }
 
   /**
-   * Analyzes a frame of 16-bit signed PCM samples.
+   * Generates standard metrics representing a disconnected / missing audio hardware state.
    */
-  public analyze(samples: Int16Array): AudioLevelMetrics {
+  public static disconnectedMetrics(): AudioLevelMetrics {
+    return {
+      rmsLevel: 0,
+      decibels: -100,
+      isClipping: false,
+      isSilent: true,
+      state: 'disconnected'
+    };
+  }
+
+  /**
+   * Analyzes a frame of 16-bit signed PCM samples.
+   * Distinguishes between 'muted', 'silent', 'active', and 'disconnected' states.
+   */
+  public analyze(samples: Int16Array, isMuted = false): AudioLevelMetrics {
+    if (isMuted) {
+      return {
+        rmsLevel: 0,
+        decibels: -100,
+        isClipping: false,
+        isSilent: true,
+        state: 'muted'
+      };
+    }
+
     if (samples.length === 0) {
       return {
         rmsLevel: 0,
-        decibels: -Infinity,
+        decibels: -100,
         isClipping: false,
-        isSilent: true
+        isSilent: true,
+        state: 'silent'
       };
     }
 
@@ -58,14 +80,14 @@ export class AudioLevelMeter {
 
     // Calculate dBFS (20 * log10(rms))
     const dbfs = clampedRms > 0.00001 ? 20 * Math.log10(clampedRms) : -100;
-
     const isSilent = clampedRms < this.silenceThresholdRms;
 
     return {
       rmsLevel: clampedRms,
       decibels: Math.max(-100, Math.round(dbfs * 10) / 10),
       isClipping: hasClipping,
-      isSilent
+      isSilent,
+      state: isSilent ? 'silent' : 'active'
     };
   }
 }

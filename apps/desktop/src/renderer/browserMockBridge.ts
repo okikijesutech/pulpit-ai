@@ -323,6 +323,7 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
       { id: 'default_mic', name: 'Realtek High Definition Audio (Built-in)', channels: 1, sampleRate: 16000, isDefault: true },
       { id: 'virtual_line', name: 'Virtual Church Audio Feed (Stereo Line)', channels: 2, sampleRate: 48000, isDefault: false }
     ],
+    updateAudioDevices: async (devices: AudioInputDevice[]) => [...devices],
     selectAudioDevice: async (id: string) => ({
       id,
       name: id === 'default_mic' ? 'Realtek High Definition Audio' : 'Virtual Line',
@@ -330,6 +331,7 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
       sampleRate: 16000,
       isDefault: id === 'default_mic'
     }),
+    reportAudioState: (_state: string) => {},
     simulateSpeechInput: async (phrase: string) => {
       const transcriptEvent = {
         id: `tr_${Date.now()}`,
