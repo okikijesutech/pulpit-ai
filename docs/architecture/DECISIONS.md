@@ -99,3 +99,18 @@
   * **Real Confidence Reporting:** Model transcripts must carry actual token confidence or `null` (`confidence: number | null`). Remove synthetic scores; the UI renders `—` when confidence is unavailable.
   * **Canonical Prompt Seeding:** Prime `whisper.cpp` with a canonical prompt containing all 66 Protestant canon books and sermon cues ("chapter", "verse", "turn to") to bias beam search toward correct biblical terminology.
   * **Packaging & Binary Distribution:** Configure `electron-builder.json` `asarUnpack` to unpack native binaries and models (`bin/**/*`, `@pulpit-ai/speech-engine/bin/**/*`, `@pulpit-ai/speech-engine/models/**/*`) so they execute cleanly in packaged environments. Align UI labels to `"whisper.cpp (AVX2)"`.
+
+## ADR-010: Adaptive Noise Floor VAD, Pre-Roll Ring Buffer, Boundary Overlap & Singing Separation (PR 8)
+* **Date:** 2026-11-05
+* **Status:** Accepted
+* **Context:**
+  * Fixed-threshold voice activity detection either cut off quiet phrases or triggered false speech detections on sanctuary HVAC and room hum.
+  * Absence of a pre-roll buffer clipped initial word consonants and plosives (e.g. "p", "t", "th") before VAD triggered.
+  * Pauses following biblical book names (e.g., "Turn with me to John" ... pause ... "chapter 3") caused premature utterance cuts that split book names from chapters and verses.
+  * Singing during worship service was pushed into the speech path, causing Whisper hallucination loops and CPU exhaustion.
+* **Decision:**
+  * **Adaptive Noise Floor VAD:** Implement continuous ambient noise tracking in `VoiceActivityDetector` that dynamically shifts the speech threshold above ambient room noise (`threshold = max(minThreshold, noiseFloor * 1.8)`), bounded between `0.001` and `0.035`.
+  * **Pre-Roll Ring Buffer:** Utilize `AudioRingBuffer` to maintain a volatile 200–300 ms (default 250ms = 4,000 samples) pre-roll buffer in RAM, prepending it to utterances when speech starts to preserve initial consonants.
+  * **Trailing Book Boundary Overlap & Extension:** When Whisper recognizes a biblical book name near the end of an utterance, `SpeechSegmenter` extends silence hangover by 15 frames and flags a 1.5-second trailing overlap, prepending the book name audio into the subsequent utterance so the citation is preserved intact.
+  * **Singing Separation:** Modeled via `SingingActivityDetector`. When singing is active (`mode === 'singing'`), frames are diverted away from `SpeechSegmenter`, and in-progress speech is cleanly flushed, keeping worship singing separate from speech recognition.
+  * **Pipeline Reconciliation:** Reconciled `AUDIO_PIPELINE.md` with real parameters (0.5s min, 6.0s max, 450ms hangover, 250ms pre-roll, 1500ms overlap).

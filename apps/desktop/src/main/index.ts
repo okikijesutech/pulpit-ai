@@ -18,7 +18,8 @@ import {
 import {
   ScriptureDatabase,
   ScriptureCandidateGenerator,
-  loadFullBiblePackages
+  loadFullBiblePackages,
+  findCanonBook
 } from '@pulpit-ai/scripture-engine';
 import {
   SongDatabase,
@@ -257,6 +258,14 @@ function createWindow(): void {
     // Ingest raw speech through guarded Scripture candidate generator with guarded rolling context window
     scriptureGenerator.processUtterance(event.rawText);
 
+    // PR 8: Detect if a Bible book name appears near the end of the segment and overlap into next segment
+    const trailingBook = detectTrailingBookName(event.rawText);
+    if (trailingBook) {
+      console.log(`[Audio/Segmenter] Trailing book "${trailingBook}" detected near segment end. Requesting overlap into next segment.`);
+      speechSegmenter.requestOverlap(1.5);
+      speechSegmenter.extendHangover(15);
+    }
+
     // Ingest raw speech into Song Candidate Generator
     const isSinging = singingActivityDetector.getCurrentMode() === 'singing';
     songCandidateGenerator.processTranscript(event.rawText, isSinging);
@@ -313,6 +322,20 @@ function createWindow(): void {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+}
+
+function detectTrailingBookName(text: string): string | null {
+  if (!text) return null;
+  const clean = text.trim().replace(/[.,!?;:]+$/, '').toLowerCase();
+  const tokens = clean.split(/\s+/);
+  for (let len = Math.min(3, tokens.length); len >= 1; len--) {
+    const candidate = tokens.slice(tokens.length - len).join(' ');
+    const book = findCanonBook(candidate);
+    if (book) {
+      return book.name;
+    }
+  }
+  return null;
 }
 
 function detectFreeShowPassword(): string | undefined {
@@ -471,7 +494,7 @@ ipcMain.handle('audio:select-device', (_event, deviceId: string) => {
   return device;
 });
 
-// Live Physical Microphone Streaming Handler (PR 6: Clean Audio & Mute/Silent/Active States)
+// Live Physical Microphone Streaming Handler (PR 6 & PR 8: Clean Audio & Singing Separation)
 ipcMain.on('audio:stream-chunk', (_event, buffer: ArrayBuffer, isMuted = false) => {
   isRealMicStreaming = true;
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -479,7 +502,14 @@ ipcMain.on('audio:stream-chunk', (_event, buffer: ArrayBuffer, isMuted = false) 
   const int16 = new Int16Array(buffer);
   const metrics = audioLevelMeter.analyze(int16, isMuted);
   const activityMetrics = singingActivityDetector.processFrame(int16);
-  speechSegmenter.pushFrame(int16);
+
+  // PR 8: Send singing away from the speech path
+  if (activityMetrics.isSinging) {
+    speechSegmenter.setSingingActive(true);
+  } else {
+    speechSegmenter.setSingingActive(false);
+    speechSegmenter.pushFrame(int16);
+  }
 
   mainWindow.webContents.send('audio:level-changed', metrics);
   mainWindow.webContents.send('audio:activity-mode', activityMetrics);

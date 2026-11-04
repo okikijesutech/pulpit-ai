@@ -34,17 +34,20 @@ flowchart LR
 * **Bounded Volatile Buffer:** 10 seconds capacity (~320 KB RAM). If reading is delayed, the oldest unread frames are dropped to prevent memory growth.
 * **Zero Disk Storage:** No raw audio is ever persisted to SSD or sent to external cloud networks.
 
-## 3. Voice Activity Detection (VAD)
-* Evaluates 30ms frames (480 samples).
-* Calculates short-time energy (RMS) and Zero-Crossing Rate (ZCR).
-* Rejects low-frequency DC rumble and high-frequency noise.
+## 3. Voice Activity Detection (VAD) & Adaptive Noise Floor
+* Evaluates 30ms frames (480 samples at 16kHz).
+* **Adaptive Noise Floor Tracking:** Tracks ambient room noise (HVAC, fan hum, sanctuary acoustics) dynamically across frames. Speech detection threshold dynamically scales above the estimated noise floor (`threshold = max(energyThreshold, noiseFloor * 1.8)`), clamped between `0.001` and `0.035`.
+* **Spectral Band Validation:** Zero-Crossing Rate (ZCR) filtering (30 to 7,800 Hz) rejects low DC rumble and ultrasonic hiss while accepting the complete human vocal range.
 * Ensures inference only runs during active speech, keeping CPU utilization minimal.
 
-## 4. Speech Segmentation & Utterance Slicing
-* Gathers continuous speech frames.
-* Minimum phrase length: 1.0 second.
-* Maximum phrase length: 5.0 seconds.
-* Silence hangover: ~450ms of silence cuts an utterance cleanly without chopping words mid-phoneme.
+## 4. Speech Segmentation, Pre-Roll Ring Buffer & Singing Separation
+* **Pre-Roll Volatile Buffer (`AudioRingBuffer`):** Maintains a continuous 200–300 ms (default 250ms = 4,000 samples) pre-roll buffer in volatile RAM. When speech begins, the pre-roll window is prepended to the utterance, preserving initial unvoiced consonants and plosives (e.g., "p", "t", "s", "th").
+* **Segment Duration Limits:**
+  * Minimum phrase length: 0.5 seconds (effective duration >= 0.8s with pre-roll).
+  * Maximum phrase length: 6.0 seconds before forced utterance boundary cut.
+* **Silence Hangover:** 15 frames at 30ms = 450ms of silence cleanly terminates an utterance without chopping words mid-phoneme.
+* **Trailing Book Name Overlap & Extension:** When Whisper recognizes a biblical book name near the end of an utterance without chapter/verse (e.g., *"Turn with me to John"*), the segmenter extends the silence hangover by 15 frames and flags a 1.5-second trailing overlap. The trailing audio is prepended into the subsequent segment, capturing the book name and following chapter/verse together.
+* **Singing Separation:** Acoustic harmonicity and pitch stability are evaluated via `SingingActivityDetector`. When singing/worship music is active, frames are diverted away from `SpeechSegmenter`. In-progress speech is flushed cleanly, ensuring worship music does not enter Whisper or trigger spurious scripture candidate generations.
 * **Device Switch Flush:** Switching inputs immediately purges partial buffers and retags context to prevent cross-device word merging.
 
 ## 5. Local Speech Recognition Worker (`whisper.cpp`)

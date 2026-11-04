@@ -76,4 +76,20 @@ export class VirtualAudioSource {
 
     return result;
   }
+
+  /**
+   * Generates white/ambient noise with controlled amplitude.
+   */
+  public generateNoise(durationSeconds: number, amplitude = 0.01): Int16Array {
+    const count = Math.floor(this.sampleRate * durationSeconds);
+    const result = new Int16Array(count);
+    const maxInt16 = 32767;
+
+    for (let i = 0; i < count; i++) {
+      const sample = (Math.random() * 2 - 1) * amplitude;
+      result[i] = Math.round(sample * maxInt16);
+    }
+
+    return result;
+  }
 }
