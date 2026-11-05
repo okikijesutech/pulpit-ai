@@ -1,14 +1,17 @@
 # Architectural Decision Records (ADRs)
 
-## ADR-001: Runtime Stack Selection (Electron + TypeScript + Native whisper.cpp)
-* **Date:** 2026-11-01
+## ADR-001: Runtime Stack Selection (Electron + TypeScript + Native whisper.cpp Subprocess)
+* **Date:** 2026-11-01 (Updated 2026-11-05)
 * **Status:** Confirmed & Approved
-* **Context:** Target hardware is an HP EliteBook 840 G3 (Intel Core i5-6300U, 2 cores / 4 threads, 8 GB RAM, 11.04 GB free SSD storage on Windows 10 Pro).
+* **Context:** Target hardware is an HP EliteBook 840 G3 (Intel Core i5-6300U, 2 cores / 4 threads @ 2.40 GHz, 8 GB RAM, 11.04 GB free SSD storage on Windows 10 Pro).
 * **Decision:** Selected Option 2 (Electron desktop shell with native C++ `whisper.cpp` worker subprocesses and SQLite FTS5) over Option 1 (Python/FastAPI) and Option 3 (Rust/Tauri).
-* **Rationale:**
-  * Python + PyTorch requires 3–5 GB of disk space (which would exhaust the 11 GB available) and consumes 1 GB baseline RAM.
-  * `whisper.cpp` compiled with AVX2 runs in < 200 MB disk space and 150–350 MB RAM for quantized models (`base.en-q5_1`).
-  * Separate OS processes ensure fail-closed crash isolation.
+* **Detailed Execution Specifications:**
+  * **Native Subprocess Execution:** Speech-to-text inference runs strictly outside the Electron main process via a dedicated native `whisper.cpp` / `whisper-cli` executable child process (`whisper-cli.exe` / `whisper-cli`), ensuring strict crash isolation without blocking the main event loop.
+  * **AVX2 Skylake Acceleration:** `whisper.cpp` is compiled with AVX2 instruction sets for optimal SIMD vector performance on 6th generation Intel Skylake processors.
+  * **Model Distribution & GGUF Quantization:** Standardized on official quantized GGUF models (`tiny.en-q5_1`, `base.en-q5_1`, `small.en-q5_1`) requiring $< 200\text{ MB}$ disk space and $150\text{--}350\text{ MB}$ RAM, avoiding Python/PyTorch footprints ($3\text{--}5\text{ GB}$).
+  * **Cryptographic Verification & Gated Downloads:** Model files are verified using official streaming SHA-256 checksums and exact byte sizes. Silent downloads are strictly forbidden; downloads require explicit operator permission and a mandatory $\ge 2.0\text{ GB}$ disk safety margin.
+  * **Acoustic Reliability:** Inference outputs real confidence or `null` (`confidence: number | null`), primes beam search with a canonical 66-book Protestant prompt, and intercepts ambient phantom phrases (`[MUSIC]`, `"Thank you."`).
+  * **Storage:** Embedded SQLite with FTS5 for zero-latency local Bible and song indexing.
 
 ## ADR-002: FreeShow State Observability and Authority Guard
 * **Date:** 2026-11-01

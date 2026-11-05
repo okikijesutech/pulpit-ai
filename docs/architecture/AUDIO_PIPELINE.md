@@ -4,14 +4,18 @@
 The Pulpit AI Audio & Speech Pipeline is designed for low-latency, privacy-preserving, local-first operation on constrained hardware (Intel Core i5-6300U, 2 cores / 4 threads, 8 GB RAM, 11 GB SSD).
 
 ```mermaid
-flowchart LR
-    A[Audio Input Device] -->|16kHz 16-bit PCM| B[Bounded Ring Buffer]
+flowchart TD
+    A[Audio Input Device] -->|16kHz 16-bit PCM| B[Off-Thread AudioWorklet]
     B --> C[Audio Level Meter]
-    B --> D[Voice Activity Detector]
-    D -->|Speech Frames| E[Speech Segmenter]
-    E -->|Clean Utterance Segment| F[whisper.cpp AVX2 Subprocess]
-    F --> G[Transcript Normalizer]
-    G --> H[Recognized Speech Event]
+    B --> D[SingingActivityDetector]
+    B --> E[AudioRingBuffer 250ms Pre-Roll]
+    D -->|Singing Audio| F[Song Candidate Generator]
+    D -->|Speech Frames| G[Voice Activity Detector Adaptive Floor]
+    G -->|Speech Onset + Pre-Roll| H[Speech Segmenter]
+    H -->|Clean Segment / Book Overlap| I[whisper.cpp Subprocess AVX2]
+    I --> J[PhantomPhraseFilter]
+    I --> K[Recognized Transcript Event]
+    K --> L[Scripture Candidate Generator]
 ```
 
 ## 2. Audio Acquisition, AudioWorklet & Device Management
