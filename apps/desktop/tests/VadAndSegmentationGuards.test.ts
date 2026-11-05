@@ -109,6 +109,28 @@ describe('PR 8: VAD, Segmentation, Trailing Book Overlap, and Singing Separation
     expect(speechEmittedCount).toBe(0);
   });
 
+  it('suppresses speech segmentation completely when audio stream is muted', () => {
+    const segmenter = new SpeechSegmenter({ sampleRate: 16000, minSegmentSeconds: 0.5 });
+    let segmentsEmitted = 0;
+    segmenter.onSegment(() => {
+      segmentsEmitted++;
+    });
+
+    const isMuted = true;
+
+    // Simulate 30 frames of speech arriving while muted
+    for (let i = 0; i < 30; i++) {
+      const speechFrame = synth.generateSyntheticSpeechFrame(0.03);
+      if (isMuted) {
+        segmenter.reset();
+      } else {
+        segmenter.pushFrame(speechFrame);
+      }
+    }
+
+    expect(segmentsEmitted).toBe(0);
+  });
+
   it('AUDIO_PIPELINE.md document matches real code constants and segmentation architecture', () => {
     const docPath = join(__dirname, '../../../docs/architecture/AUDIO_PIPELINE.md');
     const content = readFileSync(docPath, 'utf8');

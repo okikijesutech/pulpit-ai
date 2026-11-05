@@ -43,3 +43,8 @@ desktop.ini
 temp/
 tmp/
 *.wav.tmp
+
+# Native Whisper binaries and GGML models
+bin/
+models/
+*.bin

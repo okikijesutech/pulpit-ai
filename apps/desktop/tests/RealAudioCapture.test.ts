@@ -220,4 +220,48 @@ describe('Real Audio Capture Pipeline (PR 6)', () => {
       expect(disconnectedMetrics.state).toBe('disconnected');
     });
   });
+
+  describe('Microphone Mute / Unmute Hardware Release (Windows Taskbar Privacy & Zero Leaks)', () => {
+    it('stops media stream tracks and closes audio context when muted so OS releases hardware microphone', async () => {
+      await micService.start();
+
+      expect(mockGetUserMedia).toHaveBeenCalledTimes(1);
+      expect(micService.getIsMuted()).toBe(false);
+
+      // Mute the microphone
+      await micService.setMuted(true);
+
+      expect(micService.getIsMuted()).toBe(true);
+      expect(mockTrack.stop).toHaveBeenCalled();
+      expect(mockTrack.enabled).toBe(false);
+      expect(mockAudioContext.close).toHaveBeenCalled();
+      expect((global as any).window.pulpitAPI.reportAudioState).toHaveBeenCalledWith('muted');
+    });
+
+    it('re-acquires media stream via getUserMedia when unmuted', async () => {
+      await micService.start();
+      await micService.setMuted(true);
+      expect(mockGetUserMedia).toHaveBeenCalledTimes(1);
+
+      // Unmute the microphone
+      await micService.setMuted(false);
+
+      expect(micService.getIsMuted()).toBe(false);
+      // getUserMedia called again to re-acquire hardware
+      expect(mockGetUserMedia).toHaveBeenCalledTimes(2);
+    });
+
+    it('toggleMuted toggles state and triggers hardware release/re-acquisition', async () => {
+      await micService.start();
+
+      // Toggle off
+      const nextMuted = micService.toggleMuted();
+      expect(nextMuted).toBe(true);
+      expect(mockTrack.stop).toHaveBeenCalled();
+
+      // Toggle back on
+      const nextActive = micService.toggleMuted();
+      expect(nextActive).toBe(false);
+    });
+  });
 });

@@ -65,15 +65,33 @@ export class MicrophoneAudioService {
     isMuted: false
   };
 
-  public setMuted(muted: boolean): void {
+  public async setMuted(muted: boolean): Promise<boolean> {
     this.isMuted = muted;
-    this.notify({ isMuted: this.isMuted });
+    if (muted) {
+      // 1. Fully release hardware tracks so Windows OS turns off the microphone indicator
+      this.stopCaptureNodes();
+      this.isRunning = false;
+      this.notify({
+        isStreaming: false,
+        isListeningSpeech: false,
+        isMuted: true
+      });
+      // 2. Inform main process so segmenter resets and audio meters show muted
+      if (typeof window !== 'undefined' && (window as any).pulpitAPI?.reportAudioState) {
+        (window as any).pulpitAPI.reportAudioState('muted');
+      }
+    } else {
+      await this.startCapture();
+    }
+    return this.isMuted;
   }
 
   public toggleMuted(): boolean {
-    this.isMuted = !this.isMuted;
-    this.notify({ isMuted: this.isMuted });
-    return this.isMuted;
+    const next = !this.isMuted;
+    this.setMuted(next).catch((err) => {
+      console.warn('[MicrophoneAudioService] setMuted error:', err);
+    });
+    return next;
   }
 
   public getIsMuted(): boolean {
@@ -231,10 +249,12 @@ export class MicrophoneAudioService {
       }
 
       this.isRunning = true;
+      this.isMuted = false;
       this.notify({
         isStreaming: true,
         deviceName,
         isListeningSpeech: true,
+        isMuted: false,
         error: undefined
       });
 
@@ -247,6 +267,10 @@ export class MicrophoneAudioService {
   }
 
   private processAndStreamSamples(float32: Float32Array, sourceRate: number): void {
+    if (this.isMuted || !this.isRunning) {
+      return;
+    }
+
     let samples16k: Float32Array;
     if (sourceRate === 16000) {
       samples16k = float32;
@@ -337,7 +361,12 @@ export class MicrophoneAudioService {
     }
 
     if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach((t) => t.stop());
+      this.mediaStream.getTracks().forEach((t) => {
+        t.enabled = false;
+        try {
+          t.stop();
+        } catch {}
+      });
       this.mediaStream = null;
     }
   }

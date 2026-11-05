@@ -499,6 +499,18 @@ ipcMain.on('audio:stream-chunk', (_event, buffer: ArrayBuffer, isMuted = false) 
   isRealMicStreaming = true;
   if (!mainWindow || mainWindow.isDestroyed()) return;
 
+  if (isMuted) {
+    speechSegmenter.reset();
+    mainWindow.webContents.send('audio:level-changed', {
+      rmsLevel: 0,
+      decibels: -100,
+      isClipping: false,
+      isSilent: true,
+      state: 'muted'
+    });
+    return;
+  }
+
   const int16 = new Int16Array(buffer);
   const metrics = audioLevelMeter.analyze(int16, isMuted);
   const activityMetrics = singingActivityDetector.processFrame(int16);
@@ -515,11 +527,21 @@ ipcMain.on('audio:stream-chunk', (_event, buffer: ArrayBuffer, isMuted = false) 
   mainWindow.webContents.send('audio:activity-mode', activityMetrics);
 });
 
-// Explicit audio state report (e.g. disconnected hardware)
+// Explicit audio state report (e.g. disconnected hardware, muted)
 ipcMain.on('audio:report-state', (_event, state: string) => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   if (state === 'disconnected') {
+    speechSegmenter.reset();
     mainWindow.webContents.send('audio:level-changed', AudioLevelMeter.disconnectedMetrics());
+  } else if (state === 'muted') {
+    speechSegmenter.reset();
+    mainWindow.webContents.send('audio:level-changed', {
+      rmsLevel: 0,
+      decibels: -100,
+      isClipping: false,
+      isSilent: true,
+      state: 'muted'
+    });
   }
 });
 

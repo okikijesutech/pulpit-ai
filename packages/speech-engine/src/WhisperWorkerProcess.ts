@@ -1,6 +1,6 @@
 import { SpeechSegment } from '@pulpit-ai/audio-engine';
 import { spawn } from 'node:child_process';
-import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
+import { existsSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -92,6 +92,44 @@ export class WhisperWorkerProcess {
     return null;
   }
 
+  /**
+   * Resolves the native Whisper GGML model file path.
+   */
+  public resolveModelPath(): string | null {
+    if (this.customModelPath && existsSync(this.customModelPath)) {
+      return this.customModelPath;
+    }
+
+    if (process.env.WHISPER_MODEL_PATH && existsSync(process.env.WHISPER_MODEL_PATH)) {
+      return process.env.WHISPER_MODEL_PATH;
+    }
+
+    const candidateModels = [
+      'ggml-base.en-q5_1.bin',
+      'ggml-base.en.bin',
+      'ggml-tiny.en-q5_1.bin',
+      'ggml-tiny.en.bin'
+    ];
+
+    const modelDirs = [
+      join(process.cwd(), 'models'),
+      join(process.cwd(), 'packages', 'speech-engine', 'models'),
+      join(process.env.APPDATA || '', 'Pulpit AI', 'models'),
+      join(process.env.USERPROFILE || '', '.pulpit-ai', 'models'),
+      join(__dirname, '..', 'models'),
+      join(__dirname, '..', '..', 'models')
+    ];
+
+    for (const dir of modelDirs) {
+      for (const m of candidateModels) {
+        const fullPath = join(dir, m);
+        if (existsSync(fullPath)) return fullPath;
+      }
+    }
+
+    return null;
+  }
+
   private async getTranscriber(): Promise<any> {
     if (!this.transcriberPromise) {
       this.transcriberPromise = (async () => {
@@ -156,9 +194,10 @@ export class WhisperWorkerProcess {
 
     // 2. Try Native whisper.cpp Subprocess if binary and model are present
     const nativeBin = this.resolveBinaryPath();
-    if (nativeBin && this.customModelPath && existsSync(this.customModelPath)) {
+    const nativeModel = this.resolveModelPath();
+    if (nativeBin && nativeModel) {
       try {
-        return await this.transcribeWithSubprocess(nativeBin, this.customModelPath, segment, timeoutMs, startTime);
+        return await this.transcribeWithSubprocess(nativeBin, nativeModel, segment, timeoutMs, startTime);
       } catch (nativeErr) {
         console.warn('[WhisperWorkerProcess] Native whisper execution error, attempting fallback:', nativeErr);
       }
@@ -243,6 +282,7 @@ export class WhisperWorkerProcess {
       const timer = setTimeout(() => {
         child.kill('SIGKILL');
         try { unlinkSync(tempWav); } catch {}
+        try { unlinkSync(`${tempWav}.json`); } catch {}
         reject(new Error(`Native whisper subprocess timed out after ${timeoutMs}ms.`));
       }, timeoutMs);
 
@@ -254,6 +294,7 @@ export class WhisperWorkerProcess {
         try { unlinkSync(tempWav); } catch {}
 
         if (code !== 0 && code !== null) {
+          try { unlinkSync(`${tempWav}.json`); } catch {}
           this.simulateCrash(code, signal || 'SIGERR');
           reject(new Error(`whisper.cpp exited with code ${code}: ${stderr}`));
           return;
@@ -262,14 +303,31 @@ export class WhisperWorkerProcess {
         let parsedText = '';
         let parsedConfidence: number | null = null;
 
-        try {
-          const json = JSON.parse(stdout);
-          parsedText = (json.transcription?.[0]?.text || json.text || '').trim();
-          if (typeof json.transcription?.[0]?.p === 'number') {
-            parsedConfidence = json.transcription[0].p;
+        // In whisper.cpp, --output-json writes output to `${tempWav}.json`
+        const jsonPath = `${tempWav}.json`;
+        if (existsSync(jsonPath)) {
+          try {
+            const fileContent = readFileSync(jsonPath, 'utf8');
+            const json = JSON.parse(fileContent);
+            const textParts = (json.transcription || []).map((t: any) => t.text).filter(Boolean);
+            parsedText = textParts.join(' ').trim();
+            if (typeof json.transcription?.[0]?.p === 'number') {
+              parsedConfidence = json.transcription[0].p;
+            }
+          } catch {}
+          try { unlinkSync(jsonPath); } catch {}
+        }
+
+        if (!parsedText) {
+          try {
+            const json = JSON.parse(stdout);
+            parsedText = (json.transcription?.[0]?.text || json.text || '').trim();
+            if (typeof json.transcription?.[0]?.p === 'number') {
+              parsedConfidence = json.transcription[0].p;
+            }
+          } catch {
+            parsedText = stdout.trim();
           }
-        } catch {
-          parsedText = stdout.trim();
         }
 
         resolve({
@@ -282,6 +340,7 @@ export class WhisperWorkerProcess {
       child.on('error', (err) => {
         clearTimeout(timer);
         try { unlinkSync(tempWav); } catch {}
+        try { unlinkSync(`${tempWav}.json`); } catch {}
         reject(err);
       });
     });
