@@ -44,7 +44,7 @@ export class VoiceActivityDetector {
   constructor(options: VadOptions = {}) {
     this.sampleRate = options.sampleRate ?? 16000;
     this.frameSize = options.frameSizeSamples ?? 480;
-    this.energyThreshold = options.energyThreshold ?? 0.0035; // Sensitive to natural preaching voice
+    this.energyThreshold = options.energyThreshold ?? 0.0050; // Sensitive to natural preaching voice while rejecting fan hum
     this.minZcrPerSecond = options.minZcrPerSecond ?? 30; // Reject DC offset & rumble (< 30 Hz)
     this.maxZcrPerSecond = options.maxZcrPerSecond ?? 7800; // Allow full human speech spectrum including sibilants
     this.adaptiveNoiseFloor = options.adaptiveNoiseFloor ?? true;

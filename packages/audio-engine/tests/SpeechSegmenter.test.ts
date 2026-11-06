@@ -265,5 +265,25 @@ describe('SpeechSegmenter', () => {
       }
       expect(emitted.length).toBe(1); // No new speech segments
     });
+
+    it('discards segments whose overall RMS acoustic energy is below 0.005 to suppress ambient fan hum', () => {
+      const segmenter = new SpeechSegmenter({
+        sampleRate: 16000,
+        minSegmentSeconds: 0.5,
+        silenceHangoverFrames: 5,
+        minSegmentRms: 0.005
+      });
+      const emitted: SpeechSegment[] = [];
+      segmenter.onSegment((seg) => emitted.push(seg));
+
+      // Feed frames of very low noise (RMS ~0.002)
+      for (let i = 0; i < 30; i++) {
+        segmenter.pushFrame(synth.generateNoise(0.03, 0.003));
+      }
+
+      const flushed = segmenter.flush();
+      expect(flushed).toBeNull();
+      expect(emitted.length).toBe(0);
+    });
   });
 });

@@ -19,6 +19,7 @@ export interface SpeechSegmenterOptions {
   preRollMs?: number; // Duration of pre-roll buffer in ms (default 250ms, 200-300ms)
   trailingOverlapMs?: number; // Duration of trailing overlap in ms when requested (default 1500ms)
   adaptiveNoiseFloor?: boolean; // Dynamic ambient noise tracking (default: true)
+  minSegmentRms?: number; // Minimum RMS energy to emit a segment (default 0.005)
 }
 
 export class SpeechSegmenter {
@@ -29,6 +30,7 @@ export class SpeechSegmenter {
   private readonly baseHangoverFrames: number;
   private readonly preRollCapacitySamples: number;
   private readonly defaultOverlapSamples: number;
+  private readonly minSegmentRms: number;
 
   private preRollBuffer: AudioRingBuffer;
   private accumulatedFrames: Int16Array[] = [];
@@ -49,6 +51,7 @@ export class SpeechSegmenter {
     this.minSamples = Math.floor((options.minSegmentSeconds ?? 0.5) * this.sampleRate);
     this.maxSamples = Math.floor((options.maxSegmentSeconds ?? 6.0) * this.sampleRate);
     this.baseHangoverFrames = options.silenceHangoverFrames ?? 15; // 15 frames * 30ms = 450ms
+    this.minSegmentRms = options.minSegmentRms ?? 0.005;
 
     // PR 8: Pre-roll AudioRingBuffer (default 250ms = 4,000 samples at 16kHz)
     const preRollMs = Math.max(200, Math.min(300, options.preRollMs ?? 250));
@@ -226,6 +229,18 @@ export class SpeechSegmenter {
     for (const f of this.accumulatedFrames) {
       combined.set(f, offset);
       offset += f.length;
+    }
+
+    // PR Safeguard: Discard segments with average RMS below minSegmentRms (ambient hiss / fan noise)
+    let sumSquares = 0;
+    for (let i = 0; i < combined.length; i++) {
+      const val = combined[i] / 32768.0;
+      sumSquares += val * val;
+    }
+    const rms = Math.sqrt(sumSquares / combined.length);
+    if (rms < this.minSegmentRms) {
+      this.reset();
+      return null;
     }
 
     // Save trailing samples for potential overlap into next segment

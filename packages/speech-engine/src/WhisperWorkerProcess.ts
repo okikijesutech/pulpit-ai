@@ -192,7 +192,25 @@ export class WhisperWorkerProcess {
       }
     }
 
-    // 2. Try Native whisper.cpp Subprocess if binary and model are present
+    // 2. Minimum Acoustic Energy Gate: If average RMS < 0.005, audio is silence or low ambient hiss.
+    // Discard immediately to prevent native Whisper from decoding hallucination loops on silence.
+    if (segment.samples && segment.samples.length > 0) {
+      let sumSquares = 0;
+      for (let i = 0; i < segment.samples.length; i++) {
+        const val = segment.samples[i] / 32768.0;
+        sumSquares += val * val;
+      }
+      const rms = Math.sqrt(sumSquares / segment.samples.length);
+      if (rms < 0.005) {
+        return {
+          text: '',
+          confidence: null,
+          latencyMs: Date.now() - startTime
+        };
+      }
+    }
+
+    // 3. Try Native whisper.cpp Subprocess if binary and model are present
     const nativeBin = this.resolveBinaryPath();
     const nativeModel = this.resolveModelPath();
     if (nativeBin && nativeModel) {
@@ -271,7 +289,11 @@ export class WhisperWorkerProcess {
       '--language', 'en',
       '--prompt', CANONICAL_PROMPT_BIAS,
       '--output-json',
-      '--no-prints'
+      '--no-prints',
+      '--no-timestamps',
+      '--suppress-nst',
+      '-nth', '0.65',
+      '-et', '2.40'
     ];
 
     return new Promise<TranscriptionJobResult>((resolve, reject) => {

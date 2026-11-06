@@ -214,6 +214,78 @@ describe('SpeechEngine Unit Tests', () => {
         expect(result).not.toBeNull();
         expect(result!.rawText).toBe('Thank you Lord for John chapter three verse sixteen');
       });
+
+      it('filters out autoregressive multi-word repetition loops from Whisper hallucinations', async () => {
+        worker.setNextTranscript(
+          'You need to be a man, you need to be a man, you need to be a man, you need to be a man, you need to be a man, you'
+        );
+
+        const segment: SpeechSegment = {
+          id: 'repetition_seg_1',
+          samples: new Int16Array(16000),
+          durationSeconds: 1.0,
+          sourceId: 'mic',
+          timestamp: Date.now()
+        };
+
+        const result = await engine.processSegment(segment);
+        expect(result).toBeNull();
+      });
+
+      it('filters out 2-word phrase repetition loops', async () => {
+        worker.setNextTranscript(
+          "I'm a woman, a woman, a woman, a woman, a woman, a woman, a woman, a woman, a woman"
+        );
+
+        const segment: SpeechSegment = {
+          id: 'repetition_seg_2',
+          samples: new Int16Array(16000),
+          durationSeconds: 1.0,
+          sourceId: 'mic',
+          timestamp: Date.now()
+        };
+
+        const result = await engine.processSegment(segment);
+        expect(result).toBeNull();
+      });
+
+      it('preserves sacred liturgical repetitions that are not hallucination loops', async () => {
+        worker.setNextTranscript('Holy, holy, holy is the Lord God Almighty who was and is and is to come');
+
+        const segment: SpeechSegment = {
+          id: 'liturgical_seg',
+          samples: new Int16Array(16000),
+          durationSeconds: 1.0,
+          sourceId: 'mic',
+          timestamp: Date.now()
+        };
+
+        const result = await engine.processSegment(segment);
+        expect(result).not.toBeNull();
+        expect(result!.rawText).toContain('Holy, holy, holy');
+      });
+    });
+
+    describe('Acoustic Energy Gate', () => {
+      it('returns empty text immediately when segment RMS is below 0.005 without spawning subprocess', async () => {
+        // Samples with low noise (RMS ~0.001)
+        const lowNoiseSamples = new Int16Array(16000);
+        for (let i = 0; i < lowNoiseSamples.length; i++) {
+          lowNoiseSamples[i] = Math.round((Math.random() * 2 - 1) * 30); // ~30 / 32768 ~ 0.0009
+        }
+
+        const quietSegment: SpeechSegment = {
+          id: 'quiet_ambient_seg',
+          samples: lowNoiseSamples,
+          durationSeconds: 1.0,
+          sourceId: 'mic',
+          timestamp: Date.now()
+        };
+
+        const result = await worker.transcribeSegment(quietSegment);
+        expect(result.text).toBe('');
+        expect(result.confidence).toBeNull();
+      });
     });
 
     describe('PR 7: Real Confidence or None', () => {

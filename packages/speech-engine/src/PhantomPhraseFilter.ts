@@ -47,10 +47,82 @@ export class PhantomPhraseFilter {
       return true;
     }
 
+    // Check autoregressive repetition loops
+    if (PhantomPhraseFilter.isRepetitionLoop(trimmed)) {
+      return true;
+    }
+
     // Check repeated single words like "you you you" or "thank you thank you"
     const words = lower.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
     if (words.length >= 2 && words.every((w) => w === words[0])) {
       return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Detects autoregressive repetition loops produced when Whisper decoder hallucinates on low energy/noise.
+   * Examples:
+   *  - "You need to be a man, you need to be a man, you need to be a man..."
+   *  - "I'm a woman, a woman, a woman, a woman, a woman..."
+   */
+  public static isRepetitionLoop(rawText: string): boolean {
+    if (!rawText) return false;
+    const lower = rawText.trim().toLowerCase();
+    const words = lower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+    if (words.length < 4) return false;
+
+    // 1. Single word repeated 4+ times consecutively (e.g. "you you you you")
+    let maxSingleRepeats = 1;
+    let currentSingleRepeats = 1;
+    for (let i = 1; i < words.length; i++) {
+      if (words[i] === words[i - 1]) {
+        currentSingleRepeats++;
+        if (currentSingleRepeats > maxSingleRepeats) maxSingleRepeats = currentSingleRepeats;
+      } else {
+        currentSingleRepeats = 1;
+      }
+    }
+    if (maxSingleRepeats >= 4) {
+      return true;
+    }
+
+    // 2. Phrase repeated 3+ times (phrase length 2 to 8 words)
+    // e.g. "a woman, a woman, a woman" (length 2)
+    // "you need to be a man, you need to be a man, you need to be a man" (length 6)
+    for (let phraseLen = 2; phraseLen <= Math.min(8, Math.floor(words.length / 3)); phraseLen++) {
+      for (let start = 0; start <= words.length - phraseLen * 3; start++) {
+        let repeats = 1;
+        let pos = start + phraseLen;
+        while (pos + phraseLen <= words.length) {
+          let match = true;
+          for (let k = 0; k < phraseLen; k++) {
+            if (words[start + k] !== words[pos + k]) {
+              match = false;
+              break;
+            }
+          }
+          if (match) {
+            repeats++;
+            pos += phraseLen;
+          } else {
+            break;
+          }
+        }
+        if (repeats >= 3) {
+          return true;
+        }
+      }
+    }
+
+    // 3. Compression / vocabulary ratio check for long outputs (>= 12 words)
+    // Autoregressive repetition loops on long texts have very few unique tokens
+    if (words.length >= 12) {
+      const unique = new Set(words);
+      if (unique.size / words.length < 0.35) {
+        return true;
+      }
     }
 
     return false;
