@@ -16,10 +16,13 @@ const PHANTOM_EXACT_PATTERNS = new Set([
   'subscribe to our channel',
   'you',
   'the end.',
-  'the end'
+  'the end',
+  'unintelligible',
+  'whispering'
 ]);
 
-const PHANTOM_BRACKETED_REGEX = /^[\[(](music|applause|laughter|blank_audio|cheering|screaming|groaning|sighs)[\])]\.?$/i;
+const PHANTOM_ANNOTATION_REGEX =
+  /^["'*(\[]*(music|applause|laughter|blank_audio|blank|cheering|screaming|screams|groaning|groan|sighs|sigh|unintelligible|whispering|whisper|cough|coughing|gasp|crying|silence)["'*)\]]*\.?$/i;
 const PHANTOM_SUBTITLE_REGEX = /^(subtitles|subtitling|transcribed|translated|captioned|sous-titres)\s+(by|created by|realises par|realises)/i;
 
 export class PhantomPhraseFilter {
@@ -31,13 +34,14 @@ export class PhantomPhraseFilter {
     const trimmed = rawText.trim();
     if (trimmed.length === 0) return true;
 
-    // Check bracketed annotations like [MUSIC] or (applause)
-    if (PHANTOM_BRACKETED_REGEX.test(trimmed)) {
+    // Check bracketed or asterisk annotations like [MUSIC], *screams*, *sigh*, *whispering*, *unintelligible*
+    const clean = trimmed.replace(/^["'\s]+|["'\s]+$/g, '');
+    if (PHANTOM_ANNOTATION_REGEX.test(trimmed) || PHANTOM_ANNOTATION_REGEX.test(clean)) {
       return true;
     }
 
     // Check lowercase exact phrase matches
-    const lower = trimmed.toLowerCase();
+    const lower = clean.toLowerCase();
     if (PHANTOM_EXACT_PATTERNS.has(lower)) {
       return true;
     }

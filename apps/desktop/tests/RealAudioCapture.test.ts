@@ -263,5 +263,29 @@ describe('Real Audio Capture Pipeline (PR 6)', () => {
       const nextActive = micService.toggleMuted();
       expect(nextActive).toBe(false);
     });
+
+    it('correctly unpacks 16-bit PCM samples from Node.js Buffer without splitting bytes into 8-bit values', () => {
+      // Simulate real 16-bit signed PCM samples
+      const rawSamples = new Int16Array([12000, -18000, 24000, -8000, 0]);
+      // When serialized across Electron IPC, the main process receives a Node.js Buffer
+      const ipcBuffer = Buffer.from(rawSamples.buffer);
+
+      // Safe extraction helper used in main/index.ts
+      const unpackPcm = (buffer: any): Int16Array => {
+        if (Buffer.isBuffer(buffer)) {
+          return new Int16Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 2);
+        } else if (buffer instanceof ArrayBuffer) {
+          return new Int16Array(buffer);
+        } else if (ArrayBuffer.isView(buffer)) {
+          const v = buffer as ArrayBufferView;
+          return new Int16Array(v.buffer, v.byteOffset, v.byteLength / 2);
+        }
+        return new Int16Array(0);
+      };
+
+      const decoded = unpackPcm(ipcBuffer);
+      expect(decoded.length).toBe(rawSamples.length);
+      expect(Array.from(decoded)).toEqual(Array.from(rawSamples));
+    });
   });
 });

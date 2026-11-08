@@ -320,13 +320,13 @@ export const App: React.FC = () => {
           manualLockActive={authorityState.manualLockActive}
         />
       ) : (
-        <main className="flex-1 p-6 grid grid-cols-12 gap-6 min-h-0">
+        <main className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 grid grid-cols-12 gap-3 sm:gap-4 lg:gap-4 xl:gap-6 min-h-0 min-w-0 overflow-y-auto lg:overflow-hidden">
           {/* Left Column (4 cols): Live Screen and Manual Operator Controls */}
-          <div className="col-span-4 flex flex-col gap-6 min-h-0">
-            <div className="flex-1 min-h-0">
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-3 sm:gap-4 lg:gap-4 xl:gap-6 min-h-0 min-w-0">
+            <div className="flex-1 min-h-[200px] sm:min-h-0">
               <LiveOutputPanel snapshot={freeShowSnapshot} />
             </div>
-            <div>
+            <div className="flex-shrink-0">
               <ManualControlsPanel
                 onDispatch={handleDispatchCommand}
                 onAddMockCandidate={handleAddMockCandidate}
@@ -336,11 +336,11 @@ export const App: React.FC = () => {
           </div>
 
           {/* Center Column (5 cols): Live Transcript Stream & Suggested Content Queue */}
-          <div className="col-span-5 flex flex-col gap-6 min-h-0">
-            <div className="h-1/2 min-h-0">
+          <div className="col-span-12 lg:col-span-5 flex flex-col gap-3 sm:gap-4 lg:gap-4 xl:gap-6 min-h-0 min-w-0">
+            <div className="h-64 lg:h-1/2 min-h-0 min-w-0">
               <LiveTranscriptPanel transcripts={transcripts} />
             </div>
-            <div className="h-1/2 min-h-0">
+            <div className="h-64 lg:h-1/2 min-h-0 min-w-0">
               <SuggestionsQueue
                 candidates={candidates}
                 isLocked={authorityState.manualLockActive}
@@ -352,7 +352,7 @@ export const App: React.FC = () => {
           </div>
 
           {/* Right Column (3 cols): Live Security & Authority Audit Trail */}
-          <div className="col-span-3 flex flex-col min-h-0">
+          <div className="col-span-12 lg:col-span-3 flex flex-col min-h-[180px] lg:min-h-0 min-w-0">
             <AuditTrailPanel events={auditEvents} />
           </div>
         </main>

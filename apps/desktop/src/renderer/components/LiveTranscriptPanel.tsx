@@ -68,7 +68,7 @@ export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = ({
               </div>
 
               <p className="text-sm text-slate-200 font-serif leading-relaxed">
-                "{t.rawText}"
+                "{t.rawText.replace(/^["'\s]+|["'\s]+$/g, '')}"
               </p>
 
               <div className="mt-2 pt-1.5 border-t border-slate-900 flex flex-wrap gap-1">

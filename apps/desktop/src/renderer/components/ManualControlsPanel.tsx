@@ -29,51 +29,51 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
         </h2>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5 sm:space-y-3">
         {/* Navigation Grid */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
           <button
             disabled={disabled}
             onClick={() => onDispatch('previous_slide')}
-            className="flex items-center justify-center space-x-1.5 p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white transition-all shadow-sm"
+            className="flex items-center justify-center space-x-1 sm:space-x-1.5 p-2 sm:p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] sm:text-xs font-bold text-white transition-all shadow-sm truncate"
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Previous Slide</span>
+            <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+            <span className="truncate">Previous Slide</span>
           </button>
 
           <button
             disabled={disabled}
             onClick={() => onDispatch('next_slide')}
-            className="flex items-center justify-center space-x-1.5 p-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white transition-all shadow-md shadow-indigo-900/30"
+            className="flex items-center justify-center space-x-1 sm:space-x-1.5 p-2 sm:p-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] sm:text-xs font-bold text-white transition-all shadow-md shadow-indigo-900/30 truncate"
           >
-            <span>Next Slide</span>
-            <ChevronRight className="w-4 h-4" />
+            <span className="truncate">Next Slide</span>
+            <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
           </button>
         </div>
 
         {/* Clear & Restore Grid */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           <button
             disabled={disabled}
             onClick={() => onDispatch('clear_slide')}
-            className="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 disabled:opacity-40 text-xs text-slate-300 font-medium transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 disabled:opacity-40 text-[11px] sm:text-xs text-slate-300 font-medium transition-colors truncate text-center"
           >
             Clear Slide
           </button>
           <button
             disabled={disabled}
             onClick={() => onDispatch('clear_all')}
-            className="p-2 rounded-lg bg-rose-950/60 border border-rose-800/80 hover:bg-rose-900/60 disabled:opacity-40 text-xs text-rose-200 font-medium transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg bg-rose-950/60 border border-rose-800/80 hover:bg-rose-900/60 disabled:opacity-40 text-[11px] sm:text-xs text-rose-200 font-medium transition-colors truncate text-center"
           >
             Clear All
           </button>
           <button
             disabled={disabled}
             onClick={() => onDispatch('restore_output')}
-            className="p-2 rounded-lg bg-emerald-950/60 border border-emerald-800/80 hover:bg-emerald-900/60 disabled:opacity-40 text-xs text-emerald-200 font-medium transition-colors flex items-center justify-center space-x-1"
+            className="p-1.5 sm:p-2 rounded-lg bg-emerald-950/60 border border-emerald-800/80 hover:bg-emerald-900/60 disabled:opacity-40 text-[11px] sm:text-xs text-emerald-200 font-medium transition-colors flex items-center justify-center space-x-1 truncate text-center"
           >
-            <RotateCcw className="w-3 h-3" />
-            <span>Restore</span>
+            <RotateCcw className="w-3 h-3 flex-shrink-0" />
+            <span className="truncate">Restore</span>
           </button>
         </div>
 

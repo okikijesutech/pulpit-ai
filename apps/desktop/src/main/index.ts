@@ -495,7 +495,7 @@ ipcMain.handle('audio:select-device', (_event, deviceId: string) => {
 });
 
 // Live Physical Microphone Streaming Handler (PR 6 & PR 8: Clean Audio & Singing Separation)
-ipcMain.on('audio:stream-chunk', (_event, buffer: ArrayBuffer, isMuted = false) => {
+ipcMain.on('audio:stream-chunk', (_event, buffer: any, isMuted = false) => {
   isRealMicStreaming = true;
   if (!mainWindow || mainWindow.isDestroyed()) return;
 
@@ -511,7 +511,18 @@ ipcMain.on('audio:stream-chunk', (_event, buffer: ArrayBuffer, isMuted = false) 
     return;
   }
 
-  const int16 = new Int16Array(buffer);
+  // Safely extract 16-bit PCM samples from Node.js Buffer or raw ArrayBuffer without byte-splitting
+  let int16: Int16Array;
+  if (Buffer.isBuffer(buffer)) {
+    int16 = new Int16Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 2);
+  } else if (buffer instanceof ArrayBuffer) {
+    int16 = new Int16Array(buffer);
+  } else if (ArrayBuffer.isView(buffer)) {
+    const v = buffer as ArrayBufferView;
+    int16 = new Int16Array(v.buffer, v.byteOffset, v.byteLength / 2);
+  } else {
+    int16 = new Int16Array(0);
+  }
   const metrics = audioLevelMeter.analyze(int16, isMuted);
   const activityMetrics = singingActivityDetector.processFrame(int16);
 

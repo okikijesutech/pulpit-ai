@@ -170,7 +170,12 @@ describe('SpeechEngine Unit Tests', () => {
         'Thank you',
         'Thank you very much.',
         'Thanks for watching!',
-        'Subtitles by congregation'
+        'Subtitles by congregation',
+        '*unintelligible*',
+        '"*unintelligible*"',
+        '*whispering*',
+        '*screams*',
+        '*sigh*'
       ];
 
       for (const phrase of phantomPhrases) {
