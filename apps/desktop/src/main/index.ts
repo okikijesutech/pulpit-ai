@@ -48,7 +48,7 @@ const authorityManager = new AuthorityManager();
 const auditLogger = authorityManager.getAuditLogger();
 const audioDeviceManager = new AudioDeviceManager();
 const audioLevelMeter = new AudioLevelMeter();
-const speechSegmenter = new SpeechSegmenter({ sampleRate: 16000 });
+const speechSegmenter = new SpeechSegmenter({ sampleRate: 16000, silenceHangoverFrames: 25, minSegmentRms: 0.0020 });
 const modelManager = new ModelManager();
 const whisperWorker = new WhisperWorkerProcess();
 whisperWorker.warmup();
@@ -336,6 +336,10 @@ function detectTrailingBookName(text: string): string | null {
     if (book) {
       return book.name;
     }
+  }
+  // Check for trailing introductory Scripture cues (e.g. "into the book of", "open to", "chapter")
+  if (/(book\s+of|turn\s+to|open\s+to|reading\s+from|read\s+from|chapter|verse)$/i.test(clean)) {
+    return 'scripture_cue';
   }
   return null;
 }

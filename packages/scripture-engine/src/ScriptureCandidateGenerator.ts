@@ -254,10 +254,11 @@ export class ScriptureCandidateGenerator {
     // Direct parse on individual segment first
     const directCandidates = this.processTranscriptAll(rawText, now);
 
-    // Guard: Check if the newest segment adds a book or a number
+    // Guard: Check if the newest segment adds a book, number, or Scripture introductory cue
     const addsBookOrNumber =
       ScriptureReferenceParser.containsBook(rawText) ||
-      ScriptureReferenceParser.containsNumber(rawText);
+      ScriptureReferenceParser.containsNumber(rawText) ||
+      /\b(bible|bibles|scripture|scriptures|book\s+of|turn\s+to|open\s+to|reading\s+from|read\s+from|chapter|verse|verses)\b/i.test(rawText);
 
     if (!addsBookOrNumber) {
       // Conversational utterance without book or number (e.g. "Amen church", "Praise the Lord")

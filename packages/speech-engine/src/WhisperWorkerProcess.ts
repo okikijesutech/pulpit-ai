@@ -192,7 +192,7 @@ export class WhisperWorkerProcess {
       }
     }
 
-    // 2. Minimum Acoustic Energy Gate: If average RMS < 0.005, audio is silence or low ambient hiss.
+    // 2. Minimum Acoustic Energy Gate: If average RMS < 0.002, audio is silence or low ambient hiss.
     // Discard immediately to prevent native Whisper from decoding hallucination loops on silence.
     if (segment.samples && segment.samples.length > 0) {
       let sumSquares = 0;
@@ -201,7 +201,7 @@ export class WhisperWorkerProcess {
         sumSquares += val * val;
       }
       const rms = Math.sqrt(sumSquares / segment.samples.length);
-      if (rms < 0.005) {
+      if (rms < 0.002) {
         return {
           text: '',
           confidence: null,

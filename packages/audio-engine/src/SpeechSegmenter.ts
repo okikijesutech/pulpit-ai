@@ -51,7 +51,7 @@ export class SpeechSegmenter {
     this.minSamples = Math.floor((options.minSegmentSeconds ?? 0.5) * this.sampleRate);
     this.maxSamples = Math.floor((options.maxSegmentSeconds ?? 6.0) * this.sampleRate);
     this.baseHangoverFrames = options.silenceHangoverFrames ?? 15; // 15 frames * 30ms = 450ms
-    this.minSegmentRms = options.minSegmentRms ?? 0.005;
+    this.minSegmentRms = options.minSegmentRms ?? 0.0020;
 
     // PR 8: Pre-roll AudioRingBuffer (default 250ms = 4,000 samples at 16kHz)
     const preRollMs = Math.max(200, Math.min(300, options.preRollMs ?? 250));
