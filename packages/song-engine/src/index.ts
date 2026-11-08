@@ -17,3 +17,4 @@ export * from './SongCandidateGenerator.js';
 export * from './sync/ManifestValidator.js';
 export * from './sync/CuratedPackageSync.js';
 export * from './backup/BackupManager.js';
+export * from './rccg/index.js';

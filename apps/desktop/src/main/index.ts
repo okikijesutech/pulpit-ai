@@ -27,6 +27,7 @@ import {
   SongImportPipeline,
   SongCandidateGenerator,
   SEED_SONGS,
+  loadRccgHymnsIntoDatabase,
   ApprovalOptions,
   StagedImportSong,
   BackupManager,
@@ -68,6 +69,7 @@ const songDatabase = new SongDatabase(':memory:');
 for (const seed of SEED_SONGS) {
   songDatabase.saveSong(seed);
 }
+loadRccgHymnsIntoDatabase(songDatabase);
 const songReviewManager = new SongReviewManager(songDatabase);
 const songCandidateGenerator = new SongCandidateGenerator(songDatabase, {
   cooldownMs: 8000,

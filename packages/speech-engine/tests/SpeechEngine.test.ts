@@ -175,7 +175,12 @@ describe('SpeechEngine Unit Tests', () => {
         '"*unintelligible*"',
         '*whispering*',
         '*screams*',
-        '*sigh*'
+        '*sigh*',
+        '*crowd cheering*',
+        '"*crowd cheering*"',
+        '*mumbling*',
+        '[INAUDIBLE]',
+        '[speaking in foreign language]'
       ];
 
       for (const phrase of phantomPhrases) {

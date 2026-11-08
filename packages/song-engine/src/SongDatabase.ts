@@ -359,9 +359,17 @@ export class SongDatabase {
       if (!matchedTitle && song.alternativeTitles) {
         for (const alt of song.alternativeTitles) {
           const normAlt = SongDatabase.normalizeLyricText(alt);
-          if (normAlt.includes(normQuery)) {
+          if (normAlt === normQuery) {
             matchedAltTitle = alt;
-            score = 0.90;
+            score = 1.0;
+            break;
+          } else if (new RegExp(`(^|\\s)${normQuery}(\\s|$)`).test(normAlt)) {
+            matchedAltTitle = alt;
+            score = 0.95;
+            break;
+          } else if (normAlt.includes(normQuery)) {
+            matchedAltTitle = alt;
+            score = 0.75;
             break;
           }
         }

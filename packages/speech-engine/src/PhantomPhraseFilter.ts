@@ -18,11 +18,15 @@ const PHANTOM_EXACT_PATTERNS = new Set([
   'the end.',
   'the end',
   'unintelligible',
-  'whispering'
+  'whispering',
+  'inaudible',
+  'mumbling',
+  'crowd cheering',
+  'speaking in foreign language'
 ]);
 
 const PHANTOM_ANNOTATION_REGEX =
-  /^["'*(\[]*(music|applause|laughter|blank_audio|blank|cheering|screaming|screams|groaning|groan|sighs|sigh|unintelligible|whispering|whisper|cough|coughing|gasp|crying|silence)["'*)\]]*\.?$/i;
+  /^["'*(\[]*(music|applause|laughter|blank_audio|blank|cheering|screaming|screams|groaning|groan|sighs|sigh|unintelligible|whispering|whisper|cough|coughing|gasp|crying|silence|mumbling|inaudible|crowd cheering|speaking in foreign language)["'*)\]]*\.?$/i;
 const PHANTOM_SUBTITLE_REGEX = /^(subtitles|subtitling|transcribed|translated|captioned|sous-titres)\s+(by|created by|realises par|realises)/i;
 
 export class PhantomPhraseFilter {
@@ -37,6 +41,16 @@ export class PhantomPhraseFilter {
     // Check bracketed or asterisk annotations like [MUSIC], *screams*, *sigh*, *whispering*, *unintelligible*
     const clean = trimmed.replace(/^["'\s]+|["'\s]+$/g, '');
     if (PHANTOM_ANNOTATION_REGEX.test(trimmed) || PHANTOM_ANNOTATION_REGEX.test(clean)) {
+      return true;
+    }
+
+    // Universal Whisper non-speech acoustic event tag rejection:
+    // Whisper outputs non-speech events enclosed in brackets [...], asterisks *...*, or parentheses (...)
+    // Examples: [INAUDIBLE], [speaking in foreign language], *crowd cheering*, *mumbling*, *snicker*, (screaming)
+    if (
+      (/^\*.*\*$/.test(clean) || /^\[.*\]$/.test(clean) || /^\(.*\)$/.test(clean)) &&
+      !clean.includes(':') // Preserve potential scripture verse tags like [John 3:16]
+    ) {
       return true;
     }
 
