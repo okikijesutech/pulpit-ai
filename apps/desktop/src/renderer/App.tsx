@@ -232,6 +232,44 @@ export const App: React.FC = () => {
     setCandidates((prev) => prev.filter((c) => c.id !== id));
   };
 
+  // Global Operator Keyboard Shortcuts (Space, Arrows, C, Esc, R, Enter)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Do not intercept hotkeys if user is currently typing in an input
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable) {
+        return;
+      }
+
+      if (e.key === ' ' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleDispatchCommand('next_slide');
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handleDispatchCommand('previous_slide');
+      } else if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        handleDispatchCommand('clear_slide');
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        handleDispatchCommand('clear_all');
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        handleDispatchCommand('restore_output');
+      } else if (e.key === 'Enter') {
+        if (candidates.length > 0 && !authorityState.manualLockActive) {
+          e.preventDefault();
+          handleApproveCandidate(candidates[0]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [candidates, authorityState.manualLockActive]);
+
   const handleAddMockCandidate = () => {
     const mockCand: SuggestionCandidate = {
       id: `cand_${Date.now()}`,
@@ -254,7 +292,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-gradient-to-br from-[#060913] via-[#090e1c] to-[#05070e] text-slate-100">
       <Header
         currentView={currentView}
         onViewChange={setCurrentView}

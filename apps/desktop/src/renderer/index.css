@@ -8,24 +8,91 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: #090d16;
+  background-color: #070a12;
   color: #f1f5f9;
   user-select: none;
   min-height: 100vh;
+  overflow: hidden;
 }
 
-/* Custom scrollbars */
+/* Custom sleek scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb {
   background: #334155;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
+}
+
+/* Glassmorphism Panels */
+.glass-panel {
+  background: rgba(13, 18, 30, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-panel:hover {
+  border-color: rgba(71, 85, 105, 0.65);
+}
+
+/* Audio Waveform Animation */
+@keyframes waveBar {
+  0%, 100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-wave-1 {
+  animation: waveBar 1.2s ease-in-out infinite;
+}
+.animate-wave-2 {
+  animation: waveBar 1.2s ease-in-out infinite 0.15s;
+}
+.animate-wave-3 {
+  animation: waveBar 1.2s ease-in-out infinite 0.3s;
+}
+.animate-wave-4 {
+  animation: waveBar 1.2s ease-in-out infinite 0.45s;
+}
+.animate-wave-5 {
+  animation: waveBar 1.2s ease-in-out infinite 0.6s;
+}
+.animate-wave-6 {
+  animation: waveBar 1.2s ease-in-out infinite 0.75s;
+}
+.animate-wave-7 {
+  animation: waveBar 1.2s ease-in-out infinite 0.9s;
+}
+
+/* Pulse radar animation */
+@keyframes radarPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.animate-radar {
+  animation: radarPulse 2s infinite;
 }
