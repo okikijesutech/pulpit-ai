@@ -25,6 +25,7 @@ interface HeaderProps {
   onDisconnectFreeShow: () => void;
   onSelectAudioDevice: (id: string) => void;
   onSelectTranslation?: (id: string) => void;
+  onOpenBibleExplorer?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -43,7 +44,8 @@ export const Header: React.FC<HeaderProps> = ({
   onConnectFreeShow,
   onDisconnectFreeShow,
   onSelectAudioDevice,
-  onSelectTranslation
+  onSelectTranslation,
+  onOpenBibleExplorer
 }) => {
   // Compute active segments (out of 10) for LED VU meter
   const isOff = audioLevel.state === 'disconnected';
@@ -95,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-950/70 text-indigo-300 border border-indigo-800/50 font-mono hidden 2xl:inline">
-            v0.1.0-alpha
+            v0.2.0-beta
           </span>
         </div>
 
@@ -268,7 +270,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Active Bible Translation Selector */}
+        {/* Active Bible Translation Selector & Manual Explorer */}
         <div className="flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1.5 rounded-lg border border-slate-800/90 shadow-inner">
           <BookOpen className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
           <span className="text-[10px] text-slate-400 uppercase font-bold hidden md:inline">
@@ -286,6 +288,19 @@ export const Header: React.FC<HeaderProps> = ({
               KJV
             </option>
           </select>
+
+          {onOpenBibleExplorer && (
+            <button
+              onClick={onOpenBibleExplorer}
+              title="Open Manual Scripture Explorer (Hotkey: B)"
+              className="ml-1 px-2 py-0.5 rounded bg-indigo-600/30 hover:bg-indigo-600 text-[10px] font-bold text-indigo-200 hover:text-white transition-all shadow-sm border border-indigo-500/40 active:scale-95 flex items-center space-x-1"
+            >
+              <span>Explorer</span>
+              <kbd className="hidden lg:inline px-1 py-0.2 rounded bg-black/40 text-[8px] font-mono text-indigo-300">
+                B
+              </kbd>
+            </button>
+          )}
         </div>
 
         {/* FreeShow Live Link Status */}

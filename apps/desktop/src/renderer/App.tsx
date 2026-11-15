@@ -19,6 +19,11 @@ import {
   RecognizedTranscriptEvent
 } from './components/LiveTranscriptPanel.js';
 import { SongLibraryPanel } from './components/SongLibraryPanel.js';
+import {
+  SermonScripturePinboard,
+  PinnedScripture
+} from './components/SermonScripturePinboard.js';
+import { BibleExplorerModal } from './components/BibleExplorerModal.js';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../preload/index.js';
 import { physicalMicService } from './services/MicrophoneAudioService.js';
 
@@ -57,6 +62,8 @@ export const App: React.FC = () => {
   const [activeTranslation, setActiveTranslation] = useState<string>('WEB');
   const [isMicMuted, setIsMicMuted] = useState<boolean>(false);
   const [micError, setMicError] = useState<string | null>(null);
+  const [isBibleExplorerOpen, setIsBibleExplorerOpen] = useState<boolean>(false);
+  const [pinnedScriptures, setPinnedScriptures] = useState<PinnedScripture[]>([]);
 
   useEffect(() => {
     if (window.pulpitAPI) {
@@ -220,6 +227,19 @@ export const App: React.FC = () => {
       const res = await window.pulpitAPI.approveCandidate(candidate.id);
       if (res.success) {
         setCandidates((prev) => prev.filter((c) => c.id !== candidate.id));
+        // PR Phase 1: Pin approved scriptures to Sermon Scripture Pinboard
+        if (candidate.type === 'scripture') {
+          setPinnedScriptures((prev) => [
+            {
+              id: `pin_${Date.now()}_${candidate.id}`,
+              reference: candidate.title,
+              translation: activeTranslation,
+              textSnippet: candidate.contentPreview,
+              timestamp: Date.now()
+            },
+            ...prev.filter((p) => p.reference !== candidate.title)
+          ]);
+        }
       } else {
         alert(`Approval rejected: ${res.reason}`);
       }
@@ -228,11 +248,50 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleDirectProjectScripture = async (reference: string, fullText?: string) => {
+    await handleDispatchCommand('start_scripture', {
+      reference,
+      text: fullText,
+      translation: activeTranslation
+    });
+    setPinnedScriptures((prev) => [
+      {
+        id: `pin_${Date.now()}`,
+        reference,
+        translation: activeTranslation,
+        textSnippet: fullText || reference,
+        timestamp: Date.now()
+      },
+      ...prev.filter((p) => p.reference !== reference)
+    ]);
+  };
+
+  const handleQueueManualScripture = (reference: string, previewText: string, attribution: string) => {
+    const manualCand: SuggestionCandidate = {
+      id: `cand_manual_${Date.now()}`,
+      type: 'scripture',
+      title: reference,
+      contentPreview: previewText,
+      confidence: 1.0,
+      evidence: `Manual Explorer Selection (${attribution})`,
+      detectedAt: Date.now(),
+      status: 'pending',
+      actionPayload: {
+        action: 'start_scripture',
+        data: { reference, attribution },
+        source: 'operator',
+        correlationId: `manual_${Date.now()}`,
+        createdAt: Date.now()
+      }
+    };
+    setCandidates((prev) => [manualCand, ...prev]);
+  };
+
   const handleDismissCandidate = (id: string) => {
     setCandidates((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // Global Operator Keyboard Shortcuts (Space, Arrows, C, Esc, R, Enter)
+  // Global Operator Keyboard Shortcuts (Space, Arrows, C, Esc, R, Enter, B)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       // Do not intercept hotkeys if user is currently typing in an input
@@ -256,6 +315,9 @@ export const App: React.FC = () => {
       } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         handleDispatchCommand('restore_output');
+      } else if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        setIsBibleExplorerOpen((prev) => !prev);
       } else if (e.key === 'Enter') {
         if (candidates.length > 0 && !authorityState.manualLockActive) {
           e.preventDefault();
@@ -268,7 +330,7 @@ export const App: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  }, [candidates, authorityState.manualLockActive]);
+  }, [candidates, authorityState.manualLockActive, activeTranslation]);
 
   const handleAddMockCandidate = () => {
     const mockCand: SuggestionCandidate = {
@@ -310,6 +372,7 @@ export const App: React.FC = () => {
         onDisconnectFreeShow={handleDisconnectFreeShow}
         onSelectAudioDevice={handleSelectAudioDevice}
         onSelectTranslation={handleSelectTranslation}
+        onOpenBibleExplorer={() => setIsBibleExplorerOpen(true)}
       />
 
       <ManualLockBanner
@@ -358,9 +421,9 @@ export const App: React.FC = () => {
           manualLockActive={authorityState.manualLockActive}
         />
       ) : (
-        <main className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 grid grid-cols-12 gap-3 sm:gap-4 lg:gap-4 xl:gap-6 min-h-0 min-w-0 overflow-y-auto lg:overflow-hidden">
+        <main className="flex-1 p-3 sm:p-4 lg:p-4 xl:p-5 grid grid-cols-12 gap-3 sm:gap-4 lg:gap-4 xl:gap-5 min-h-0 min-w-0 overflow-y-auto lg:overflow-hidden">
           {/* Left Column (4 cols): Live Screen and Manual Operator Controls */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-3 sm:gap-4 lg:gap-4 xl:gap-6 min-h-0 min-w-0">
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-3 sm:gap-4 lg:gap-4 xl:gap-5 min-h-0 min-w-0">
             <div className="flex-1 min-h-[200px] sm:min-h-0">
               <LiveOutputPanel snapshot={freeShowSnapshot} />
             </div>
@@ -369,16 +432,29 @@ export const App: React.FC = () => {
                 onDispatch={handleDispatchCommand}
                 onAddMockCandidate={handleAddMockCandidate}
                 disabled={!freeShowSnapshot.connected}
+                onOpenBibleExplorer={() => setIsBibleExplorerOpen(true)}
               />
             </div>
           </div>
 
-          {/* Center Column (5 cols): Live Transcript Stream & Suggested Content Queue */}
-          <div className="col-span-12 lg:col-span-5 flex flex-col gap-3 sm:gap-4 lg:gap-4 xl:gap-6 min-h-0 min-w-0">
-            <div className="h-64 lg:h-1/2 min-h-0 min-w-0">
+          {/* Center Column (5 cols): Sermon Scripture Pinboard, Live Transcript & Suggested Content Queue */}
+          <div className="col-span-12 lg:col-span-5 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0">
+            {/* Pastoral Memory: Sermon Scripture History Pinboard */}
+            <div className="flex-shrink-0">
+              <SermonScripturePinboard
+                pinnedScriptures={pinnedScriptures}
+                onReProject={(ref) => handleDirectProjectScripture(ref)}
+                onClear={() => setPinnedScriptures([])}
+                freeShowConnected={freeShowSnapshot.connected}
+                isLocked={authorityState.manualLockActive}
+                onOpenExplorer={() => setIsBibleExplorerOpen(true)}
+              />
+            </div>
+
+            <div className="flex-1 min-h-[160px] lg:min-h-0">
               <LiveTranscriptPanel transcripts={transcripts} />
             </div>
-            <div className="h-64 lg:h-1/2 min-h-0 min-w-0">
+            <div className="flex-1 min-h-[200px] lg:min-h-0">
               <SuggestionsQueue
                 candidates={candidates}
                 isLocked={authorityState.manualLockActive}
@@ -395,6 +471,18 @@ export const App: React.FC = () => {
           </div>
         </main>
       )}
+
+      {/* Manual Bible Explorer & Direct Verse Launcher Modal */}
+      <BibleExplorerModal
+        isOpen={isBibleExplorerOpen}
+        onClose={() => setIsBibleExplorerOpen(false)}
+        activeTranslation={activeTranslation}
+        onSelectTranslation={handleSelectTranslation}
+        onDirectProject={handleDirectProjectScripture}
+        onQueueSuggestion={handleQueueManualScripture}
+        freeShowConnected={freeShowSnapshot.connected}
+        isLocked={authorityState.manualLockActive}
+      />
     </div>
   );
 };

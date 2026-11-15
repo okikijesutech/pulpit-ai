@@ -7,19 +7,22 @@ import {
   RotateCcw,
   Sliders,
   Sparkles,
-  Square
+  Square,
+  BookOpen
 } from 'lucide-react';
 
 interface ManualControlsPanelProps {
   onDispatch: (action: AllowlistedAction, data?: any) => void;
   onAddMockCandidate: () => void;
   disabled: boolean;
+  onOpenBibleExplorer?: () => void;
 }
 
 export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
   onDispatch,
   onAddMockCandidate,
-  disabled
+  disabled,
+  onOpenBibleExplorer
 }) => {
   return (
     <div className="glass-panel rounded-2xl p-4 flex flex-col shadow-xl transition-all">
@@ -105,6 +108,22 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
             <kbd className="text-[9px] font-mono text-emerald-400/60 group-hover:text-emerald-300">R</kbd>
           </button>
         </div>
+
+        {/* Bible Explorer Trigger */}
+        {onOpenBibleExplorer && (
+          <button
+            onClick={onOpenBibleExplorer}
+            className="w-full p-2.5 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-700/50 text-xs font-bold text-indigo-300 hover:text-white transition-all flex items-center justify-between shadow-sm active:scale-95 group"
+          >
+            <div className="flex items-center space-x-2">
+              <BookOpen className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span>Open Bible Explorer</span>
+            </div>
+            <kbd className="px-1.5 py-0.5 rounded bg-indigo-900/60 border border-indigo-600/50 text-[10px] font-mono text-indigo-200">
+              B
+            </kbd>
+          </button>
+        )}
 
         {/* Dev / Test Rig Helper */}
         <div className="pt-2 border-t border-slate-800/70">
