@@ -329,7 +329,9 @@ export class FreeShowAdapter {
           const projectedText = this.extractFreeShowText(msg.data) || '';
           if (refDisplay && (projectedText.includes(refDisplay) || (command.data?.text && projectedText.includes(String(command.data.text))))) {
             finish({ success: true, status: 'confirmed' });
-          } else if (command.action === 'clear_all' || command.action === 'clear_slide') {
+          } else if (command.action === 'clear_all' || command.action === 'clear_slide' || command.action === 'clear_overlays') {
+            finish({ success: true, status: 'confirmed' });
+          } else if (command.action === 'show_announcement' || command.action === 'start_overlay') {
             finish({ success: true, status: 'confirmed' });
           }
         }
@@ -341,9 +343,9 @@ export class FreeShowAdapter {
         if (!raw) return;
         if (refDisplay && (String(raw.show_id || '').includes(refDisplay) || String(raw.slide_text || '').includes(refDisplay))) {
           finish({ success: true, status: 'confirmed' });
-        } else if ((command.action === 'clear_all' || command.action === 'clear_slide') && raw.is_cleared) {
+        } else if ((command.action === 'clear_all' || command.action === 'clear_slide' || command.action === 'clear_overlays') && raw.is_cleared) {
           finish({ success: true, status: 'confirmed' });
-        } else if (command.action === 'next_slide' || command.action === 'previous_slide' || command.action === 'restore_output') {
+        } else if (command.action === 'next_slide' || command.action === 'previous_slide' || command.action === 'restore_output' || command.action === 'show_announcement' || command.action === 'start_overlay') {
           finish({ success: true, status: 'confirmed' });
         }
       };
@@ -367,6 +369,14 @@ export class FreeShowAdapter {
         case 'clear_all':
         case 'clear_slide':
           remoteChannel = 'API:clear_all';
+          break;
+        case 'clear_overlays':
+          remoteChannel = 'API:clear_overlays';
+          break;
+        case 'show_announcement':
+        case 'start_overlay':
+          remoteChannel = 'API:start_overlay';
+          remoteData = command.data;
           break;
         case 'restore_output':
           remoteChannel = 'API:restore_output';

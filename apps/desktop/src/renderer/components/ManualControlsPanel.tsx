@@ -8,21 +8,29 @@ import {
   Sliders,
   Sparkles,
   Square,
-  BookOpen
+  BookOpen,
+  Megaphone
 } from 'lucide-react';
+import { ActiveAnnouncement } from './QuickAnnouncementModal.js';
 
 interface ManualControlsPanelProps {
   onDispatch: (action: AllowlistedAction, data?: any) => void;
   onAddMockCandidate: () => void;
   disabled: boolean;
   onOpenBibleExplorer?: () => void;
+  onOpenAnnouncements?: () => void;
+  activeAnnouncement?: ActiveAnnouncement | null;
+  onClearAnnouncement?: () => void;
 }
 
 export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
   onDispatch,
   onAddMockCandidate,
   disabled,
-  onOpenBibleExplorer
+  onOpenBibleExplorer,
+  onOpenAnnouncements,
+  activeAnnouncement,
+  onClearAnnouncement
 }) => {
   return (
     <div className="glass-panel rounded-2xl p-4 flex flex-col shadow-xl transition-all">
@@ -123,6 +131,40 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
               B
             </kbd>
           </button>
+        )}
+
+        {/* Quick Announcements / Lower-Third Alert Trigger */}
+        {onOpenAnnouncements && (
+          <div className="flex flex-col gap-1.5">
+            <button
+              onClick={onOpenAnnouncements}
+              className={`w-full p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-between shadow-sm active:scale-95 group ${
+                activeAnnouncement
+                  ? 'bg-amber-950/70 hover:bg-amber-900/80 border-amber-500/80 text-amber-200'
+                  : 'bg-amber-950/30 hover:bg-amber-900/40 border-amber-700/40 text-amber-300 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Megaphone className={`w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform ${activeAnnouncement ? 'animate-bounce' : ''}`} />
+                <span>
+                  {activeAnnouncement ? `Ticker Active (${activeAnnouncement.remainingSeconds}s)` : 'Quick Announcements'}
+                </span>
+              </div>
+              <kbd className="px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-600/50 text-[10px] font-mono text-amber-200">
+                A
+              </kbd>
+            </button>
+
+            {activeAnnouncement && onClearAnnouncement && (
+              <button
+                type="button"
+                onClick={onClearAnnouncement}
+                className="w-full py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 text-[10px] font-bold flex items-center justify-center space-x-1 transition-all"
+              >
+                <span>Clear Active Lower-Third Now</span>
+              </button>
+            )}
+          </div>
         )}
 
         {/* Dev / Test Rig Helper */}

@@ -5,8 +5,9 @@ import {
   FreeShowStateSnapshot,
   OperatorMode
 } from '@pulpit-ai/shared-types';
-import { Mic, MicOff, Radio, BookOpen, Music, Activity, Volume2, ShieldCheck } from 'lucide-react';
+import { Mic, MicOff, Radio, BookOpen, Music, Activity, Volume2, ShieldCheck, Megaphone } from 'lucide-react';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../../preload/index.js';
+import { ActiveAnnouncement } from './QuickAnnouncementModal.js';
 
 interface HeaderProps {
   currentView?: 'live' | 'songs';
@@ -31,6 +32,8 @@ interface HeaderProps {
   onSelectAudioDevice: (id: string) => void;
   onSelectTranslation?: (id: string) => void;
   onOpenBibleExplorer?: () => void;
+  onOpenAnnouncements?: () => void;
+  activeAnnouncement?: ActiveAnnouncement | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -55,7 +58,9 @@ export const Header: React.FC<HeaderProps> = ({
   onDisconnectFreeShow,
   onSelectAudioDevice,
   onSelectTranslation,
-  onOpenBibleExplorer
+  onOpenBibleExplorer,
+  onOpenAnnouncements,
+  activeAnnouncement
 }) => {
   // Compute active segments (out of 10) for LED VU meter
   const isOff = audioLevel.state === 'disconnected';
@@ -107,7 +112,7 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-950/70 text-indigo-300 border border-indigo-800/50 font-mono hidden 2xl:inline">
-            v0.3.0-beta
+            v0.4.0-beta
           </span>
         </div>
 
@@ -335,6 +340,25 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
         </div>
+
+        {/* Quick Sanctuary Announcements & Lower-Third Alerts Trigger */}
+        {onOpenAnnouncements && (
+          <button
+            onClick={onOpenAnnouncements}
+            title="Open Quick Announcements & Lower-Third Ticker (Hotkey: A)"
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all shadow-inner flex-shrink-0 ${
+              activeAnnouncement
+                ? 'bg-amber-950/90 text-amber-200 border-amber-500/80 shadow-[0_0_10px_rgba(245,158,11,0.25)]'
+                : 'bg-slate-900/90 text-slate-400 border-slate-800/90 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Megaphone className={`w-3.5 h-3.5 ${activeAnnouncement ? 'text-amber-400 animate-pulse' : 'text-amber-400'}`} />
+            <span className="hidden sm:inline">Alerts</span>
+            <kbd className="hidden lg:inline px-1 py-0.2 rounded bg-black/40 text-[8px] font-mono text-amber-300">
+              A
+            </kbd>
+          </button>
+        )}
 
         {/* FreeShow Live Link Status */}
         <div

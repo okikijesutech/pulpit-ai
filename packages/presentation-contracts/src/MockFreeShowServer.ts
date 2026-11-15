@@ -131,7 +131,12 @@ export class MockFreeShowServer {
         break;
       case 'clear_all':
       case 'clear_slide':
+      case 'clear_overlays':
         this.isOutputCleared = true;
+        break;
+      case 'show_announcement':
+      case 'start_overlay':
+        this.isOutputCleared = false;
         break;
       case 'restore_output':
         this.isOutputCleared = false;

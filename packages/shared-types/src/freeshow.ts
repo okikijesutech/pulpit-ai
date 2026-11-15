@@ -23,7 +23,9 @@ export const ALLOWLISTED_FREESHOW_ACTIONS = [
   'restore_output',
   'get_output',
   'get_output_slide_text',
-  'get_output_group_name'
+  'get_output_group_name',
+  'show_announcement',
+  'start_overlay'
 ] as const;
 
 export type AllowlistedAction = (typeof ALLOWLISTED_FREESHOW_ACTIONS)[number];

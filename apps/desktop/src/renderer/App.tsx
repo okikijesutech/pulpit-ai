@@ -24,6 +24,11 @@ import {
   PinnedScripture
 } from './components/SermonScripturePinboard.js';
 import { BibleExplorerModal } from './components/BibleExplorerModal.js';
+import {
+  QuickAnnouncementModal,
+  ActiveAnnouncement,
+  AnnouncementStyle
+} from './components/QuickAnnouncementModal.js';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../preload/index.js';
 import { physicalMicService } from './services/MicrophoneAudioService.js';
 import { ShieldCheck } from 'lucide-react';
@@ -65,6 +70,8 @@ export const App: React.FC = () => {
   const [isMicMuted, setIsMicMuted] = useState<boolean>(false);
   const [micError, setMicError] = useState<string | null>(null);
   const [isBibleExplorerOpen, setIsBibleExplorerOpen] = useState<boolean>(false);
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState<boolean>(false);
+  const [activeAnnouncement, setActiveAnnouncement] = useState<ActiveAnnouncement | null>(null);
   const [pinnedScriptures, setPinnedScriptures] = useState<PinnedScripture[]>([]);
   const [isAuditLogVisible, setIsAuditLogVisible] = useState<boolean>(() => {
     if (typeof window !== 'undefined' && (window as any).localStorage) {
@@ -319,6 +326,53 @@ export const App: React.FC = () => {
     setCandidates((prev) => prev.filter((c) => c.id !== id));
   };
 
+  // Countdown timer for auto-dismissing lower-third announcement overlay
+  useEffect(() => {
+    if (!activeAnnouncement) return;
+    if (activeAnnouncement.durationSeconds <= 0) return; // persistent
+
+    const interval = setInterval(() => {
+      setActiveAnnouncement((prev) => {
+        if (!prev) return null;
+        if (prev.remainingSeconds <= 1) {
+          // Auto-dismiss: Clear overlay on FreeShow
+          handleDispatchCommand('clear_overlays');
+          return null;
+        }
+        return { ...prev, remainingSeconds: prev.remainingSeconds - 1 };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeAnnouncement?.id]);
+
+  const handleBroadcastAnnouncement = async (
+    text: string,
+    durationSeconds: number,
+    style: AnnouncementStyle
+  ) => {
+    const announcement: ActiveAnnouncement = {
+      id: `ann_${Date.now()}`,
+      category: 'custom',
+      text,
+      durationSeconds,
+      remainingSeconds: durationSeconds,
+      style,
+      startedAt: Date.now()
+    };
+    setActiveAnnouncement(announcement);
+    await handleDispatchCommand('show_announcement', {
+      text,
+      style,
+      duration: durationSeconds
+    });
+  };
+
+  const handleClearOverlay = async () => {
+    setActiveAnnouncement(null);
+    await handleDispatchCommand('clear_overlays');
+  };
+
   // Global Operator Keyboard Shortcuts (Space, Arrows, C, Esc, R, Enter, B)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -346,6 +400,9 @@ export const App: React.FC = () => {
       } else if (e.key === 'b' || e.key === 'B') {
         e.preventDefault();
         setIsBibleExplorerOpen((prev) => !prev);
+      } else if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        setIsAnnouncementModalOpen((prev) => !prev);
       } else if (e.key === 'l' || e.key === 'L') {
         e.preventDefault();
         handleToggleAuditLog();
@@ -409,6 +466,8 @@ export const App: React.FC = () => {
         onSelectAudioDevice={handleSelectAudioDevice}
         onSelectTranslation={handleSelectTranslation}
         onOpenBibleExplorer={() => setIsBibleExplorerOpen(true)}
+        onOpenAnnouncements={() => setIsAnnouncementModalOpen(true)}
+        activeAnnouncement={activeAnnouncement}
       />
 
       <ManualLockBanner
@@ -469,6 +528,9 @@ export const App: React.FC = () => {
                 onAddMockCandidate={handleAddMockCandidate}
                 disabled={!freeShowSnapshot.connected}
                 onOpenBibleExplorer={() => setIsBibleExplorerOpen(true)}
+                onOpenAnnouncements={() => setIsAnnouncementModalOpen(true)}
+                activeAnnouncement={activeAnnouncement}
+                onClearAnnouncement={handleClearOverlay}
               />
             </div>
           </div>
@@ -545,6 +607,17 @@ export const App: React.FC = () => {
         onSelectTranslation={handleSelectTranslation}
         onDirectProject={handleDirectProjectScripture}
         onQueueSuggestion={handleQueueManualScripture}
+        freeShowConnected={freeShowSnapshot.connected}
+        isLocked={authorityState.manualLockActive}
+      />
+
+      {/* Quick Announcements & Lower-Third Alert Ticker Modal */}
+      <QuickAnnouncementModal
+        isOpen={isAnnouncementModalOpen}
+        onClose={() => setIsAnnouncementModalOpen(false)}
+        onBroadcast={handleBroadcastAnnouncement}
+        onClearOverlay={handleClearOverlay}
+        activeAnnouncement={activeAnnouncement}
         freeShowConnected={freeShowSnapshot.connected}
         isLocked={authorityState.manualLockActive}
       />
