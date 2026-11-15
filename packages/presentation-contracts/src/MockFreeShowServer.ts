@@ -164,8 +164,15 @@ export class MockFreeShowServer {
         this.isOutputCleared = false;
         break;
       case 'start_show':
+      case 'name_select_show':
         if (data?.name) this.currentShowId = data.name;
         this.currentSlideIndex = 0;
+        this.currentSlideText = `${this.currentShowId} - Slide 0`;
+        this.isOutputCleared = false;
+        break;
+      case 'name_select_slide':
+        if (data?.name) this.currentSlideText = `${this.currentShowId} - ${data.name}`;
+        this.isOutputCleared = false;
         break;
     }
 

@@ -30,6 +30,7 @@ import {
   AnnouncementStyle
 } from './components/QuickAnnouncementModal.js';
 import { SlideMatrixModal } from './components/SlideMatrixModal.js';
+import { SongStanzaMatrixModal } from './components/SongStanzaMatrixModal.js';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../preload/index.js';
 import { physicalMicService } from './services/MicrophoneAudioService.js';
 import { ShieldCheck } from 'lucide-react';
@@ -73,6 +74,7 @@ export const App: React.FC = () => {
   const [isBibleExplorerOpen, setIsBibleExplorerOpen] = useState<boolean>(false);
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState<boolean>(false);
   const [isSlideMatrixOpen, setIsSlideMatrixOpen] = useState<boolean>(false);
+  const [isStanzaMatrixOpen, setIsStanzaMatrixOpen] = useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<ActiveAnnouncement | null>(null);
   const [pinnedScriptures, setPinnedScriptures] = useState<PinnedScripture[]>([]);
   const [isAuditLogVisible, setIsAuditLogVisible] = useState<boolean>(() => {
@@ -86,7 +88,7 @@ export const App: React.FC = () => {
     if (window.pulpitAPI) {
       // Initial fetch
       window.pulpitAPI.getAuthorityState().then(setAuthorityState).catch(console.error);
-      window.pulpitAPI.getFreeShowSnapshot().then((snap) => {
+      window.pulpitAPI.getFreeShowSnapshot().then((snap: FreeShowStateSnapshot) => {
         if (snap) setFreeShowSnapshot(snap);
       }).catch(console.error);
       window.pulpitAPI.getAuditEvents().then(setAuditEvents).catch(console.error);
@@ -102,7 +104,7 @@ export const App: React.FC = () => {
           } else {
             window.pulpitAPI
               .getAudioDevices()
-              .then((stored) => {
+              .then((stored: AudioInputDevice[]) => {
                 setAudioDevices(stored);
                 if (stored.length > 0) setActiveDeviceId(stored[0].id);
               })
@@ -114,21 +116,21 @@ export const App: React.FC = () => {
       // Reactive event subscriptions
       const unsubAuth = window.pulpitAPI.onAuthorityStateChange(setAuthorityState);
       const unsubFS = window.pulpitAPI.onFreeShowStateChange(setFreeShowSnapshot);
-      const unsubAudit = window.pulpitAPI.onAuditEvent((ev) => {
+      const unsubAudit = window.pulpitAPI.onAuditEvent((ev: AuditEvent) => {
         setAuditEvents((prev) => [ev, ...prev].slice(0, 50));
       });
       const unsubAudioLevel = window.pulpitAPI.onAudioLevelChange(setAudioLevel);
       const unsubAudioActivity = window.pulpitAPI.onAudioActivityMode(setAudioActivity);
-      const unsubTranscript = window.pulpitAPI.onTranscriptEvent((event) => {
+      const unsubTranscript = window.pulpitAPI.onTranscriptEvent((event: RecognizedTranscriptEvent) => {
         setTranscripts((prev) => [event, ...prev].slice(0, 50));
       });
-      const unsubScripture = window.pulpitAPI.onScriptureCandidate((candidate) => {
+      const unsubScripture = window.pulpitAPI.onScriptureCandidate((candidate: SuggestionCandidate) => {
         setCandidates((prev) => [
           candidate,
           ...prev.filter((c) => (!candidate.supersedesId || c.id !== candidate.supersedesId) && c.title !== candidate.title)
         ]);
       });
-      const unsubSong = window.pulpitAPI.onSongCandidate((candidate) => {
+      const unsubSong = window.pulpitAPI.onSongCandidate((candidate: SuggestionCandidate) => {
         setCandidates((prev) => [candidate, ...prev.filter((c) => c.title !== candidate.title)]);
       });
 
@@ -387,7 +389,21 @@ export const App: React.FC = () => {
     await handleDispatchCommand('show_logo');
   };
 
-  // Global Operator Keyboard Shortcuts (Space, Arrows, C, Esc, R, Enter, B, A, L, M)
+  const handleProjectStanza = async (
+    songTitle: string,
+    sectionLabel: string,
+    sectionIndex: number,
+    textSnippet?: string
+  ) => {
+    await handleDispatchCommand('name_select_show', { name: songTitle });
+    await handleDispatchCommand('index_select_slide', {
+      index: sectionIndex,
+      name: sectionLabel,
+      text: textSnippet
+    });
+  };
+
+  // Global Operator Keyboard Shortcuts (Space, Arrows, C, Esc, R, Enter, B, A, L, M, S)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       // Do not intercept hotkeys if user is currently typing in an input
@@ -423,6 +439,9 @@ export const App: React.FC = () => {
       } else if (e.key === 'm' || e.key === 'M') {
         e.preventDefault();
         setIsSlideMatrixOpen((prev) => !prev);
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        setIsStanzaMatrixOpen((prev) => !prev);
       } else if (e.key === 'Enter') {
         if (candidates.length > 0 && !authorityState.manualLockActive) {
           e.preventDefault();
@@ -485,6 +504,7 @@ export const App: React.FC = () => {
         onOpenBibleExplorer={() => setIsBibleExplorerOpen(true)}
         onOpenAnnouncements={() => setIsAnnouncementModalOpen(true)}
         onOpenSlideMatrix={() => setIsSlideMatrixOpen(true)}
+        onOpenStanzaMatrix={() => setIsStanzaMatrixOpen(true)}
         activeAnnouncement={activeAnnouncement}
       />
 
@@ -551,6 +571,7 @@ export const App: React.FC = () => {
                 onOpenBibleExplorer={() => setIsBibleExplorerOpen(true)}
                 onOpenAnnouncements={() => setIsAnnouncementModalOpen(true)}
                 onOpenSlideMatrix={() => setIsSlideMatrixOpen(true)}
+                onOpenStanzaMatrix={() => setIsStanzaMatrixOpen(true)}
                 activeAnnouncement={activeAnnouncement}
                 onClearAnnouncement={handleClearOverlay}
               />
@@ -654,6 +675,18 @@ export const App: React.FC = () => {
         onFreezeOutput={handleFreezeOutput}
         onShowLogo={handleShowLogo}
         onBlackout={() => handleDispatchCommand('clear_all')}
+        freeShowConnected={freeShowSnapshot.connected}
+        isLocked={authorityState.manualLockActive}
+      />
+
+      {/* Worship Song Stanza Matrix & Quick Hymn Launcher Modal */}
+      <SongStanzaMatrixModal
+        isOpen={isStanzaMatrixOpen}
+        onClose={() => setIsStanzaMatrixOpen(false)}
+        activeSongTitle={freeShowSnapshot.currentShowId}
+        currentSectionIndex={freeShowSnapshot.currentSlideIndex ?? 0}
+        onProjectStanza={handleProjectStanza}
+        onClearOutput={() => handleDispatchCommand('clear_all')}
         freeShowConnected={freeShowSnapshot.connected}
         isLocked={authorityState.manualLockActive}
       />

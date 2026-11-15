@@ -336,7 +336,10 @@ export class FreeShowAdapter {
             command.action === 'start_overlay' ||
             command.action === 'index_select_slide' ||
             command.action === 'freeze_output' ||
-            command.action === 'show_logo'
+            command.action === 'show_logo' ||
+            command.action === 'name_select_show' ||
+            command.action === 'name_select_slide' ||
+            command.action === 'start_show'
           ) {
             finish({ success: true, status: 'confirmed' });
           }
@@ -359,7 +362,10 @@ export class FreeShowAdapter {
           command.action === 'start_overlay' ||
           command.action === 'index_select_slide' ||
           command.action === 'freeze_output' ||
-          command.action === 'show_logo'
+          command.action === 'show_logo' ||
+          command.action === 'name_select_show' ||
+          command.action === 'name_select_slide' ||
+          command.action === 'start_show'
         ) {
           finish({ success: true, status: 'confirmed' });
         }
@@ -395,6 +401,14 @@ export class FreeShowAdapter {
           break;
         case 'index_select_slide':
           remoteChannel = 'API:index_select_slide';
+          remoteData = command.data;
+          break;
+        case 'name_select_show':
+          remoteChannel = 'API:name_select_show';
+          remoteData = command.data;
+          break;
+        case 'name_select_slide':
+          remoteChannel = 'API:name_select_slide';
           remoteData = command.data;
           break;
         case 'freeze_output':
@@ -457,6 +471,10 @@ export class FreeShowAdapter {
         this.stateSnapshot.currentShowId = 'Church Logo';
         this.stateSnapshot.currentSlideText = '[Church Logo Display]';
         this.stateSnapshot.isOutputCleared = false;
+        this.notify();
+      } else if (command.action === 'name_select_show') {
+        const showName = String(command.data?.name || command.data?.title || 'Song Presentation');
+        this.stateSnapshot.currentShowId = showName;
         this.notify();
       }
     });
