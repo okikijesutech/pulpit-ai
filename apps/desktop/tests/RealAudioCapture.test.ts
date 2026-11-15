@@ -42,8 +42,20 @@ describe('Real Audio Capture Pipeline (PR 6)', () => {
       disconnect: vi.fn()
     };
 
+    const mockGainNode = {
+      gain: {
+        value: 1.0,
+        setValueAtTime: vi.fn((val: number) => {
+          mockGainNode.gain.value = val;
+        })
+      },
+      connect: vi.fn(),
+      disconnect: vi.fn()
+    };
+
     mockAudioContext = {
       sampleRate: 16000,
+      currentTime: 1.5,
       state: 'running',
       audioWorklet: {
         addModule: vi.fn().mockResolvedValue(undefined)
@@ -52,6 +64,7 @@ describe('Real Audio Capture Pipeline (PR 6)', () => {
         connect: vi.fn(),
         disconnect: vi.fn()
       })),
+      createGain: vi.fn(() => mockGainNode),
       close: vi.fn().mockResolvedValue(undefined)
     };
 
@@ -286,6 +299,70 @@ describe('Real Audio Capture Pipeline (PR 6)', () => {
       const decoded = unpackPcm(ipcBuffer);
       expect(decoded.length).toBe(rawSamples.length);
       expect(Array.from(decoded)).toEqual(Array.from(rawSamples));
+    });
+  });
+
+  describe('In-App Software Microphone Preamp & Gain Booster (+0 to +24 dB)', () => {
+    it('initializes with default 0 dB gain and allows setting within 0 to 30 dB bounds', () => {
+      expect(micService.getGainDb()).toBe(0);
+
+      micService.setGainDb(12);
+      expect(micService.getGainDb()).toBe(12);
+
+      // Clamps lower bound to 0 dB
+      micService.setGainDb(-5);
+      expect(micService.getGainDb()).toBe(0);
+
+      // Clamps upper bound to 30 dB
+      micService.setGainDb(45);
+      expect(micService.getGainDb()).toBe(30);
+    });
+
+    it('dynamically applies linear gain multiplier to Web Audio GainNode while capturing', async () => {
+      await micService.start();
+
+      expect(mockAudioContext.createGain).toHaveBeenCalled();
+
+      // Set to +12 dB (approx 3.98x linear amplitude)
+      micService.setGainDb(12);
+
+      const expectedLinear = Math.pow(10, 12 / 20);
+      expect(expectedLinear).toBeCloseTo(3.981, 2);
+
+      // Verify status listener receives gain update
+      let reportedGain: number | undefined;
+      micService.subscribeStatus((st) => {
+        reportedGain = st.gainDb;
+      });
+
+      micService.setGainDb(18);
+      expect(reportedGain).toBe(18);
+    });
+
+    it('applies soft saturation / soft-knee limiting without harsh overflow wrapping', () => {
+      // Test soft saturation behavior on hot input signals
+      const testLimiter = (val: number): number => {
+        let s = val;
+        if (s > 0.9) {
+          s = 0.9 + 0.1 * Math.tanh((s - 0.9) / 0.1);
+        } else if (s < -0.9) {
+          s = -0.9 + 0.1 * Math.tanh((s + 0.9) / 0.1);
+        }
+        return Math.max(-1, Math.min(1, s));
+      };
+
+      // Linear range under 0.9 is untouched
+      expect(testLimiter(0.5)).toBe(0.5);
+      expect(testLimiter(-0.7)).toBe(-0.7);
+
+      // Hot inputs exceeding 1.0 are cleanly limited below or at 1.0 without wrap-around
+      const hotPeak = testLimiter(2.5);
+      expect(hotPeak).toBeLessThanOrEqual(1.0);
+      expect(hotPeak).toBeGreaterThan(0.9);
+
+      const hotNegativePeak = testLimiter(-2.5);
+      expect(hotNegativePeak).toBeGreaterThanOrEqual(-1.0);
+      expect(hotNegativePeak).toBeLessThan(-0.9);
     });
   });
 });

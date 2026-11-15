@@ -1,12 +1,13 @@
 import React from 'react';
 import { AuditEvent } from '@pulpit-ai/shared-types';
-import { ScrollText, ShieldCheck, AlertCircle, Info, ShieldAlert, Lock, CheckCircle2 } from 'lucide-react';
+import { ScrollText, ShieldCheck, AlertCircle, Info, ShieldAlert, Lock, CheckCircle2, X } from 'lucide-react';
 
 interface AuditTrailPanelProps {
   events: AuditEvent[];
+  onClose?: () => void;
 }
 
-export const AuditTrailPanel: React.FC<AuditTrailPanelProps> = ({ events }) => {
+export const AuditTrailPanel: React.FC<AuditTrailPanelProps> = ({ events, onClose }) => {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'security':
@@ -36,10 +37,21 @@ export const AuditTrailPanel: React.FC<AuditTrailPanelProps> = ({ events }) => {
           </div>
         </div>
 
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 font-mono flex items-center gap-1">
-          <Lock className="w-2.5 h-2.5 text-emerald-400" />
-          <span>Immutable</span>
-        </span>
+        <div className="flex items-center space-x-2">
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 font-mono flex items-center gap-1">
+            <Lock className="w-2.5 h-2.5 text-emerald-400" />
+            <span>Immutable</span>
+          </span>
+          {onClose && (
+            <button
+              onClick={onClose}
+              title="Close Audit Log panel to expand center workspace (Hotkey: L)"
+              className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800/80 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Audit Stream */}

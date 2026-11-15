@@ -13,6 +13,7 @@ export interface MicrophoneStatus {
   deviceName: string;
   isListeningSpeech: boolean;
   isMuted?: boolean;
+  gainDb?: number;
   lastTranscript?: string;
   error?: string;
 }
@@ -52,8 +53,10 @@ export class MicrophoneAudioService {
   private audioContext: AudioContext | null = null;
   private mediaStream: MediaStream | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
+  private gainNode: GainNode | null = null;
   private workletNode: AudioWorkletNode | null = null;
   private activeDeviceId: string = 'default';
+  private gainDb: number = 0;
   private isRunning = false;
   private isMuted = false;
   private deviceChangeHandler?: () => void;
@@ -62,8 +65,55 @@ export class MicrophoneAudioService {
     isStreaming: false,
     deviceName: 'Default Microphone',
     isListeningSpeech: false,
-    isMuted: false
+    isMuted: false,
+    gainDb: 0
   };
+
+  constructor() {
+    if (typeof window !== 'undefined' && (window as any).localStorage) {
+      try {
+        const saved = (window as any).localStorage.getItem('pulpit_mic_gain_db');
+        if (saved !== null) {
+          const parsed = parseFloat(saved);
+          if (!isNaN(parsed) && parsed >= 0 && parsed <= 30) {
+            this.gainDb = parsed;
+            this.status.gainDb = parsed;
+          }
+        }
+      } catch {}
+    }
+  }
+
+  public getGainDb(): number {
+    return this.gainDb;
+  }
+
+  public setGainDb(db: number): void {
+    const clamped = Math.max(0, Math.min(30, db));
+    this.gainDb = clamped;
+    if (typeof window !== 'undefined' && (window as any).localStorage) {
+      try {
+        (window as any).localStorage.setItem('pulpit_mic_gain_db', clamped.toString());
+      } catch {}
+    }
+
+    if (this.gainNode && this.audioContext) {
+      const linearGain = Math.pow(10, clamped / 20);
+      try {
+        if (this.gainNode.gain && typeof this.gainNode.gain.setValueAtTime === 'function') {
+          this.gainNode.gain.setValueAtTime(linearGain, this.audioContext.currentTime);
+        } else if (this.gainNode.gain) {
+          this.gainNode.gain.value = linearGain;
+        }
+      } catch {
+        if (this.gainNode.gain) {
+          this.gainNode.gain.value = linearGain;
+        }
+      }
+    }
+
+    this.notify({ gainDb: clamped });
+  }
 
   public async setMuted(muted: boolean): Promise<boolean> {
     this.isMuted = muted;
@@ -224,6 +274,19 @@ export class MicrophoneAudioService {
       const source = ctx.createMediaStreamSource(stream);
       this.sourceNode = source;
 
+      // In-App Software Preamp GainNode (PR 6 clean bypass safe)
+      let finalAudioNode: any = source;
+      if (typeof ctx.createGain === 'function') {
+        const gainNode = ctx.createGain();
+        const linearGain = Math.pow(10, this.gainDb / 20);
+        if (gainNode.gain) {
+          gainNode.gain.value = linearGain;
+        }
+        this.gainNode = gainNode;
+        source.connect(gainNode);
+        finalAudioNode = gainNode;
+      }
+
       // AudioWorklet initialization
       if (ctx.audioWorklet && typeof (window as any).AudioWorkletNode !== 'undefined') {
         const blob = new Blob([WORKLET_PROCESSOR_CODE], { type: 'application/javascript' });
@@ -243,7 +306,7 @@ export class MicrophoneAudioService {
           this.processAndStreamSamples(float32, ctx.sampleRate);
         };
 
-        source.connect(workletNode);
+        finalAudioNode.connect(workletNode);
       } else {
         console.warn('[MicrophoneAudioService] AudioWorkletNode not available in environment');
       }
@@ -255,6 +318,7 @@ export class MicrophoneAudioService {
         deviceName,
         isListeningSpeech: true,
         isMuted: false,
+        gainDb: this.gainDb,
         error: undefined
       });
 
@@ -287,12 +351,19 @@ export class MicrophoneAudioService {
       }
     }
 
-    // Convert Float32Array [-1.0, 1.0] to 16-bit PCM Int16Array [-32768, 32767]
+    // Convert Float32Array [-1.0, 1.0] to 16-bit PCM Int16Array [-32768, 32767] with soft saturation
     const pcm16 = new Int16Array(samples16k.length);
     if (!this.isMuted) {
       for (let i = 0; i < samples16k.length; i++) {
-        const s = Math.max(-1, Math.min(1, samples16k[i]));
-        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        let s = samples16k[i];
+        // Soft-knee limiter / saturation when gain boosting is active to prevent harsh square-wave clipping
+        if (s > 0.9) {
+          s = 0.9 + 0.1 * Math.tanh((s - 0.9) / 0.1);
+        } else if (s < -0.9) {
+          s = -0.9 + 0.1 * Math.tanh((s + 0.9) / 0.1);
+        }
+        const clamped = Math.max(-1, Math.min(1, s));
+        pcm16[i] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
       }
     }
 
@@ -344,6 +415,13 @@ export class MicrophoneAudioService {
         this.workletNode.disconnect();
       } catch {}
       this.workletNode = null;
+    }
+
+    if (this.gainNode) {
+      try {
+        this.gainNode.disconnect();
+      } catch {}
+      this.gainNode = null;
     }
 
     if (this.sourceNode) {

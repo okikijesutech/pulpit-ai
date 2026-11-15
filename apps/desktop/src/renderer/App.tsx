@@ -26,6 +26,7 @@ import {
 import { BibleExplorerModal } from './components/BibleExplorerModal.js';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../preload/index.js';
 import { physicalMicService } from './services/MicrophoneAudioService.js';
+import { ShieldCheck } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'live' | 'songs'>('live');
@@ -48,6 +49,7 @@ export const App: React.FC = () => {
 
   const [audioDevices, setAudioDevices] = useState<AudioInputDevice[]>([]);
   const [activeDeviceId, setActiveDeviceId] = useState<string>('default_mic');
+  const [micGainDb, setMicGainDb] = useState<number>(() => physicalMicService.getGainDb());
   const [audioLevel, setAudioLevel] = useState<AudioLevelMetrics>({
     rmsLevel: 0,
     decibels: -100,
@@ -64,6 +66,12 @@ export const App: React.FC = () => {
   const [micError, setMicError] = useState<string | null>(null);
   const [isBibleExplorerOpen, setIsBibleExplorerOpen] = useState<boolean>(false);
   const [pinnedScriptures, setPinnedScriptures] = useState<PinnedScripture[]>([]);
+  const [isAuditLogVisible, setIsAuditLogVisible] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && (window as any).localStorage) {
+      return (window as any).localStorage.getItem('pulpit_audit_log_visible') === 'true';
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (window.pulpitAPI) {
@@ -124,6 +132,9 @@ export const App: React.FC = () => {
         if (status.isMuted !== undefined) {
           setIsMicMuted(status.isMuted);
         }
+        if (status.gainDb !== undefined) {
+          setMicGainDb(status.gainDb);
+        }
         if (status.error) {
           setMicError(status.error);
         } else {
@@ -149,6 +160,23 @@ export const App: React.FC = () => {
   const handleToggleMic = () => {
     const next = physicalMicService.toggleMuted();
     setIsMicMuted(next);
+  };
+
+  const handleSetGainDb = (gainDb: number) => {
+    physicalMicService.setGainDb(gainDb);
+    setMicGainDb(gainDb);
+  };
+
+  const handleToggleAuditLog = () => {
+    setIsAuditLogVisible((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined' && (window as any).localStorage) {
+        try {
+          (window as any).localStorage.setItem('pulpit_audit_log_visible', String(next));
+        } catch {}
+      }
+      return next;
+    });
   };
 
   const handleToggleLock = async () => {
@@ -318,6 +346,9 @@ export const App: React.FC = () => {
       } else if (e.key === 'b' || e.key === 'B') {
         e.preventDefault();
         setIsBibleExplorerOpen((prev) => !prev);
+      } else if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        handleToggleAuditLog();
       } else if (e.key === 'Enter') {
         if (candidates.length > 0 && !authorityState.manualLockActive) {
           e.preventDefault();
@@ -366,6 +397,11 @@ export const App: React.FC = () => {
         audioActivity={audioActivity}
         activeTranslation={activeTranslation}
         isMicMuted={isMicMuted}
+        gainDb={micGainDb}
+        onSetGainDb={handleSetGainDb}
+        isAuditLogVisible={isAuditLogVisible}
+        auditEventsCount={auditEvents.length}
+        onToggleAuditLog={handleToggleAuditLog}
         onToggleMic={handleToggleMic}
         onModeChange={handleModeChange}
         onConnectFreeShow={handleConnectFreeShow}
@@ -437,14 +473,19 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Center Column (5 cols): Sermon Scripture Pinboard, Live Transcript & Suggested Content Queue */}
-          <div className="col-span-12 lg:col-span-5 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0">
+          {/* Center Column: Sermon Scripture Pinboard, Live Transcript & Suggested Content Queue */}
+          <div
+            className={`col-span-12 ${
+              isAuditLogVisible ? 'lg:col-span-5' : 'lg:col-span-8'
+            } flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0 transition-all`}
+          >
             {/* Pastoral Memory: Sermon Scripture History Pinboard */}
             <div className="flex-shrink-0">
               <SermonScripturePinboard
                 pinnedScriptures={pinnedScriptures}
                 onReProject={(ref) => handleDirectProjectScripture(ref)}
                 onClear={() => setPinnedScriptures([])}
+                onRemovePin={(id) => setPinnedScriptures((prev) => prev.filter((p) => p.id !== id))}
                 freeShowConnected={freeShowSnapshot.connected}
                 isLocked={authorityState.manualLockActive}
                 onOpenExplorer={() => setIsBibleExplorerOpen(true)}
@@ -461,15 +502,39 @@ export const App: React.FC = () => {
                 onApprove={handleApproveCandidate}
                 onDismiss={handleDismissCandidate}
                 onManualLookup={handleManualLookup}
+                onDirectProject={handleDirectProjectScripture}
+                onQueueManualScripture={handleQueueManualScripture}
+                activeTranslation={activeTranslation}
+                onOpenBibleExplorer={() => setIsBibleExplorerOpen(true)}
+                freeShowConnected={freeShowSnapshot.connected}
               />
             </div>
           </div>
 
-          {/* Right Column (3 cols): Live Security & Authority Audit Trail */}
-          <div className="col-span-12 lg:col-span-3 flex flex-col min-h-[180px] lg:min-h-0 min-w-0">
-            <AuditTrailPanel events={auditEvents} />
-          </div>
+          {/* Right Column (3 cols): Live Security & Authority Audit Trail (Collapsible & easily accessible) */}
+          {isAuditLogVisible && (
+            <div className="col-span-12 lg:col-span-3 flex flex-col min-h-[180px] lg:min-h-0 min-w-0 animate-in fade-in slide-in-from-right-2 duration-150">
+              <AuditTrailPanel events={auditEvents} onClose={handleToggleAuditLog} />
+            </div>
+          )}
         </main>
+      )}
+
+      {/* Floating Edge Tab to easily reopen Audit Log when collapsed */}
+      {!isAuditLogVisible && currentView === 'live' && (
+        <button
+          onClick={handleToggleAuditLog}
+          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-30 bg-slate-900/90 hover:bg-indigo-950/90 border-l border-y border-slate-800 hover:border-indigo-500/50 py-3 px-1.5 rounded-l-xl shadow-xl flex-col items-center gap-1.5 text-slate-400 hover:text-indigo-200 transition-all cursor-pointer group"
+          title="Open Authority Security Audit Log (Hotkey: L)"
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+          <span className="text-[9px] font-mono font-bold uppercase [writing-mode:vertical-rl] tracking-widest text-slate-400 group-hover:text-white">
+            Audit Log
+          </span>
+          <span className="text-[9px] font-mono font-bold px-1 rounded bg-black/50 text-indigo-300">
+            {auditEvents.length}
+          </span>
+        </button>
       )}
 
       {/* Manual Bible Explorer & Direct Verse Launcher Modal */}

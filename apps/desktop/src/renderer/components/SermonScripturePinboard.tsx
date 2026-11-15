@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, RotateCcw, Pin, Trash2 } from 'lucide-react';
+import { BookOpen, RotateCcw, Pin, Trash2, X } from 'lucide-react';
 
 export interface PinnedScripture {
   id: string;
@@ -13,6 +13,7 @@ interface SermonScripturePinboardProps {
   pinnedScriptures: PinnedScripture[];
   onReProject: (reference: string) => void;
   onClear: () => void;
+  onRemovePin?: (id: string) => void;
   freeShowConnected: boolean;
   isLocked: boolean;
   onOpenExplorer: () => void;
@@ -22,6 +23,7 @@ export const SermonScripturePinboard: React.FC<SermonScripturePinboardProps> = (
   pinnedScriptures,
   onReProject,
   onClear,
+  onRemovePin,
   freeShowConnected,
   isLocked,
   onOpenExplorer
@@ -31,7 +33,9 @@ export const SermonScripturePinboard: React.FC<SermonScripturePinboardProps> = (
       <div className="flex items-center space-x-2 min-w-0 flex-1">
         <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-300 flex-shrink-0">
           <Pin className="w-3.5 h-3.5 text-indigo-400 rotate-45" />
-          <span className="uppercase tracking-wider text-[10px] hidden sm:inline">Pastoral Memory:</span>
+          <span className="uppercase tracking-wider text-[10px] hidden sm:inline">
+            Pastoral Memory ({pinnedScriptures.length}):
+          </span>
         </div>
 
         {pinnedScriptures.length === 0 ? (
@@ -41,18 +45,34 @@ export const SermonScripturePinboard: React.FC<SermonScripturePinboardProps> = (
         ) : (
           <div className="flex items-center space-x-1.5 overflow-x-auto py-0.5 pr-2 min-w-0">
             {pinnedScriptures.map((item) => (
-              <button
+              <div
                 key={item.id}
-                disabled={!freeShowConnected || isLocked}
-                onClick={() => onReProject(item.reference)}
-                title={`Re-project "${item.reference}" (${item.translation}):\n${item.textSnippet}`}
-                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-indigo-950/70 hover:bg-indigo-900 border border-indigo-700/60 hover:border-indigo-500 text-xs font-bold text-indigo-200 hover:text-white transition-all shadow-sm active:scale-95 flex-shrink-0 group disabled:opacity-40"
+                className="flex items-center rounded-lg bg-indigo-950/70 border border-indigo-700/60 hover:border-indigo-500 text-xs font-bold text-indigo-200 transition-all shadow-sm flex-shrink-0 group"
               >
-                <BookOpen className="w-3 h-3 text-indigo-400 group-hover:scale-110 transition-transform" />
-                <span>{item.reference}</span>
-                <span className="text-[9px] font-mono text-indigo-400 font-normal">({item.translation})</span>
-                <RotateCcw className="w-2.5 h-2.5 text-indigo-400 opacity-60 group-hover:opacity-100" />
-              </button>
+                <button
+                  type="button"
+                  disabled={!freeShowConnected || isLocked}
+                  onClick={() => onReProject(item.reference)}
+                  title={`Re-project "${item.reference}" (${item.translation}):\n${item.textSnippet}`}
+                  className="flex items-center space-x-1.5 px-2.5 py-1 hover:text-white transition-colors disabled:opacity-40"
+                >
+                  <BookOpen className="w-3 h-3 text-indigo-400 group-hover:scale-110 transition-transform" />
+                  <span>{item.reference}</span>
+                  <span className="text-[9px] font-mono text-indigo-400 font-normal">({item.translation})</span>
+                  <RotateCcw className="w-2.5 h-2.5 text-indigo-400 opacity-60 group-hover:opacity-100" />
+                </button>
+
+                {onRemovePin && (
+                  <button
+                    type="button"
+                    onClick={() => onRemovePin(item.id)}
+                    title="Remove from pinboard"
+                    className="pr-1.5 pl-0.5 text-indigo-400/60 hover:text-rose-400 transition-colors"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}

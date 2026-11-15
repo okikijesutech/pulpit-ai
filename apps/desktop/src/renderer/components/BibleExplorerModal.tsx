@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CANON_BOOKS, CanonBook } from '../data/canonBooks.js';
 import { BookOpen, Search, X, Check, Cast, Sparkles, Layers, ChevronRight } from 'lucide-react';
+import { parseQuickScripture } from '../utils/quickScriptureParser.js';
 
 interface BibleExplorerModalProps {
   isOpen: boolean;
@@ -117,8 +118,31 @@ export const BibleExplorerModal: React.FC<BibleExplorerModalProps> = ({
     onClose();
   };
 
+  const handleSearchChange = (val: string) => {
+    setBookSearch(val);
+    const parsed = parseQuickScripture(val);
+    if (parsed.isValid && parsed.book && parsed.chapter && parsed.verseStart) {
+      setSelectedBook(parsed.book);
+      setSelectedChapter(parsed.chapter);
+      setVerseStart(parsed.verseStart);
+      setVerseEnd(parsed.verseEnd);
+    }
+  };
+
+  const handleModalKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !isLocked && freeShowConnected) {
+      e.preventDefault();
+      handleProjectNow();
+    } else if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+    <div
+      onKeyDown={handleModalKeyDown}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-150"
+    >
       <div className="glass-panel w-full max-w-4xl max-h-[92vh] rounded-2xl flex flex-col shadow-2xl border border-slate-700/80 overflow-hidden">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-900/90">
@@ -195,14 +219,14 @@ export const BibleExplorerModal: React.FC<BibleExplorerModalProps> = ({
               </div>
             </div>
 
-            {/* Book Search Bar */}
+            {/* Book / Reference Search Bar */}
             <div className="relative mb-2">
               <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
               <input
                 type="text"
                 value={bookSearch}
-                onChange={(e) => setBookSearch(e.target.value)}
-                placeholder="Filter books (e.g. Rom, Psa, John)..."
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Jump to verse (e.g. rom 10 1, John 3:16)..."
                 className="w-full pl-8 pr-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               />
             </div>

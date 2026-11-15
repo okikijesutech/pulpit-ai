@@ -5,7 +5,7 @@ import {
   FreeShowStateSnapshot,
   OperatorMode
 } from '@pulpit-ai/shared-types';
-import { Mic, MicOff, Radio, BookOpen, Music, Activity } from 'lucide-react';
+import { Mic, MicOff, Radio, BookOpen, Music, Activity, Volume2, ShieldCheck } from 'lucide-react';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../../preload/index.js';
 
 interface HeaderProps {
@@ -19,6 +19,11 @@ interface HeaderProps {
   audioActivity?: AudioActivityMetrics;
   activeTranslation?: string;
   isMicMuted?: boolean;
+  gainDb?: number;
+  onSetGainDb?: (db: number) => void;
+  isAuditLogVisible?: boolean;
+  auditEventsCount?: number;
+  onToggleAuditLog?: () => void;
   onToggleMic?: () => void;
   onModeChange: (mode: OperatorMode) => void;
   onConnectFreeShow: () => void;
@@ -39,6 +44,11 @@ export const Header: React.FC<HeaderProps> = ({
   audioActivity,
   activeTranslation = 'WEB',
   isMicMuted = false,
+  gainDb = 0,
+  onSetGainDb,
+  isAuditLogVisible = false,
+  auditEventsCount = 0,
+  onToggleAuditLog,
   onToggleMic,
   onModeChange,
   onConnectFreeShow,
@@ -97,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-950/70 text-indigo-300 border border-indigo-800/50 font-mono hidden 2xl:inline">
-            v0.2.0-beta
+            v0.3.0-beta
           </span>
         </div>
 
@@ -201,6 +211,29 @@ export const Header: React.FC<HeaderProps> = ({
               </option>
             ))}
           </select>
+
+          {/* Software Preamp Gain Booster (+0 to +24 dB) */}
+          <div
+            className={`flex items-center space-x-1 px-1.5 py-0.5 rounded border text-[11px] font-mono font-bold transition-all ${
+              gainDb > 0
+                ? 'bg-indigo-950/80 border-indigo-700/80 text-indigo-300 shadow-[0_0_8px_rgba(99,102,241,0.25)]'
+                : 'bg-slate-950/60 border-slate-800 text-slate-400'
+            }`}
+            title="Software Preamp Booster: Boosts quiet laptop microphones (+0 dB to +24 dB) so Whisper speech recognition hears clearly with zero distortion."
+          >
+            <Volume2 className={`w-3 h-3 ${gainDb > 0 ? 'text-indigo-400 animate-pulse' : 'text-slate-500'}`} />
+            <select
+              value={gainDb}
+              onChange={(e) => onSetGainDb?.(Number(e.target.value))}
+              className="bg-transparent text-[11px] font-bold text-slate-200 border-none outline-none cursor-pointer hover:text-white transition-colors"
+            >
+              <option value={0} className="bg-slate-900 text-slate-200">+0 dB</option>
+              <option value={6} className="bg-slate-900 text-slate-200">+6 dB</option>
+              <option value={12} className="bg-slate-900 text-indigo-300 font-bold">+12 dB (Laptop)</option>
+              <option value={18} className="bg-slate-900 text-indigo-300 font-bold">+18 dB</option>
+              <option value={24} className="bg-slate-900 text-amber-300 font-bold">+24 dB (Max)</option>
+            </select>
+          </div>
 
           {/* Precision Segmented LED VU Meter */}
           <div
@@ -362,6 +395,25 @@ export const Header: React.FC<HeaderProps> = ({
             {freeShowSnapshot.connected ? 'Disconnect' : 'Connect'}
           </button>
         </div>
+
+        {/* Authority Audit Log Quick-Access Pill */}
+        {onToggleAuditLog && (
+          <button
+            onClick={onToggleAuditLog}
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all shadow-inner flex-shrink-0 ${
+              isAuditLogVisible
+                ? 'bg-indigo-950/90 text-indigo-200 border-indigo-600/80 shadow-[0_0_10px_rgba(99,102,241,0.25)]'
+                : 'bg-slate-900/90 text-slate-400 border-slate-800/90 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+            title="Toggle Security Audit Log Panel (Hotkey: L)"
+          >
+            <ShieldCheck className={`w-3.5 h-3.5 ${isAuditLogVisible ? 'text-indigo-400' : 'text-emerald-400'}`} />
+            <span className="hidden sm:inline">Audit Log</span>
+            <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-black/40 text-slate-300">
+              {auditEventsCount ?? 0}
+            </span>
+          </button>
+        )}
       </div>
     </header>
   );
