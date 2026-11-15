@@ -5,7 +5,7 @@ import {
   FreeShowStateSnapshot,
   OperatorMode
 } from '@pulpit-ai/shared-types';
-import { Mic, MicOff, Radio, BookOpen, Music, Activity, Volume2, ShieldCheck, Megaphone } from 'lucide-react';
+import { Mic, MicOff, Radio, BookOpen, Music, Activity, Volume2, ShieldCheck, Megaphone, LayoutGrid } from 'lucide-react';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../../preload/index.js';
 import { ActiveAnnouncement } from './QuickAnnouncementModal.js';
 
@@ -33,6 +33,7 @@ interface HeaderProps {
   onSelectTranslation?: (id: string) => void;
   onOpenBibleExplorer?: () => void;
   onOpenAnnouncements?: () => void;
+  onOpenSlideMatrix?: () => void;
   activeAnnouncement?: ActiveAnnouncement | null;
 }
 
@@ -60,6 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectTranslation,
   onOpenBibleExplorer,
   onOpenAnnouncements,
+  onOpenSlideMatrix,
   activeAnnouncement
 }) => {
   // Compute active segments (out of 10) for LED VU meter
@@ -112,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-950/70 text-indigo-300 border border-indigo-800/50 font-mono hidden 2xl:inline">
-            v0.4.0-beta
+            v0.5.0-beta
           </span>
         </div>
 
@@ -356,6 +358,21 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline">Alerts</span>
             <kbd className="hidden lg:inline px-1 py-0.2 rounded bg-black/40 text-[8px] font-mono text-amber-300">
               A
+            </kbd>
+          </button>
+        )}
+
+        {/* Slide Matrix Navigator Trigger */}
+        {onOpenSlideMatrix && (
+          <button
+            onClick={onOpenSlideMatrix}
+            title="Open Slide Matrix & Direct Jump Navigator (Hotkey: M)"
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all shadow-inner flex-shrink-0 bg-slate-900/90 text-slate-300 border-slate-800/90 hover:text-white hover:bg-slate-800 hover:border-indigo-500/50"
+          >
+            <LayoutGrid className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline">Matrix</span>
+            <kbd className="hidden lg:inline px-1 py-0.2 rounded bg-black/40 text-[8px] font-mono text-indigo-300">
+              M
             </kbd>
           </button>
         )}

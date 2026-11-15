@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AllowlistedAction } from '@pulpit-ai/shared-types';
 import {
   ChevronRight,
@@ -9,7 +9,11 @@ import {
   Sparkles,
   Square,
   BookOpen,
-  Megaphone
+  Megaphone,
+  LayoutGrid,
+  ArrowRight,
+  Snowflake,
+  Image as ImageIcon
 } from 'lucide-react';
 import { ActiveAnnouncement } from './QuickAnnouncementModal.js';
 
@@ -19,6 +23,7 @@ interface ManualControlsPanelProps {
   disabled: boolean;
   onOpenBibleExplorer?: () => void;
   onOpenAnnouncements?: () => void;
+  onOpenSlideMatrix?: () => void;
   activeAnnouncement?: ActiveAnnouncement | null;
   onClearAnnouncement?: () => void;
 }
@@ -29,9 +34,21 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
   disabled,
   onOpenBibleExplorer,
   onOpenAnnouncements,
+  onOpenSlideMatrix,
   activeAnnouncement,
   onClearAnnouncement
 }) => {
+  const [quickJumpNum, setQuickJumpNum] = useState<string>('');
+
+  const handleDeskJump = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = parseInt(quickJumpNum.trim(), 10);
+    if (!isNaN(parsed)) {
+      const zeroBased = parsed > 0 ? parsed - 1 : parsed;
+      onDispatch('index_select_slide', { index: zeroBased });
+      setQuickJumpNum('');
+    }
+  };
   return (
     <div className="glass-panel rounded-2xl p-4 flex flex-col shadow-xl transition-all">
       {/* Panel Header */}
@@ -114,6 +131,69 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
               <span className="truncate">Restore</span>
             </div>
             <kbd className="text-[9px] font-mono text-emerald-400/60 group-hover:text-emerald-300">R</kbd>
+          </button>
+        </div>
+
+        {/* Slide Matrix & Direct Jump Trigger */}
+        {onOpenSlideMatrix && (
+          <button
+            disabled={disabled}
+            onClick={onOpenSlideMatrix}
+            className="w-full p-2.5 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-600/50 text-xs font-bold text-indigo-200 hover:text-white transition-all flex items-center justify-between shadow-sm active:scale-95 group"
+          >
+            <div className="flex items-center space-x-2">
+              <LayoutGrid className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span>Slide Matrix & Direct Jump</span>
+            </div>
+            <kbd className="px-1.5 py-0.5 rounded bg-indigo-900/60 border border-indigo-600/50 text-[10px] font-mono text-indigo-200">
+              M
+            </kbd>
+          </button>
+        )}
+
+        {/* Quick Numeric Jump Desk Row */}
+        <form onSubmit={handleDeskJump} className="flex items-center space-x-1.5">
+          <input
+            type="number"
+            min="1"
+            placeholder="Jump slide #..."
+            value={quickJumpNum}
+            onChange={(e) => setQuickJumpNum(e.target.value)}
+            disabled={disabled}
+            className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 focus:border-indigo-500 text-xs text-white placeholder-slate-500 font-mono outline-none transition-all disabled:opacity-40"
+          />
+          <button
+            type="submit"
+            disabled={disabled || !quickJumpNum.trim()}
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white transition-all flex items-center space-x-1 shadow-sm active:scale-95 flex-shrink-0"
+          >
+            <span>Jump</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </form>
+
+        {/* Output Freeze & Church Brand Logo Direct Controls */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onDispatch('freeze_output')}
+            title="Freeze current sanctuary presentation output"
+            className="p-2 rounded-xl bg-cyan-950/30 hover:bg-cyan-900/40 border border-cyan-800/40 disabled:opacity-40 text-xs text-cyan-300 font-semibold transition-all flex items-center justify-center space-x-1.5 active:scale-95 shadow-sm"
+          >
+            <Snowflake className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="truncate">Freeze Output</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onDispatch('show_logo')}
+            title="Project Sanctuary Church Logo Screen"
+            className="p-2 rounded-xl bg-indigo-950/30 hover:bg-indigo-900/40 border border-indigo-800/40 disabled:opacity-40 text-xs text-indigo-300 font-semibold transition-all flex items-center justify-center space-x-1.5 active:scale-95 shadow-sm"
+          >
+            <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="truncate">Church Logo</span>
           </button>
         </div>
 

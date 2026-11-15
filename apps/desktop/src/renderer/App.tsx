@@ -29,6 +29,7 @@ import {
   ActiveAnnouncement,
   AnnouncementStyle
 } from './components/QuickAnnouncementModal.js';
+import { SlideMatrixModal } from './components/SlideMatrixModal.js';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../preload/index.js';
 import { physicalMicService } from './services/MicrophoneAudioService.js';
 import { ShieldCheck } from 'lucide-react';
@@ -71,6 +72,7 @@ export const App: React.FC = () => {
   const [micError, setMicError] = useState<string | null>(null);
   const [isBibleExplorerOpen, setIsBibleExplorerOpen] = useState<boolean>(false);
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState<boolean>(false);
+  const [isSlideMatrixOpen, setIsSlideMatrixOpen] = useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<ActiveAnnouncement | null>(null);
   const [pinnedScriptures, setPinnedScriptures] = useState<PinnedScripture[]>([]);
   const [isAuditLogVisible, setIsAuditLogVisible] = useState<boolean>(() => {
@@ -373,7 +375,19 @@ export const App: React.FC = () => {
     await handleDispatchCommand('clear_overlays');
   };
 
-  // Global Operator Keyboard Shortcuts (Space, Arrows, C, Esc, R, Enter, B)
+  const handleSelectSlide = async (index: number) => {
+    await handleDispatchCommand('index_select_slide', { index });
+  };
+
+  const handleFreezeOutput = async () => {
+    await handleDispatchCommand('freeze_output');
+  };
+
+  const handleShowLogo = async () => {
+    await handleDispatchCommand('show_logo');
+  };
+
+  // Global Operator Keyboard Shortcuts (Space, Arrows, C, Esc, R, Enter, B, A, L, M)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       // Do not intercept hotkeys if user is currently typing in an input
@@ -406,6 +420,9 @@ export const App: React.FC = () => {
       } else if (e.key === 'l' || e.key === 'L') {
         e.preventDefault();
         handleToggleAuditLog();
+      } else if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault();
+        setIsSlideMatrixOpen((prev) => !prev);
       } else if (e.key === 'Enter') {
         if (candidates.length > 0 && !authorityState.manualLockActive) {
           e.preventDefault();
@@ -467,6 +484,7 @@ export const App: React.FC = () => {
         onSelectTranslation={handleSelectTranslation}
         onOpenBibleExplorer={() => setIsBibleExplorerOpen(true)}
         onOpenAnnouncements={() => setIsAnnouncementModalOpen(true)}
+        onOpenSlideMatrix={() => setIsSlideMatrixOpen(true)}
         activeAnnouncement={activeAnnouncement}
       />
 
@@ -520,7 +538,10 @@ export const App: React.FC = () => {
           {/* Left Column (4 cols): Live Screen and Manual Operator Controls */}
           <div className="col-span-12 lg:col-span-4 flex flex-col gap-3 sm:gap-4 lg:gap-4 xl:gap-5 min-h-0 min-w-0">
             <div className="flex-1 min-h-[200px] sm:min-h-0">
-              <LiveOutputPanel snapshot={freeShowSnapshot} />
+              <LiveOutputPanel
+                snapshot={freeShowSnapshot}
+                onOpenSlideMatrix={() => setIsSlideMatrixOpen(true)}
+              />
             </div>
             <div className="flex-shrink-0">
               <ManualControlsPanel
@@ -529,6 +550,7 @@ export const App: React.FC = () => {
                 disabled={!freeShowSnapshot.connected}
                 onOpenBibleExplorer={() => setIsBibleExplorerOpen(true)}
                 onOpenAnnouncements={() => setIsAnnouncementModalOpen(true)}
+                onOpenSlideMatrix={() => setIsSlideMatrixOpen(true)}
                 activeAnnouncement={activeAnnouncement}
                 onClearAnnouncement={handleClearOverlay}
               />
@@ -618,6 +640,20 @@ export const App: React.FC = () => {
         onBroadcast={handleBroadcastAnnouncement}
         onClearOverlay={handleClearOverlay}
         activeAnnouncement={activeAnnouncement}
+        freeShowConnected={freeShowSnapshot.connected}
+        isLocked={authorityState.manualLockActive}
+      />
+
+      {/* Slide Matrix & Direct Jump Navigator Modal */}
+      <SlideMatrixModal
+        isOpen={isSlideMatrixOpen}
+        onClose={() => setIsSlideMatrixOpen(false)}
+        currentSlideIndex={freeShowSnapshot.currentSlideIndex ?? 0}
+        showTitle={freeShowSnapshot.currentShowId || 'Active Presentation Deck'}
+        onSelectSlide={handleSelectSlide}
+        onFreezeOutput={handleFreezeOutput}
+        onShowLogo={handleShowLogo}
+        onBlackout={() => handleDispatchCommand('clear_all')}
         freeShowConnected={freeShowSnapshot.connected}
         isLocked={authorityState.manualLockActive}
       />

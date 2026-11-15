@@ -141,6 +141,22 @@ export class MockFreeShowServer {
       case 'restore_output':
         this.isOutputCleared = false;
         break;
+      case 'index_select_slide':
+        const targetIndex = typeof data?.index === 'number'
+          ? data.index
+          : (typeof data === 'number' ? data : (typeof data?.slide === 'number' ? data.slide : 0));
+        this.currentSlideIndex = targetIndex;
+        this.currentSlideText = `Slide ${this.currentSlideIndex} text`;
+        this.isOutputCleared = false;
+        break;
+      case 'freeze_output':
+        // Output freeze: retains current presentation state
+        break;
+      case 'show_logo':
+        this.currentShowId = 'Church Logo';
+        this.currentSlideText = '[Church Logo Display]';
+        this.isOutputCleared = false;
+        break;
       case 'start_scripture':
         const refStr = data?.referenceDisplay || (typeof data?.reference === 'string' ? data.reference : (data?.book ? `${data.book} ${data.chapter}:${data.verse}` : 'Scripture'));
         this.currentShowId = `Scripture: ${refStr}`;

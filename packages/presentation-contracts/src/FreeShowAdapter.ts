@@ -331,7 +331,13 @@ export class FreeShowAdapter {
             finish({ success: true, status: 'confirmed' });
           } else if (command.action === 'clear_all' || command.action === 'clear_slide' || command.action === 'clear_overlays') {
             finish({ success: true, status: 'confirmed' });
-          } else if (command.action === 'show_announcement' || command.action === 'start_overlay') {
+          } else if (
+            command.action === 'show_announcement' ||
+            command.action === 'start_overlay' ||
+            command.action === 'index_select_slide' ||
+            command.action === 'freeze_output' ||
+            command.action === 'show_logo'
+          ) {
             finish({ success: true, status: 'confirmed' });
           }
         }
@@ -345,7 +351,16 @@ export class FreeShowAdapter {
           finish({ success: true, status: 'confirmed' });
         } else if ((command.action === 'clear_all' || command.action === 'clear_slide' || command.action === 'clear_overlays') && raw.is_cleared) {
           finish({ success: true, status: 'confirmed' });
-        } else if (command.action === 'next_slide' || command.action === 'previous_slide' || command.action === 'restore_output' || command.action === 'show_announcement' || command.action === 'start_overlay') {
+        } else if (
+          command.action === 'next_slide' ||
+          command.action === 'previous_slide' ||
+          command.action === 'restore_output' ||
+          command.action === 'show_announcement' ||
+          command.action === 'start_overlay' ||
+          command.action === 'index_select_slide' ||
+          command.action === 'freeze_output' ||
+          command.action === 'show_logo'
+        ) {
           finish({ success: true, status: 'confirmed' });
         }
       };
@@ -377,6 +392,16 @@ export class FreeShowAdapter {
         case 'start_overlay':
           remoteChannel = 'API:start_overlay';
           remoteData = command.data;
+          break;
+        case 'index_select_slide':
+          remoteChannel = 'API:index_select_slide';
+          remoteData = command.data;
+          break;
+        case 'freeze_output':
+          remoteChannel = 'API:freeze_output';
+          break;
+        case 'show_logo':
+          remoteChannel = 'API:show_logo';
           break;
         case 'restore_output':
           remoteChannel = 'API:restore_output';
@@ -419,6 +444,18 @@ export class FreeShowAdapter {
         this.stateSnapshot.isOutputCleared = true;
         this.notify();
       } else if (command.action === 'restore_output') {
+        this.stateSnapshot.isOutputCleared = false;
+        this.notify();
+      } else if (command.action === 'index_select_slide') {
+        const targetIndex = typeof command.data?.index === 'number'
+          ? command.data.index
+          : (typeof command.data === 'number' ? command.data : 0);
+        this.stateSnapshot.currentSlideIndex = targetIndex;
+        this.stateSnapshot.isOutputCleared = false;
+        this.notify();
+      } else if (command.action === 'show_logo') {
+        this.stateSnapshot.currentShowId = 'Church Logo';
+        this.stateSnapshot.currentSlideText = '[Church Logo Display]';
         this.stateSnapshot.isOutputCleared = false;
         this.notify();
       }

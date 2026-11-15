@@ -1,12 +1,13 @@
 import React from 'react';
 import { FreeShowStateSnapshot } from '@pulpit-ai/shared-types';
-import { Monitor, EyeOff, Layers, Radio, Cast } from 'lucide-react';
+import { Monitor, EyeOff, Layers, Radio, Cast, LayoutGrid } from 'lucide-react';
 
 interface LiveOutputPanelProps {
   snapshot: FreeShowStateSnapshot;
+  onOpenSlideMatrix?: () => void;
 }
 
-export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot }) => {
+export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot, onOpenSlideMatrix }) => {
   const showTitle = snapshot.currentShowId && !snapshot.currentShowId.includes('[object Object]')
     ? snapshot.currentShowId
     : (snapshot.currentShowId?.includes('[object Object]') ? 'Scripture: John 3:16' : 'None');
@@ -66,9 +67,23 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot }) =>
               <span>STAGE 1 • 1920×1080</span>
             </span>
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
-                Slide <strong className="text-indigo-400">{snapshot.currentSlideIndex ?? 0}</strong>
-              </span>
+              {onOpenSlideMatrix ? (
+                <button
+                  type="button"
+                  onClick={onOpenSlideMatrix}
+                  title="Open Slide Matrix & Direct Jump Navigator [M]"
+                  className="flex items-center space-x-1.5 text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/60 text-slate-400 hover:text-white transition-all shadow-sm active:scale-95 group cursor-pointer"
+                >
+                  <LayoutGrid className="w-3 h-3 text-indigo-400 group-hover:scale-110 transition-transform" />
+                  <span>
+                    Slide <strong className="text-indigo-400 group-hover:text-indigo-300">{snapshot.currentSlideIndex ?? 0}</strong>
+                  </span>
+                </button>
+              ) : (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
+                  Slide <strong className="text-indigo-400">{snapshot.currentSlideIndex ?? 0}</strong>
+                </span>
+              )}
             </div>
           </div>
 
