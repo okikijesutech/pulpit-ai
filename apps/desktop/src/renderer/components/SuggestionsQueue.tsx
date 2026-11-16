@@ -165,20 +165,6 @@ export const SuggestionsQueue: React.FC<SuggestionsQueueProps> = ({
         </div>
 
         <div className="flex items-center space-x-2">
-          {onOpenBibleExplorer && (
-            <button
-              onClick={onOpenBibleExplorer}
-              title="Open Manual Scripture Explorer (Hotkey: B)"
-              className="px-2 py-0.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/40 text-[10px] font-bold text-indigo-200 hover:text-white transition-all flex items-center space-x-1 shadow-sm active:scale-95"
-            >
-              <BookOpen className="w-3 h-3 text-indigo-400" />
-              <span>Picker</span>
-              <kbd className="hidden sm:inline px-1 py-0.2 rounded bg-black/40 text-[8px] font-mono text-indigo-300">
-                B
-              </kbd>
-            </button>
-          )}
-
           <span
             className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold border transition-colors ${
               candidates.length > 0
@@ -264,18 +250,18 @@ export const SuggestionsQueue: React.FC<SuggestionsQueueProps> = ({
       )}
 
       {/* Suggestions Stream */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
         {candidates.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-5 text-slate-500">
-            <Sparkles className="w-8 h-8 mb-2 opacity-25 text-amber-400" />
+          <div className="h-full flex flex-col items-center justify-center text-center p-3 sm:p-4 text-slate-500">
+            <Sparkles className="w-7 h-7 mb-1.5 opacity-25 text-amber-400" />
             <p className="font-semibold text-slate-300 text-xs">Listening for Scripture references & hymns...</p>
-            <p className="text-[11px] text-slate-500 mt-1 max-w-xs">
+            <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs">
               When the preacher speaks a chapter and verse, the matching passage will appear here for one-click approval.
             </p>
 
             {/* Quick Demo Starters */}
-            <div className="mt-4 pt-3 border-t border-slate-800/60 w-full max-w-xs flex flex-col items-center">
-              <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-2">
+            <div className="mt-2.5 pt-2 border-t border-slate-800/60 w-full max-w-xs flex flex-col items-center">
+              <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">
                 Click to test suggestions:
               </span>
               <div className="flex flex-wrap gap-1.5 justify-center">

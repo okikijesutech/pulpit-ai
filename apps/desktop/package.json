@@ -1,6 +1,6 @@
 {
   "name": "@pulpit-ai/desktop",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Pulpit AI Operator Desktop Application",
   "main": "./dist/main/index.js",
@@ -23,7 +23,8 @@
     "@pulpit-ai/speech-engine": "workspace:*",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

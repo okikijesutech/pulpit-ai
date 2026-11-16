@@ -15,12 +15,12 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot, onOp
   const isOnAir = snapshot.connected && !snapshot.isOutputCleared && Boolean(snapshot.currentSlideText);
 
   return (
-    <div className="glass-panel rounded-2xl p-4 flex flex-col h-full shadow-xl transition-all">
+    <div className="glass-panel rounded-2xl p-3.5 flex flex-col h-full shadow-xl transition-all">
       {/* Panel Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-3">
+      <div className="flex items-center justify-between pb-2.5 border-b border-slate-800/80 mb-2.5">
         <div className="flex items-center space-x-2.5">
-          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shadow-sm">
-            <Monitor className="w-4 h-4" />
+          <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shadow-sm">
+            <Monitor className="w-3.5 h-3.5" />
           </div>
           <div>
             <h2 className="text-xs font-bold tracking-wider uppercase text-slate-200">
@@ -88,7 +88,7 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot, onOp
           </div>
 
           {/* Canvas Display Viewport */}
-          <div className="mt-2 p-5 rounded-lg bg-slate-950/80 border border-slate-800/80 text-center min-h-[135px] flex flex-col items-center justify-center relative shadow-inner">
+          <div className="mt-1.5 p-3 sm:p-4 rounded-lg bg-slate-950/80 border border-slate-800/80 text-center min-h-[105px] flex flex-col items-center justify-center relative shadow-inner">
             {snapshot.connected ? (
               snapshot.isOutputCleared ? (
                 <div className="flex flex-col items-center text-slate-600">

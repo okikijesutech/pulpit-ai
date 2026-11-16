@@ -1,6 +1,6 @@
 {
   "name": "@pulpit-ai/licensing-manager",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Licence and Attribution Management Engine for Pulpit AI Content",
   "main": "./dist/index.js",
