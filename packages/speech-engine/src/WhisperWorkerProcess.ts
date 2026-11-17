@@ -2,7 +2,7 @@ import { SpeechSegment } from '@pulpit-ai/audio-engine';
 import { spawn } from 'node:child_process';
 import { existsSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { tmpdir, homedir } from 'node:os';
 
 export interface TranscriptionJobResult {
   text: string;
@@ -111,11 +111,19 @@ export class WhisperWorkerProcess {
       'ggml-tiny.en.bin'
     ];
 
+    const home = homedir();
+    const platformAppData =
+      process.platform === 'darwin'
+        ? join(home, 'Library', 'Application Support')
+        : process.platform === 'win32'
+          ? process.env.APPDATA || join(home, 'AppData', 'Roaming')
+          : process.env.XDG_CONFIG_HOME || join(home, '.config');
+
     const modelDirs = [
       join(process.cwd(), 'models'),
       join(process.cwd(), 'packages', 'speech-engine', 'models'),
-      join(process.env.APPDATA || '', 'Pulpit AI', 'models'),
-      join(process.env.USERPROFILE || '', '.pulpit-ai', 'models'),
+      join(platformAppData, 'Pulpit AI', 'models'),
+      join(home, '.pulpit-ai', 'models'),
       join(__dirname, '..', 'models'),
       join(__dirname, '..', '..', 'models')
     ];

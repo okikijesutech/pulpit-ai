@@ -1,15 +1,43 @@
+import { app } from 'electron';
+import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { SEED_SONGS } from '@pulpit-ai/song-engine';
+
+/**
+ * Resolves cross-platform FreeShow Shows & AppData directories across Windows, macOS, and Linux.
+ */
+function resolveFreeShowPaths(): { documentsPath: string; showsJsonPath: string } {
+  let docsBase: string;
+  let appDataBase: string;
+
+  try {
+    docsBase = app.getPath('documents');
+    appDataBase = app.getPath('appData');
+  } catch {
+    const home = homedir();
+    docsBase = join(home, 'Documents');
+    if (process.platform === 'darwin') {
+      appDataBase = join(home, 'Library', 'Application Support');
+    } else if (process.platform === 'win32') {
+      appDataBase = process.env.APPDATA || join(home, 'AppData', 'Roaming');
+    } else {
+      appDataBase = process.env.XDG_CONFIG_HOME || join(home, '.config');
+    }
+  }
+
+  return {
+    documentsPath: join(docsBase, 'FreeShow', 'Shows'),
+    showsJsonPath: join(appDataBase, 'FreeShow', 'shows.json')
+  };
+}
 
 /**
  * Synchronizes seed hymns to FreeShow directory storage for local discovery.
  */
 export function syncHymnsToFreeShow(): void {
   try {
-    const documentsPath = join(process.env.USERPROFILE || '', 'Documents', 'FreeShow', 'Shows');
-    const appData = process.env.APPDATA || '';
-    const showsJsonPath = join(appData, 'FreeShow', 'shows.json');
+    const { documentsPath, showsJsonPath } = resolveFreeShowPaths();
 
     if (!existsSync(documentsPath)) {
       mkdirSync(documentsPath, { recursive: true });
