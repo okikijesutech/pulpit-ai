@@ -12,9 +12,12 @@ import {
   Snowflake,
   Image as ImageIcon,
   Music,
-  ListOrdered
+  ListOrdered,
+  Timer
 } from "lucide-react";
 import { ActiveAnnouncement } from "./QuickAnnouncementModal.js";
+import { QuickDeskSearchBar, QuickSearchMode } from "./QuickDeskSearchBar.js";
+import { usePresentationStore, formatTimerMMSS } from "../stores/presentationStore.js";
 
 interface ManualControlsPanelProps {
   onDispatch: (action: AllowlistedAction, data?: any) => void;
@@ -24,6 +27,9 @@ interface ManualControlsPanelProps {
   onOpenSlideMatrix?: () => void;
   onOpenStanzaMatrix?: () => void;
   onOpenServiceOrder?: () => void;
+  onOpenMediaLibrary?: () => void;
+  onOpenCountdownTimer?: () => void;
+  onProjectChurchLogo?: () => void;
   currentCueTitle?: string;
   currentCueNumber?: number;
   totalCues?: number;
@@ -40,6 +46,9 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
   onOpenSlideMatrix,
   onOpenStanzaMatrix,
   onOpenServiceOrder,
+  onOpenMediaLibrary,
+  onOpenCountdownTimer,
+  onProjectChurchLogo,
   currentCueTitle,
   currentCueNumber = 1,
   totalCues = 8,
@@ -48,6 +57,11 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
   onClearAnnouncement,
 }) => {
   const [quickJumpNum, setQuickJumpNum] = useState<string>("");
+  const [searchMode, setSearchMode] = useState<QuickSearchMode>("bible");
+  const [focusSignal, setFocusSignal] = useState<number>(0);
+
+  const countdownTimer = usePresentationStore((s) => s.countdownTimer);
+  const activeMediaAsset = usePresentationStore((s) => s.activeMediaAsset);
 
   const handleDeskJump = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +72,12 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
       setQuickJumpNum("");
     }
   };
+
+  const handleActivateSearch = (mode: QuickSearchMode) => {
+    setSearchMode(mode);
+    setFocusSignal((n) => n + 1);
+  };
+
   return (
     <div className='glass-panel rounded-2xl p-3.5 flex flex-col shadow-xl transition-all'>
       {/* Panel Header */}
@@ -191,40 +211,108 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
           </button>
         </div>
 
-        {/* 2x2 Consolidated Presentation Launchers Grid */}
-        <div className='grid grid-cols-2 gap-1.5 pt-0.5'>
-          {/* Bible Explorer Trigger */}
-          {onOpenBibleExplorer && (
+        {/* EasyWorship-Style Quick Search Bar Above Bible & Songs */}
+        <QuickDeskSearchBar
+          mode={searchMode}
+          onModeChange={setSearchMode}
+          focusSignal={focusSignal}
+          disabled={disabled}
+          onOpenBibleExplorer={onOpenBibleExplorer}
+          onOpenSongMatrix={onOpenStanzaMatrix}
+        />
+
+        {/* 3x2 Consolidated Presentation Launchers Grid */}
+        <div className='grid grid-cols-2 gap-1.5'>
+          {/* Bible Quick Search Focus Trigger */}
+          <button
+            type='button'
+            onClick={() => handleActivateSearch("bible")}
+            onDoubleClick={onOpenBibleExplorer}
+            title='Click to search Bible (EasyWorship Book + Space + Ch + Space + Verse). Double-click or press B for full Explorer.'
+            className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-between shadow-sm active:scale-95 group ${
+              searchMode === "bible"
+                ? "bg-indigo-900/60 border-indigo-400 text-white ring-1 ring-indigo-500/50"
+                : "bg-indigo-950/40 hover:bg-indigo-900/50 border-indigo-700/50 text-indigo-300 hover:text-white"
+            }`}
+          >
+            <div className='flex items-center space-x-1.5 truncate'>
+              <BookOpen className='w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform flex-shrink-0' />
+              <span className='truncate'>Bible</span>
+            </div>
+            <kbd className='px-1 py-0.2 rounded bg-indigo-900/60 border border-indigo-600/50 text-[9px] font-mono text-indigo-200'>
+              B
+            </kbd>
+          </button>
+
+          {/* Songs Quick Search Focus Trigger (Renamed from Hymns) */}
+          <button
+            type='button'
+            onClick={() => handleActivateSearch("songs")}
+            onDoubleClick={onOpenStanzaMatrix}
+            title='Click to search Songs & Hymnal. Double-click or press S for full Stanza Matrix.'
+            className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-between shadow-sm active:scale-95 group ${
+              searchMode === "songs"
+                ? "bg-violet-900/60 border-violet-400 text-white ring-1 ring-violet-500/50"
+                : "bg-violet-950/40 hover:bg-violet-900/50 border-violet-700/50 text-violet-300 hover:text-white"
+            }`}
+          >
+            <div className='flex items-center space-x-1.5 truncate'>
+              <Music className='w-3.5 h-3.5 text-violet-400 group-hover:scale-110 transition-transform flex-shrink-0' />
+              <span className='truncate'>Songs</span>
+            </div>
+            <kbd className='px-1 py-0.2 rounded bg-violet-900/60 border border-violet-600/50 text-[9px] font-mono text-violet-200'>
+              S
+            </kbd>
+          </button>
+
+          {/* Media, Church Logo & Flyers Library Trigger */}
+          {onOpenMediaLibrary && (
             <button
               type='button'
-              onClick={onOpenBibleExplorer}
-              title='Open Bible Explorer (Hotkey: B)'
-              className='p-2 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-700/50 text-xs font-bold text-indigo-300 hover:text-white transition-all flex items-center justify-between shadow-sm active:scale-95 group'
+              onClick={onOpenMediaLibrary}
+              title='Open Church Logo, Flyers & Media Graphics Library (Hotkey: G)'
+              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-between shadow-sm active:scale-95 group ${
+                activeMediaAsset
+                  ? "bg-cyan-950/80 border-cyan-400 text-cyan-200"
+                  : "bg-cyan-950/30 hover:bg-cyan-900/40 border-cyan-800/50 text-cyan-300 hover:text-white"
+              }`}
             >
               <div className='flex items-center space-x-1.5 truncate'>
-                <BookOpen className='w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform flex-shrink-0' />
-                <span className='truncate'>Bible</span>
+                <ImageIcon className='w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform flex-shrink-0' />
+                <span className='truncate'>{activeMediaAsset ? "Media Live" : "Media"}</span>
               </div>
-              <kbd className='px-1 py-0.2 rounded bg-indigo-900/60 border border-indigo-600/50 text-[9px] font-mono text-indigo-200'>
-                B
+              <kbd className='px-1 py-0.2 rounded bg-cyan-950/80 border border-cyan-700/50 text-[9px] font-mono text-cyan-200'>
+                G
               </kbd>
             </button>
           )}
 
-          {/* Worship Stanza Matrix Trigger */}
-          {onOpenStanzaMatrix && (
+          {/* Service Countdown Timer Trigger */}
+          {onOpenCountdownTimer && (
             <button
               type='button'
-              onClick={onOpenStanzaMatrix}
-              title='Open Worship Stanza Matrix & Hymns (Hotkey: S)'
-              className='p-2 rounded-xl bg-violet-950/40 hover:bg-violet-900/50 border border-violet-700/50 text-xs font-bold text-violet-300 hover:text-white transition-all flex items-center justify-between shadow-sm active:scale-95 group'
+              onClick={onOpenCountdownTimer}
+              title='Open Service Countdown Timer (Hotkey: T)'
+              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-between shadow-sm active:scale-95 group ${
+                countdownTimer.isRunning || countdownTimer.isProjected
+                  ? "bg-emerald-950/80 border-emerald-400 text-emerald-200"
+                  : "bg-emerald-950/30 hover:bg-emerald-900/40 border-emerald-800/50 text-emerald-300 hover:text-white"
+              }`}
             >
               <div className='flex items-center space-x-1.5 truncate'>
-                <Music className='w-3.5 h-3.5 text-violet-400 group-hover:scale-110 transition-transform flex-shrink-0' />
-                <span className='truncate'>Hymns</span>
+                <Timer
+                  className={`w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform flex-shrink-0 ${
+                    countdownTimer.isRunning ? "animate-pulse" : ""
+                  }`}
+                />
+                <span className='truncate font-mono'>
+                  {countdownTimer.isRunning || countdownTimer.isProjected
+                    ? formatTimerMMSS(countdownTimer.remainingSeconds)
+                    : "Timer"}
+                </span>
               </div>
-              <kbd className='px-1 py-0.2 rounded bg-violet-900/60 border border-violet-600/50 text-[9px] font-mono text-violet-200'>
-                S
+              <kbd className='px-1 py-0.2 rounded bg-emerald-950/80 border border-emerald-700/50 text-[9px] font-mono text-emerald-200'>
+                T
               </kbd>
             </button>
           )}
@@ -315,8 +403,8 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
           <button
             type='button'
             disabled={disabled}
-            onClick={() => onDispatch("show_logo")}
-            title='Project Sanctuary Church Logo Screen'
+            onClick={() => (onProjectChurchLogo ? onProjectChurchLogo() : onDispatch("show_logo"))}
+            title='Project Sanctuary Church Logo Screen (configure logo in Media [G])'
             className='p-1.5 rounded-xl bg-indigo-950/30 hover:bg-indigo-900/40 border border-indigo-800/40 disabled:opacity-40 text-[11px] text-indigo-300 font-semibold transition-all flex items-center justify-center space-x-1.5 active:scale-95 shadow-sm'
           >
             <ImageIcon className='w-3.5 h-3.5 text-indigo-400' />

@@ -5,6 +5,8 @@ import { SlideMatrixModal } from './SlideMatrixModal.js';
 import { SongStanzaMatrixModal } from './SongStanzaMatrixModal.js';
 import { ServiceOrderModal } from './ServiceOrderModal.js';
 import { StageDisplayModal } from './StageDisplayModal.js';
+import { MediaLibraryModal } from './MediaLibraryModal.js';
+import { CountdownTimerModal } from './CountdownTimerModal.js';
 import { useUIStore } from '../stores/uiStore.js';
 import { useAuthorityStore } from '../stores/authorityStore.js';
 import { usePresentationStore } from '../stores/presentationStore.js';
@@ -152,6 +154,12 @@ export const AppModals: React.FC = () => {
 
       {/* Multi-Screen Stage Confidence & Foldback Output Matrix Modal */}
       <StageDisplayModal />
+
+      {/* Church Logo, Event Flyers & Media Graphics Modal */}
+      <MediaLibraryModal />
+
+      {/* Service Countdown Timer Modal */}
+      <CountdownTimerModal />
     </>
   );
 };

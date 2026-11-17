@@ -10,9 +10,10 @@ import {
   Tv,
   Clock,
   ArrowRight,
-  Sliders
+  Sliders,
+  Timer
 } from 'lucide-react';
-import { usePresentationStore } from '../stores/presentationStore.js';
+import { usePresentationStore, formatTimerMMSS } from '../stores/presentationStore.js';
 import { useUIStore } from '../stores/uiStore.js';
 
 interface LiveOutputPanelProps {
@@ -27,7 +28,10 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot, onOp
   const stagePrivateMessage = usePresentationStore((s) => s.stagePrivateMessage);
   const serviceCues = usePresentationStore((s) => s.serviceCues);
   const activeCueIndex = usePresentationStore((s) => s.activeCueIndex);
+  const activeMediaAsset = usePresentationStore((s) => s.activeMediaAsset);
+  const countdownTimer = usePresentationStore((s) => s.countdownTimer);
   const openStageDisplayModal = useUIStore((s) => s.openStageDisplayModal);
+  const openTimerModal = useUIStore((s) => s.openTimerModal);
 
   const [currentTime, setCurrentTime] = useState(() =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -178,6 +182,18 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot, onOp
             </span>
 
             <div className="flex items-center space-x-2">
+              {(countdownTimer.isRunning || countdownTimer.isProjected) && (
+                <button
+                  type="button"
+                  onClick={openTimerModal}
+                  title="Countdown Timer active — click to manage [T]"
+                  className="flex items-center space-x-1 px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-600/60 text-[10px] font-mono text-emerald-300 font-bold animate-pulse"
+                >
+                  <Timer className="w-3 h-3 text-emerald-400" />
+                  <span>{formatTimerMMSS(countdownTimer.remainingSeconds)}</span>
+                </button>
+              )}
+
               {activeTarget === 'foldback' && foldbackPreset.showClock && (
                 <div className="flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-900/90 border border-slate-800 text-[10px] font-mono text-amber-300 font-bold">
                   <Clock className="w-3 h-3 text-amber-400" />
@@ -283,8 +299,28 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot, onOp
             </div>
           ) : (
             /* Auditorium Sanctuary Projector Canvas */
-            <div className="mt-1.5 p-3 sm:p-4 rounded-lg bg-slate-950/80 border border-slate-800/80 text-center min-h-[105px] flex flex-col items-center justify-center relative shadow-inner">
-              {snapshot.connected ? (
+            <div className="mt-1.5 p-3 sm:p-4 rounded-lg bg-slate-950/80 border border-slate-800/80 text-center min-h-[105px] flex flex-col items-center justify-center relative shadow-inner overflow-hidden">
+              {countdownTimer.isProjected ? (
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                    {countdownTimer.label}
+                  </span>
+                  <span className="text-3xl font-mono font-extrabold text-white tracking-wider">
+                    {formatTimerMMSS(countdownTimer.remainingSeconds)}
+                  </span>
+                </div>
+              ) : activeMediaAsset ? (
+                <div className="flex flex-col items-center justify-center w-full space-y-1">
+                  <img
+                    src={activeMediaAsset.dataUrl}
+                    alt={activeMediaAsset.name}
+                    className="max-h-24 max-w-full object-contain rounded shadow-md"
+                  />
+                  <span className="text-[10px] font-mono text-cyan-300 truncate max-w-full">
+                    Graphic: {activeMediaAsset.name}
+                  </span>
+                </div>
+              ) : snapshot.connected ? (
                 snapshot.isOutputCleared ? (
                   <div className="flex flex-col items-center text-slate-600">
                     <EyeOff className="w-6 h-6 mb-1 opacity-50 text-rose-500" />

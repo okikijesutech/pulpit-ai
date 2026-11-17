@@ -1,6 +1,6 @@
 {
   "name": "@pulpit-ai/audio-engine",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "description": "Audio acquisition, ring buffer, and level metering engine for Pulpit AI",
   "main": "./dist/index.js",

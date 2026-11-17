@@ -28,6 +28,9 @@ export const ALLOWLISTED_FREESHOW_ACTIONS = [
   'start_overlay',
   'freeze_output',
   'show_logo',
+  'show_media',
+  'start_timer',
+  'stop_timer',
   'set_stage_message',
   'clear_stage_message',
   'set_stage_layout'

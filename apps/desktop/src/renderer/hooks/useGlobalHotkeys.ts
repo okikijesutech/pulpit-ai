@@ -58,6 +58,12 @@ export function useGlobalHotkeys(enabled = true) {
       } else if (e.key === 'd' || e.key === 'D') {
         e.preventDefault();
         ui.toggleStageDisplayModal();
+      } else if (e.key === 'g' || e.key === 'G') {
+        e.preventDefault();
+        ui.toggleMediaModal();
+      } else if (e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        ui.toggleTimerModal();
       } else if (e.key === 'Enter') {
         const { candidates, approveCandidate } = usePresentationStore.getState();
         const { manualLockActive } = useAuthorityStore.getState().authorityState;

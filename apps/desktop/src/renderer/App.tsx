@@ -18,6 +18,7 @@ import { SermonScripturePinboard } from './components/SermonScripturePinboard.js
 import { AppModals } from './components/AppModals.js';
 import { useGlobalHotkeys } from './hooks/useGlobalHotkeys.js';
 import { useAnnouncementTimer } from './hooks/useAnnouncementTimer.js';
+import { useCountdownTimer } from './hooks/useCountdownTimer.js';
 import { AudioLevelMetrics, AudioActivityMetrics, RecognizedTranscriptEvent } from '../preload/index.js';
 import { physicalMicService } from './services/MicrophoneAudioService.js';
 import { useUIStore } from './stores/uiStore.js';
@@ -48,9 +49,10 @@ export const App: React.FC = () => {
   const serviceCues = usePresentationStore((s) => s.serviceCues);
   const activeCueIndex = usePresentationStore((s) => s.activeCueIndex);
 
-  // Initialize Global Hotkeys and Announcement Timers
+  // Initialize Global Hotkeys, Announcement Timers & Countdown Timer
   useGlobalHotkeys(true);
   useAnnouncementTimer();
+  useCountdownTimer();
 
   // Initial Data Fetch & IPC Event Subscriptions
   useEffect(() => {
@@ -219,6 +221,9 @@ export const App: React.FC = () => {
                 onOpenSlideMatrix={() => useUIStore.getState().openSlideMatrix()}
                 onOpenStanzaMatrix={() => useUIStore.getState().openStanzaMatrix()}
                 onOpenServiceOrder={() => useUIStore.getState().openServiceOrder()}
+                onOpenMediaLibrary={() => useUIStore.getState().openMediaModal()}
+                onOpenCountdownTimer={() => useUIStore.getState().openTimerModal()}
+                onProjectChurchLogo={() => usePresentationStore.getState().projectChurchLogo()}
                 currentCueTitle={serviceCues[activeCueIndex]?.title}
                 currentCueNumber={activeCueIndex + 1}
                 totalCues={serviceCues.length}
@@ -238,9 +243,10 @@ export const App: React.FC = () => {
             <div className="flex-shrink-0">
               <SermonScripturePinboard
                 pinnedScriptures={pinnedScriptures}
-                onReProject={(ref) => usePresentationStore.getState().directProjectScripture(ref)}
+                onReProject={(ref, text) => usePresentationStore.getState().directProjectScripture(ref, text)}
                 onClear={() => usePresentationStore.getState().clearPinnedScriptures()}
                 onRemovePin={(id) => usePresentationStore.getState().removePinnedScripture(id)}
+                onLoadPresets={(rawText) => usePresentationStore.getState().loadPresetScriptures(rawText)}
                 freeShowConnected={freeShowSnapshot.connected}
                 isLocked={authorityState.manualLockActive}
               />

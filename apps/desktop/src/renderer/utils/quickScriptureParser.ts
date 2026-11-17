@@ -134,3 +134,154 @@ export function parseQuickScripture(input: string): ParsedQuickScripture {
     referenceString
   };
 }
+
+/**
+ * Finds Bible books matching a partial prefix or alias for EasyWorship-style live autocomplete.
+ */
+export function findMatchingCanonBooks(query: string, limit = 6): CanonBook[] {
+  const cleaned = query.trim().toLowerCase().replace(/^([1-3])([a-z])/i, '$1 $2');
+  if (!cleaned) return [];
+
+  const exactStarts: CanonBook[] = [];
+  const aliasStarts: CanonBook[] = [];
+  const contains: CanonBook[] = [];
+
+  for (const book of CANON_BOOKS) {
+    const lowerName = book.name.toLowerCase();
+    if (lowerName.startsWith(cleaned)) {
+      exactStarts.push(book);
+    } else if (book.aliases.some((a) => a.toLowerCase().startsWith(cleaned))) {
+      aliasStarts.push(book);
+    } else if (
+      lowerName.includes(cleaned) ||
+      book.aliases.some((a) => a.toLowerCase().includes(cleaned))
+    ) {
+      contains.push(book);
+    }
+  }
+
+  return [...exactStarts, ...aliasStarts, ...contains].slice(0, limit);
+}
+
+export interface EasyWorshipCompletionState {
+  stage: 'book' | 'chapter' | 'verse';
+  matchedBook: CanonBook | null;
+  ghostText: string;
+  suggestions: CanonBook[];
+}
+
+/**
+ * Inspects the current input string to power EasyWorship-style progressive
+ * Book -> Chapter -> Verse inline completion and dropdown suggestions.
+ */
+export function getEasyWorshipCompletion(input: string): EasyWorshipCompletionState {
+  if (!input || !input.trim()) {
+    return { stage: 'book', matchedBook: null, ghostText: '', suggestions: [] };
+  }
+
+  const trimmedStart = input.trimStart();
+
+  // Check if a full canonical book + space is already locked in
+  for (const entry of ALL_ALIASES) {
+    const pattern = new RegExp(
+      `^${entry.alias.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\s+(.*)$`,
+      'i'
+    );
+    const match = trimmedStart.match(pattern);
+    if (match) {
+      const rest = match[1] || '';
+      if (/^\d+\s*[:\s]\s*\d*/.test(rest)) {
+        return { stage: 'verse', matchedBook: entry.book, ghostText: '', suggestions: [] };
+      }
+      return { stage: 'chapter', matchedBook: entry.book, ghostText: '', suggestions: [] };
+    }
+  }
+
+  // User is still typing the book name (handle lone "1", "2", "3" cleanly)
+  const suggestions = findMatchingCanonBooks(trimmedStart, 6);
+  const topBook = suggestions[0] || null;
+  let ghostText = '';
+
+  if (topBook && topBook.name.toLowerCase().startsWith(trimmedStart.toLowerCase())) {
+    ghostText = topBook.name.slice(trimmedStart.length);
+  }
+
+  return {
+    stage: 'book',
+    matchedBook: topBook,
+    ghostText,
+    suggestions
+  };
+}
+
+/**
+ * Applies EasyWorship-style Spacebar / Tab progressive stepping:
+ * 1. "1 th" + Space -> "1 Thessalonians "
+ * 2. "rom" + Space  -> "Romans "
+ * 3. "Romans 8" + Space -> "Romans 8:"
+ * Returns null if normal spacebar typing should proceed.
+ */
+export function applyEasyWorshipSpaceStep(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  // Allow typing "1 ", "2 ", "3 " naturally for numbered books
+  if (/^[1-3]$/.test(trimmed)) {
+    return null;
+  }
+
+  // Case A: Book + valid chapter number -> append colon for verse (e.g. "Romans 8" -> "Romans 8:")
+  const chapterStepMatch = trimmed.match(/^(.+?)\s+(\d+)$/);
+  if (chapterStepMatch) {
+    const bookPart = chapterStepMatch[1].trim();
+    const chapterNum = parseInt(chapterStepMatch[2], 10);
+    const matchedBooks = findMatchingCanonBooks(bookPart, 1);
+    const book = matchedBooks[0];
+    if (book && chapterNum >= 1 && chapterNum <= book.totalChapters) {
+      return `${book.name} ${chapterNum}:`;
+    }
+  }
+
+  // Case B: Already has chapter:verse -> allow space for range or leave alone
+  if (/\d+[:\s]\d+/.test(trimmed)) {
+    return null;
+  }
+
+  // Case C: Partial or alias book name -> lock in canonical book name + trailing space
+  // Skip if input already ends with space after an exact book name
+  if (input.endsWith(' ')) {
+    return null;
+  }
+
+  const matchedBooks = findMatchingCanonBooks(trimmed, 1);
+  if (matchedBooks.length > 0) {
+    return `${matchedBooks[0].name} `;
+  }
+
+  return null;
+}
+
+/**
+ * Parses a pasted list of pastor-supplied sermon passages separated by commas, semicolons, or newlines.
+ */
+export function parseBatchScriptureReferences(rawText: string): ParsedQuickScripture[] {
+  if (!rawText || !rawText.trim()) return [];
+
+  const tokens = rawText
+    .split(/[\n,;]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const seen = new Set<string>();
+  const parsedList: ParsedQuickScripture[] = [];
+
+  for (const token of tokens) {
+    const parsed = parseQuickScripture(token);
+    if (parsed.isValid && parsed.referenceString && !seen.has(parsed.referenceString)) {
+      seen.add(parsed.referenceString);
+      parsedList.push(parsed);
+    }
+  }
+
+  return parsedList;
+}

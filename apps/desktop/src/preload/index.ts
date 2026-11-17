@@ -132,6 +132,19 @@ export interface PulpitAPI {
     clearExisting?: boolean
   ) => Promise<RestoreResult>;
 
+  // Media, Church Logo & Flyer Graphics Picker
+  pickMediaFiles: () => Promise<{
+    canceled: boolean;
+    files: Array<{
+      name: string;
+      filePath: string;
+      mimeType: string;
+      sizeBytes: number;
+      dataUrl: string;
+    }>;
+    errors: string[];
+  }>;
+
   onAuthorityStateChange: (callback: (state: AuthorityState) => void) => () => void;
   onFreeShowStateChange: (callback: (snapshot: FreeShowStateSnapshot) => void) => () => void;
   onAuditEvent: (callback: (event: AuditEvent) => void) => () => void;
@@ -185,6 +198,7 @@ const api: PulpitAPI = {
   createBackup: () => ipcRenderer.invoke('backup:create'),
   restoreBackup: (archive, clearExisting) =>
     ipcRenderer.invoke('backup:restore', { archive, clearExisting }),
+  pickMediaFiles: () => ipcRenderer.invoke('media:pick-files'),
 
   onAuthorityStateChange: (callback) => {
     const handler = (_event: any, state: AuthorityState) => callback(state);

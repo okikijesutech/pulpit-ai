@@ -34,6 +34,7 @@ import { registerFreeShowHandlers } from './ipc/freeShowHandlers.js';
 import { registerAudioHandlers } from './ipc/audioHandlers.js';
 import { registerScriptureHandlers } from './ipc/scriptureHandlers.js';
 import { registerSongHandlers } from './ipc/songHandlers.js';
+import { registerMediaHandlers } from './ipc/mediaHandlers.js';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -272,6 +273,7 @@ registerAudioHandlers({
 });
 registerScriptureHandlers(scriptureDatabase, scriptureGenerator);
 registerSongHandlers(songDatabase, songReviewManager, auditLogger, () => freeShowAdapter);
+registerMediaHandlers();
 
 // App Lifecycle
 app.whenReady().then(() => {

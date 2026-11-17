@@ -8,6 +8,8 @@ interface UIState {
   isAnnouncementModalOpen: boolean;
   isServiceOrderOpen: boolean;
   isStageDisplayModalOpen: boolean;
+  isMediaModalOpen: boolean;
+  isTimerModalOpen: boolean;
   isAudioPopoverOpen: boolean;
   isAuditLogVisible: boolean;
 
@@ -37,6 +39,14 @@ interface UIState {
   closeStageDisplayModal: () => void;
   toggleStageDisplayModal: () => void;
 
+  openMediaModal: () => void;
+  closeMediaModal: () => void;
+  toggleMediaModal: () => void;
+
+  openTimerModal: () => void;
+  closeTimerModal: () => void;
+  toggleTimerModal: () => void;
+
   setAudioPopoverOpen: (open: boolean) => void;
   toggleAudioPopover: () => void;
 
@@ -52,6 +62,8 @@ export const useUIStore = create<UIState>((set) => ({
   isAnnouncementModalOpen: false,
   isServiceOrderOpen: false,
   isStageDisplayModalOpen: false,
+  isMediaModalOpen: false,
+  isTimerModalOpen: false,
   isAudioPopoverOpen: false,
   isAuditLogVisible: typeof window !== 'undefined' && window.localStorage?.getItem('pulpit_audit_log_visible') === 'true',
 
@@ -79,6 +91,14 @@ export const useUIStore = create<UIState>((set) => ({
   openStageDisplayModal: () => set({ isStageDisplayModalOpen: true }),
   closeStageDisplayModal: () => set({ isStageDisplayModalOpen: false }),
   toggleStageDisplayModal: () => set((s) => ({ isStageDisplayModalOpen: !s.isStageDisplayModalOpen })),
+
+  openMediaModal: () => set({ isMediaModalOpen: true }),
+  closeMediaModal: () => set({ isMediaModalOpen: false }),
+  toggleMediaModal: () => set((s) => ({ isMediaModalOpen: !s.isMediaModalOpen })),
+
+  openTimerModal: () => set({ isTimerModalOpen: true }),
+  closeTimerModal: () => set({ isTimerModalOpen: false }),
+  toggleTimerModal: () => set((s) => ({ isTimerModalOpen: !s.isTimerModalOpen })),
 
   setAudioPopoverOpen: (open) => set({ isAudioPopoverOpen: open }),
   toggleAudioPopover: () => set((s) => ({ isAudioPopoverOpen: !s.isAudioPopoverOpen })),
