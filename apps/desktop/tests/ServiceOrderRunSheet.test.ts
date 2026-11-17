@@ -125,4 +125,37 @@ describe('Service Order Liturgy Run-Sheet & Zustand State Integration', () => {
     });
     expect(useAudioStore.getState().audioLevel.decibels).toBe(-14.2);
   });
+
+  it('allows customizing and editing service cues', () => {
+    usePresentationStore.getState().updateServiceCue(2, {
+      title: 'Opening Praise & Extended Adoration',
+      showName: 'Custom Praise Deck'
+    });
+    const cue = usePresentationStore.getState().serviceCues[2];
+    expect(cue.title).toBe('Opening Praise & Extended Adoration');
+    expect(cue.showName).toBe('Custom Praise Deck');
+  });
+
+  it('allows adding, removing, and moving service cues in the runsheet', () => {
+    const initialCount = usePresentationStore.getState().serviceCues.length;
+
+    usePresentationStore.getState().addServiceCue({
+      title: 'Youth Ministry Choir Special',
+      subtitle: 'Special song performance by Youth Choir',
+      category: 'worship',
+      showName: 'Youth Special Show',
+      durationMinutes: 8
+    });
+    expect(usePresentationStore.getState().serviceCues).toHaveLength(initialCount + 1);
+    expect(usePresentationStore.getState().serviceCues[initialCount].title).toBe('Youth Ministry Choir Special');
+
+    // Move newly added item up
+    usePresentationStore.getState().moveServiceCue(initialCount, 1);
+    expect(usePresentationStore.getState().serviceCues[1].title).toBe('Youth Ministry Choir Special');
+
+    // Remove item
+    usePresentationStore.getState().removeServiceCue(1);
+    expect(usePresentationStore.getState().serviceCues).toHaveLength(initialCount);
+    expect(usePresentationStore.getState().serviceCues[1].title).not.toBe('Youth Ministry Choir Special');
+  });
 });

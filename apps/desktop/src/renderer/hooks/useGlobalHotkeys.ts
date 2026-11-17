@@ -55,6 +55,9 @@ export function useGlobalHotkeys(enabled = true) {
       } else if (e.key === 'o' || e.key === 'O') {
         e.preventDefault();
         ui.toggleServiceOrder();
+      } else if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        ui.toggleStageDisplayModal();
       } else if (e.key === 'Enter') {
         const { candidates, approveCandidate } = usePresentationStore.getState();
         const { manualLockActive } = useAuthorityStore.getState().authorityState;

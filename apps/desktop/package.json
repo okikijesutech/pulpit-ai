@@ -1,6 +1,6 @@
 {
   "name": "@pulpit-ai/desktop",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Pulpit AI Operator Desktop Application",
   "main": "./dist/main/index.js",

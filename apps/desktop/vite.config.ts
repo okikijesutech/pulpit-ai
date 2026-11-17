@@ -7,6 +7,11 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   root: resolve(__dirname, 'src/renderer'),
   base: './',
+  resolve: {
+    alias: {
+      '@pulpit-ai/shared-types': resolve(__dirname, '../../packages/shared-types/src')
+    }
+  },
   build: {
     outDir: resolve(__dirname, 'dist/renderer'),
     emptyOutDir: true

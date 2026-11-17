@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import {
   AuditEvent,
-  SuggestionCandidate
+  SuggestionCandidate,
+  DisplayTarget,
+  StageDisplayPreset,
+  DEFAULT_STAGE_PRESETS
 } from '@pulpit-ai/shared-types';
 import { RecognizedTranscriptEvent } from '../../preload/index.js';
 import { PinnedScripture } from '../components/SermonScripturePinboard.js';
@@ -18,6 +21,11 @@ interface PresentationStoreState {
   activeAnnouncement: ActiveAnnouncement | null;
   serviceCues: LiturgyCueItem[];
   activeCueIndex: number;
+
+  // Phase 7 Multi-Screen Confidence Presets
+  activeMonitorTarget: DisplayTarget;
+  stagePresets: StageDisplayPreset[];
+  stagePrivateMessage: string | null;
 
   setCandidates: (candidates: SuggestionCandidate[] | ((prev: SuggestionCandidate[]) => SuggestionCandidate[])) => void;
   addCandidate: (candidate: SuggestionCandidate) => void;
@@ -44,9 +52,22 @@ interface PresentationStoreState {
   broadcastAnnouncement: (text: string, durationSeconds: number, style: AnnouncementStyle) => Promise<void>;
   clearOverlay: () => Promise<void>;
 
+  // Service Order Liturgy Run-Sheet Actions
   selectServiceCue: (index: number) => Promise<void>;
   advanceServiceCue: () => Promise<void>;
   resetServiceOrder: () => void;
+  updateServiceCue: (index: number, updated: Partial<LiturgyCueItem>) => void;
+  addServiceCue: (cue: Omit<LiturgyCueItem, 'id' | 'orderIndex' | 'status'>) => void;
+  removeServiceCue: (index: number) => void;
+  moveServiceCue: (fromIndex: number, toIndex: number) => void;
+  setServiceCues: (cues: LiturgyCueItem[]) => void;
+
+  // Multi-Screen Stage Confidence Actions
+  setActiveMonitorTarget: (target: DisplayTarget) => void;
+  setStagePrivateMessage: (msg: string | null) => void;
+  sendStageMessage: (msg: string) => Promise<void>;
+  clearStageMessage: () => Promise<void>;
+  updateStagePreset: (id: string, updated: Partial<StageDisplayPreset>) => void;
 }
 
 export const usePresentationStore = create<PresentationStoreState>((set, get) => ({
@@ -58,6 +79,10 @@ export const usePresentationStore = create<PresentationStoreState>((set, get) =>
   activeAnnouncement: null,
   serviceCues: DEFAULT_SUNDAY_LITURGY,
   activeCueIndex: 0,
+
+  activeMonitorTarget: 'main',
+  stagePresets: DEFAULT_STAGE_PRESETS,
+  stagePrivateMessage: null,
 
   setCandidates: (update) =>
     set((s) => ({
@@ -218,5 +243,60 @@ export const usePresentationStore = create<PresentationStoreState>((set, get) =>
       activeCueIndex: 0,
       serviceCues: DEFAULT_SUNDAY_LITURGY
     });
-  }
+  },
+
+  updateServiceCue: (index, updated) =>
+    set((s) => ({
+      serviceCues: s.serviceCues.map((c, i) => (i === index ? { ...c, ...updated } : c))
+    })),
+
+  addServiceCue: (cue) =>
+    set((s) => {
+      const newCue: LiturgyCueItem = {
+        ...cue,
+        id: `cue_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        orderIndex: s.serviceCues.length,
+        status: 'pending'
+      };
+      return { serviceCues: [...s.serviceCues, newCue] };
+    }),
+
+  removeServiceCue: (index) =>
+    set((s) => {
+      const updated = s.serviceCues.filter((_, i) => i !== index).map((c, i) => ({ ...c, orderIndex: i }));
+      const nextIndex = Math.min(s.activeCueIndex, Math.max(0, updated.length - 1));
+      return { serviceCues: updated, activeCueIndex: nextIndex };
+    }),
+
+  moveServiceCue: (fromIndex, toIndex) =>
+    set((s) => {
+      if (toIndex < 0 || toIndex >= s.serviceCues.length) return {};
+      const items = [...s.serviceCues];
+      const [moved] = items.splice(fromIndex, 1);
+      items.splice(toIndex, 0, moved);
+      return { serviceCues: items.map((c, i) => ({ ...c, orderIndex: i })) };
+    }),
+
+  setServiceCues: (cues) => set({ serviceCues: cues }),
+
+  // Multi-Screen Actions
+  setActiveMonitorTarget: (target) => set({ activeMonitorTarget: target }),
+  setStagePrivateMessage: (msg) => set({ stagePrivateMessage: msg }),
+
+  sendStageMessage: async (msg) => {
+    set({ stagePrivateMessage: msg });
+    await useAuthorityStore.getState().dispatchCommand('set_stage_message', { message: msg });
+    await get().refreshAuditEvents();
+  },
+
+  clearStageMessage: async () => {
+    set({ stagePrivateMessage: null });
+    await useAuthorityStore.getState().dispatchCommand('clear_stage_message');
+    await get().refreshAuditEvents();
+  },
+
+  updateStagePreset: (id, updated) =>
+    set((s) => ({
+      stagePresets: s.stagePresets.map((p) => (p.id === id ? { ...p, ...updated } : p))
+    }))
 }));

@@ -4,6 +4,7 @@ import { QuickAnnouncementModal } from './QuickAnnouncementModal.js';
 import { SlideMatrixModal } from './SlideMatrixModal.js';
 import { SongStanzaMatrixModal } from './SongStanzaMatrixModal.js';
 import { ServiceOrderModal } from './ServiceOrderModal.js';
+import { StageDisplayModal } from './StageDisplayModal.js';
 import { useUIStore } from '../stores/uiStore.js';
 import { useAuthorityStore } from '../stores/authorityStore.js';
 import { usePresentationStore } from '../stores/presentationStore.js';
@@ -44,6 +45,10 @@ export const AppModals: React.FC = () => {
   const selectServiceCue = usePresentationStore((s) => s.selectServiceCue);
   const advanceServiceCue = usePresentationStore((s) => s.advanceServiceCue);
   const resetServiceOrder = usePresentationStore((s) => s.resetServiceOrder);
+  const updateServiceCue = usePresentationStore((s) => s.updateServiceCue);
+  const addServiceCue = usePresentationStore((s) => s.addServiceCue);
+  const removeServiceCue = usePresentationStore((s) => s.removeServiceCue);
+  const moveServiceCue = usePresentationStore((s) => s.moveServiceCue);
   const addCandidate = usePresentationStore((s) => s.addCandidate);
 
   const handleQueueManualScripture = (reference: string, previewText: string, attribution: string) => {
@@ -137,9 +142,16 @@ export const AppModals: React.FC = () => {
         onSelectCue={selectServiceCue}
         onAdvanceCue={advanceServiceCue}
         onResetService={resetServiceOrder}
+        onUpdateCue={updateServiceCue}
+        onAddCue={addServiceCue}
+        onRemoveCue={removeServiceCue}
+        onMoveCue={moveServiceCue}
         freeShowConnected={freeShowConnected}
         isLocked={isLocked}
       />
+
+      {/* Multi-Screen Stage Confidence & Foldback Output Matrix Modal */}
+      <StageDisplayModal />
     </>
   );
 };

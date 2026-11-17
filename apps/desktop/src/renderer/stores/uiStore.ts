@@ -32,6 +32,10 @@ interface UIState {
   closeServiceOrder: () => void;
   toggleServiceOrder: () => void;
 
+  openStageDisplayModal: () => void;
+  closeStageDisplayModal: () => void;
+  toggleStageDisplayModal: () => void;
+
   setAudioPopoverOpen: (open: boolean) => void;
   toggleAudioPopover: () => void;
 
@@ -46,6 +50,7 @@ export const useUIStore = create<UIState>((set) => ({
   isStanzaMatrixOpen: false,
   isAnnouncementModalOpen: false,
   isServiceOrderOpen: false,
+  isStageDisplayModalOpen: false,
   isAudioPopoverOpen: false,
   isAuditLogVisible: typeof window !== 'undefined' && window.localStorage?.getItem('pulpit_audit_log_visible') === 'true',
 
@@ -69,6 +74,10 @@ export const useUIStore = create<UIState>((set) => ({
   openServiceOrder: () => set({ isServiceOrderOpen: true }),
   closeServiceOrder: () => set({ isServiceOrderOpen: false }),
   toggleServiceOrder: () => set((s) => ({ isServiceOrderOpen: !s.isServiceOrderOpen })),
+
+  openStageDisplayModal: () => set({ isStageDisplayModalOpen: true }),
+  closeStageDisplayModal: () => set({ isStageDisplayModalOpen: false }),
+  toggleStageDisplayModal: () => set((s) => ({ isStageDisplayModalOpen: !s.isStageDisplayModalOpen })),
 
   setAudioPopoverOpen: (open) => set({ isAudioPopoverOpen: open }),
   toggleAudioPopover: () => set((s) => ({ isAudioPopoverOpen: !s.isAudioPopoverOpen })),

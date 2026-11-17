@@ -125,7 +125,7 @@ export const Header: React.FC = () => {
             </span>
           </div>
           <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-800/50 font-mono hidden lg:inline">
-            v0.7.0
+            v0.8.0
           </span>
         </div>
 
@@ -232,36 +232,44 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Right: Consolidated Audio Cockpit Pill & Audit Trail Toggle */}
-      <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 relative">
-        {/* Unified Audio Cockpit Pill */}
+      {/* Right: Dedicated Tactile Mic Switch, Audio Meter & Audit Trail Toggle */}
+      <div className="flex items-center space-x-2 sm:space-x-2.5 flex-shrink-0 relative">
+        {/* Dedicated Tactile Hardware Mic ON / OFF Switch */}
+        <button
+          type="button"
+          onClick={toggleMicMute}
+          title={isMicMuted ? "PC Microphone is MUTED. Click to turn ON (Live speech capture)" : "PC Microphone is LIVE. Click to MUTE microphone"}
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shadow-sm active:scale-95 ${
+            isMicMuted
+              ? 'bg-rose-950/90 text-rose-300 border-rose-700/80 hover:bg-rose-900 shadow-sm'
+              : 'bg-emerald-950/90 text-emerald-300 border-emerald-600/80 hover:bg-emerald-900 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+          }`}
+        >
+          {isMicMuted ? (
+            <>
+              <MicOff className="w-3.5 h-3.5 text-rose-400" />
+              <span>Mic OFF</span>
+            </>
+          ) : (
+            <>
+              <Mic className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+              <span>Mic ON</span>
+            </>
+          )}
+        </button>
+
+        {/* Audio VU Meter & Settings Popover Launcher */}
         <div className="relative" ref={popoverRef}>
           <button
             type="button"
             onClick={toggleAudioPopover}
-            title="Audio Cockpit: Click to open Microphone & Gain settings"
-            className={`flex items-center space-x-2 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all shadow-inner ${
+            title="Audio Settings: Click to switch microphone hardware or boost preamp gain"
+            className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all shadow-inner ${
               isAudioPopoverOpen
                 ? 'bg-slate-800 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                 : 'bg-slate-900/90 text-slate-300 border-slate-800/90 hover:text-white hover:bg-slate-850 hover:border-slate-700'
             }`}
           >
-            {/* Quick Mic Icon */}
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleMicMute();
-              }}
-              className="cursor-pointer hover:scale-110 transition-transform"
-              title={isMicMuted ? 'Mic is Muted. Click to Unmute' : 'Mic is Live. Click to Mute'}
-            >
-              {isMicMuted ? (
-                <MicOff className="w-3.5 h-3.5 text-rose-400" />
-              ) : (
-                <Mic className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-              )}
-            </span>
-
             {/* Segmented VU Meter Bar */}
             <div className="flex items-center gap-[2px] h-3 px-1 py-[2px] bg-slate-950 rounded border border-slate-800">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((seg) => {
@@ -328,7 +336,7 @@ export const Header: React.FC = () => {
               </span>
             )}
 
-            <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isAudioPopoverOpen ? 'rotate-180' : ''}`} />
+            <Sliders className="w-3 h-3 text-slate-400 hover:text-white transition-colors" />
           </button>
 
           {/* Floating Audio Popover Menu */}
