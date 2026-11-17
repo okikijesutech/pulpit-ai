@@ -112,8 +112,6 @@ export async function runPipelineEvaluation(): Promise<PipelineEvaluationReport>
   loadFullBiblePackages(db, dataDir);
 
   const results: ClipEvaluationResult[] = [];
-  let totalRefWords = 0;
-  let totalErrors = 0;
 
   for (const fixture of manifest) {
     const wavPath = join(fixturesDir, fixture.filename);

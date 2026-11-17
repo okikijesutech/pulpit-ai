@@ -14,11 +14,17 @@
     "evaluate": "node --experimental-strip-types scripts/evaluate_pipeline.ts",
     "benchmark": "node --experimental-strip-types scripts/benchmark_performance.ts",
     "typecheck": "pnpm -r run typecheck",
-    "lint": "echo \"Linting workspace...\""
+    "typecheck:strict": "node --experimental-strip-types scripts/strict_typecheck.ts",
+    "lint": "eslint apps/desktop/src packages scripts",
+    "check:pr": "pnpm run build && pnpm run typecheck:strict && pnpm run lint && pnpm test && pnpm run evaluate"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.10.1",
+    "eslint": "^10.15.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.73.0",
     "vitest": "^2.1.8"
   }
 }

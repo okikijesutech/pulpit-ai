@@ -1,0 +1,21 @@
+# Pulpit AI Code Ownership (Google-style OWNERS gate)
+# Critical security, presentation authority, and local AI boundaries require explicit owner review.
+
+# Default repository owner
+* @okikijesutech
+
+# Mission-Critical Safety Gate (Manual Lock & Allowlist)
+/packages/authority-manager/ @okikijesutech
+/packages/shared-types/src/freeshow.ts @okikijesutech
+
+# Electron Security Boundary (Main Process, IPC Validation, Preload Bridge)
+/apps/desktop/src/main/ @okikijesutech
+/apps/desktop/src/preload/ @okikijesutech
+
+# Local AI Speech Pipeline & Cross-Platform Worker
+/packages/speech-engine/ @okikijesutech
+/packages/audio-engine/ @okikijesutech
+
+# CI / Release Infrastructure
+/.github/ @okikijesutech
+/scripts/ @okikijesutech

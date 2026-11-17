@@ -1,0 +1,89 @@
+name: Pulpit AI CI & Quality Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-verify:
+    name: Build, Lint, Strict Typecheck & Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all 10 workspace packages
+        run: pnpm run build
+
+      - name: Strict TypeScript check (unused locals & parameters)
+        run: pnpm run typecheck:strict
+
+      - name: ESLint static analysis (TypeScript + React Hooks)
+        run: pnpm run lint
+
+      - name: Run full unit & integration test suite
+        run: pnpm test
+
+      - name: AI Sermon Accuracy Gate (Precision / Recall / WER)
+        run: pnpm run evaluate
+
+      - name: Hardware Performance Telemetry Benchmark
+        run: pnpm run benchmark
+
+  security-gate:
+    name: Security & Electron Sandbox Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Verify Electron Sandbox & Context Isolation invariants
+        run: |
+          if grep -rn "nodeIntegration:\s*true" apps/desktop/src/main/; then
+            echo "SECURITY FAIL: nodeIntegration must never be true"
+            exit 1
+          fi
+          if grep -rn "contextIsolation:\s*false" apps/desktop/src/main/; then
+            echo "SECURITY FAIL: contextIsolation must never be false"
+            exit 1
+          fi
+          if grep -rn "sandbox:\s*false" apps/desktop/src/main/; then
+            echo "SECURITY FAIL: sandbox must never be false"
+            exit 1
+          fi
+          echo "Electron security invariants verified."
+
+      - name: Dependency vulnerability audit (high/critical)
+        run: pnpm audit --audit-level=high || true

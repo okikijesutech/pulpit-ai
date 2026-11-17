@@ -75,7 +75,7 @@ export class ConsecutiveEvidenceTracker {
     const existing = this.hypotheses.get(hypKey);
 
     let isConsecutive = false;
-    let consecutiveMatches = 1;
+    let consecutiveMatches: number;
     const lineScore = (lineSimilarity * 0.65) + (distinctivenessScore * 0.35);
     let accumulatedConfidence = lineScore;
 

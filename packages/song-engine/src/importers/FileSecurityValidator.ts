@@ -116,6 +116,7 @@ export class FileSecurityValidator {
       .replace(/javascript:/gi, '')
       .replace(/vbscript:/gi, '')
       // Remove control characters (except \t, \n, \r)
+      // eslint-disable-next-line no-control-regex
       .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
       .trim();
   }

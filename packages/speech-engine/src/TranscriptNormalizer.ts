@@ -63,7 +63,6 @@ export class TranscriptNormalizer {
     const parts = cleaned.split(/\s+/).filter((p) => p.length > 0 && p !== 'and');
     if (parts.length === 0) return null;
 
-    let total = 0;
     let currentGroup = 0;
 
     for (const part of parts) {
@@ -82,7 +81,7 @@ export class TranscriptNormalizer {
       }
     }
 
-    return total + currentGroup;
+    return currentGroup;
   }
 
   /**

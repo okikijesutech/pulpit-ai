@@ -107,7 +107,7 @@ function generateSpeechSignal(
     const syllablePhase = (t * rhythm) % 1.0;
     const isVowel = syllablePhase < 0.65; // 65% vowel, 35% consonant / closure
 
-    let sampleVal = 0;
+    let sampleVal: number;
     if (isVowel) {
       // Conversational preaching pitch contour fluctuates significantly across syllables (±20%)
       const pitchMod = 1.0 + 0.18 * Math.sin(2 * Math.PI * 1.8 * t) + 0.12 * Math.cos(2 * Math.PI * 5.2 * t);

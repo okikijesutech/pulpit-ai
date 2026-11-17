@@ -42,8 +42,8 @@ export class SafeZipReader {
 
       const flags = buffer.readUInt16LE(offset + 6);
       const compressionMethod = buffer.readUInt16LE(offset + 8);
-      let compressedSize = buffer.readUInt32LE(offset + 18);
-      let uncompressedSize = buffer.readUInt32LE(offset + 22);
+      const compressedSize = buffer.readUInt32LE(offset + 18);
+      const uncompressedSize = buffer.readUInt32LE(offset + 22);
       const fileNameLength = buffer.readUInt16LE(offset + 26);
       const extraFieldLength = buffer.readUInt16LE(offset + 28);
 
@@ -101,7 +101,7 @@ export class SafeZipReader {
         try {
           decompressedData = inflateRawSync(compressedData);
         } catch (err: any) {
-          throw new Error(`Failed to decompress entry "${fileName}": ${err.message}`);
+          throw new Error(`Failed to decompress entry "${fileName}": ${err.message}`, { cause: err });
         }
       } else {
         // Unsupported compression method

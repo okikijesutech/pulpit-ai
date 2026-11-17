@@ -65,7 +65,7 @@ export class PdfSongParser {
       if (dataEnd > dataStart && bufStr[dataEnd - 1] === '\r') dataEnd--;
 
       const rawStream = buffer.subarray(dataStart, dataEnd);
-      let decompressedStream: Buffer | null = null;
+      let decompressedStream: Buffer;
 
       // Try inflating stream (FlateDecode)
       try {
