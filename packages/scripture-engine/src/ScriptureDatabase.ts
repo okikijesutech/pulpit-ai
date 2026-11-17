@@ -91,7 +91,7 @@ export class ScriptureDatabase {
       ON bible_verses(translation_id, book_name, chapter, verse);
 
       CREATE INDEX IF NOT EXISTS idx_verses_chapter_lookup 
-      ON bible_verses(translation_id, book_id, chapter);
+      ON bible_verses(translation_id, book_id, chapter, verse);
     `);
   }
 
@@ -435,8 +435,8 @@ export class ScriptureDatabase {
       const stmt = this.db.prepare(`
         SELECT translation_id, book_id, book_name, chapter, verse, text 
         FROM bible_verses 
-        WHERE UPPER(translation_id) = ? 
-          AND (LOWER(book_name) = ? OR UPPER(book_id) = ?) 
+        WHERE translation_id = ? 
+          AND book_id = ? 
           AND chapter = ? 
           AND verse >= ? 
           AND verse <= ? 
@@ -444,7 +444,6 @@ export class ScriptureDatabase {
       `);
       const rows = stmt.all(
         translation.abbreviation.toUpperCase(),
-        canonicalBookName.toLowerCase(),
         canonResult.book.id.toUpperCase(),
         chapter,
         verseStart,

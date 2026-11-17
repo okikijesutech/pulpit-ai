@@ -35,6 +35,11 @@ import { registerAudioHandlers } from './ipc/audioHandlers.js';
 import { registerScriptureHandlers } from './ipc/scriptureHandlers.js';
 import { registerSongHandlers } from './ipc/songHandlers.js';
 import { registerMediaHandlers } from './ipc/mediaHandlers.js';
+import {
+  buildContentSecurityPolicy,
+  isAllowedNavigationUrl,
+  isAllowedPermissionOrigin
+} from './ipc/ipcValidation.js';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -152,28 +157,38 @@ function createWindow(): void {
     }
   });
 
-  // Explicitly permit media access for physical microphone audio ingestion
-  mainWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
-    if (permission === 'media') {
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+  // Explicitly permit media access for physical microphone audio ingestion from local origin only
+  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media' && isAllowedPermissionOrigin(webContents.getURL())) {
       callback(true);
       return;
     }
     callback(false);
   });
-  mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission) => {
-    return permission === 'media';
+  mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission, requestingOrigin) => {
+    return permission === 'media' && isAllowedPermissionOrigin(requestingOrigin);
   });
 
-  // Strict Content Security Policy
+  // Strict Content Security Policy (permits data:/blob: images for Church Logo & Flyers, locks down scripts/objects)
+  const cspHeader = buildContentSecurityPolicy(isDev);
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* http://localhost:*;"
-        ]
+        'Content-Security-Policy': [cspHeader]
       }
     });
+  });
+
+  // Block external popups and unauthorized remote navigations
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('will-navigate', (event, targetUrl) => {
+    if (!isAllowedNavigationUrl(targetUrl)) {
+      event.preventDefault();
+      console.warn(`[Security] Blocked unauthorized navigation to: ${targetUrl}`);
+    }
   });
 
   // Setup reactive subscribers to forward state updates to renderer
@@ -238,7 +253,6 @@ function createWindow(): void {
   });
 
   // Load the UI
-  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
   if (isDev && process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
@@ -288,7 +302,15 @@ app.whenReady().then(() => {
   });
 });
 
+app.on('before-quit', () => {
+  whisperWorker.shutdown();
+  if (freeShowAdapter) {
+    freeShowAdapter.disconnect();
+  }
+});
+
 app.on('window-all-closed', () => {
+  whisperWorker.shutdown();
   if (freeShowAdapter) {
     freeShowAdapter.disconnect();
   }

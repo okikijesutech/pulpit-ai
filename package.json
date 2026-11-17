@@ -1,6 +1,6 @@
 {
   "name": "pulpit-ai",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Open-source, local-first church presentation assistant for FreeShow",
@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "evaluate": "node --experimental-strip-types scripts/evaluate_pipeline.ts",
+    "benchmark": "node --experimental-strip-types scripts/benchmark_performance.ts",
     "typecheck": "pnpm -r run typecheck",
     "lint": "echo \"Linting workspace...\""
   },

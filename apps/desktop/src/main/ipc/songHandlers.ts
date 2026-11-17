@@ -10,6 +10,13 @@ import {
 } from '@pulpit-ai/song-engine';
 import { FreeShowAdapter } from '@pulpit-ai/presentation-contracts';
 import { FreeShowCommand } from '@pulpit-ai/shared-types';
+import {
+  MAX_IPC_BASE64_FILE_CHARS,
+  MAX_IPC_QUERY_CHARS,
+  MAX_IPC_TEXT_CHARS,
+  sanitizeFileName,
+  validateStringLength
+} from './ipcValidation.js';
 
 export function registerSongHandlers(
   songDatabase: SongDatabase,
@@ -22,19 +29,23 @@ export function registerSongHandlers(
   });
 
   ipcMain.handle('songs:search', (_event, query: string) => {
-    return songDatabase.searchSongs(query);
+    if (typeof query !== 'string' || !query.trim()) return [];
+    return songDatabase.searchSongs(query.trim().slice(0, MAX_IPC_QUERY_CHARS));
   });
 
   ipcMain.handle('songs:get', (_event, id: string) => {
-    return songDatabase.getSong(id);
+    if (typeof id !== 'string' || !id.trim() || id.length > 128) return null;
+    return songDatabase.getSong(id.trim());
   });
 
   ipcMain.handle(
     'songs:stage-file',
     async (_event, { name, base64 }: { name: string; base64: string }) => {
       try {
-        const buffer = Buffer.from(base64, 'base64');
-        const importResult = await SongImportPipeline.importFile(name, buffer);
+        const safeName = sanitizeFileName(name);
+        const safeBase64 = validateStringLength(base64, MAX_IPC_BASE64_FILE_CHARS, 'base64');
+        const buffer = Buffer.from(safeBase64, 'base64');
+        const importResult = await SongImportPipeline.importFile(safeName, buffer);
         if (!importResult.success) {
           return {
             success: false,
@@ -73,16 +84,18 @@ export function registerSongHandlers(
     'songs:stage-text',
     async (_event, { text, title }: { text: string; title?: string }) => {
       try {
-        const buffer = Buffer.from(text, 'utf8');
-        const fileName = title ? `${title.replace(/\s+/g, '_')}.txt` : 'pasted_lyrics.txt';
+        const safeText = validateStringLength(text, MAX_IPC_TEXT_CHARS, 'text');
+        const safeTitle = typeof title === 'string' ? title.trim().slice(0, 160) : undefined;
+        const buffer = Buffer.from(safeText, 'utf8');
+        const fileName = safeTitle ? `${sanitizeFileName(safeTitle.replace(/\s+/g, '_'))}.txt` : 'pasted_lyrics.txt';
         const importResult = await SongImportPipeline.importFile(fileName, buffer);
         if (!importResult.success || importResult.songs.length === 0) {
           return { success: false, errors: importResult.errors || ['Failed to parse lyrics'] };
         }
 
         const draft = importResult.songs[0];
-        if (title && (!draft.title || draft.title === fileName)) {
-          draft.title = title;
+        if (safeTitle && (!draft.title || draft.title === fileName)) {
+          draft.title = safeTitle;
         }
         const staged = songReviewManager.stageDraft(draft);
         return { success: true, staged };
@@ -167,7 +180,7 @@ export function registerSongHandlers(
 
   ipcMain.handle('backup:create', () => {
     const auditEvents = auditLogger.getEvents(500);
-    return BackupManager.createBackup(songDatabase, auditEvents, '0.1.0');
+    return BackupManager.createBackup(songDatabase, auditEvents, '1.0.0');
   });
 
   ipcMain.handle(

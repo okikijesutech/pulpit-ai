@@ -1,8 +1,64 @@
 import { SpeechSegment } from '@pulpit-ai/audio-engine';
-import { spawn } from 'node:child_process';
+import { spawn, ChildProcess } from 'node:child_process';
 import { existsSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir, homedir } from 'node:os';
+import { tmpdir, homedir, cpus, totalmem, freemem, endianness } from 'node:os';
+
+export interface HardwareProfile {
+  platform: NodeJS.Platform;
+  arch: string;
+  cpuModel: string;
+  logicalCores: number;
+  optimalWhisperThreads: number;
+  totalRamGb: number;
+  freeRamGb: number;
+  recommendedBackend: 'metal' | 'cuda_or_vulkan' | 'cpu_avx2' | 'cpu_neon';
+}
+
+/**
+ * Computes optimal whisper.cpp thread count, leaving headroom for Electron UI & FreeShow projection.
+ */
+export function computeOptimalWhisperThreads(logicalCores = cpus().length): number {
+  const envOverride = parseInt(process.env.WHISPER_THREADS || '', 10);
+  if (!Number.isNaN(envOverride) && envOverride >= 1 && envOverride <= 32) {
+    return envOverride;
+  }
+  if (logicalCores <= 2) return 1;
+  if (logicalCores <= 4) return Math.max(2, logicalCores - 1);
+  // Reserve at least 2 logical cores for Electron renderer & FreeShow projection smoothness, cap at 8
+  return Math.max(2, Math.min(8, Math.floor(logicalCores * 0.75)));
+}
+
+/**
+ * Detects host CPU, RAM, and hardware acceleration profile for local AI inference.
+ */
+export function detectHardwareProfile(): HardwareProfile {
+  const cpuList = cpus();
+  const logicalCores = Math.max(1, cpuList.length);
+  const cpuModel = cpuList[0]?.model?.trim() || 'Unknown CPU';
+  const totalRamGb = Math.round((totalmem() / (1024 ** 3)) * 10) / 10;
+  const freeRamGb = Math.round((freemem() / (1024 ** 3)) * 10) / 10;
+
+  let recommendedBackend: HardwareProfile['recommendedBackend'] = 'cpu_avx2';
+  if (process.platform === 'darwin' && process.arch === 'arm64') {
+    recommendedBackend = 'metal';
+  } else if (process.env.WHISPER_GPU === '1') {
+    recommendedBackend = 'cuda_or_vulkan';
+  } else if (process.arch === 'arm64') {
+    recommendedBackend = 'cpu_neon';
+  }
+
+  return {
+    platform: process.platform,
+    arch: process.arch,
+    cpuModel,
+    logicalCores,
+    optimalWhisperThreads: computeOptimalWhisperThreads(logicalCores),
+    totalRamGb,
+    freeRamGb,
+    recommendedBackend
+  };
+}
 
 export interface TranscriptionJobResult {
   text: string;
@@ -32,11 +88,28 @@ export class WhisperWorkerProcess {
   private transcriberPromise: Promise<any> | null = null;
   private customBinaryPath?: string;
   private customModelPath?: string;
+  private activeChildren: Set<ChildProcess> = new Set();
 
   constructor(options: { binaryPath?: string; modelPath?: string } = {}) {
     this.isRunning = true;
     this.customBinaryPath = options.binaryPath;
     this.customModelPath = options.modelPath;
+  }
+
+  public getHardwareProfile(): HardwareProfile {
+    return detectHardwareProfile();
+  }
+
+  public shutdown(): void {
+    this.isRunning = false;
+    for (const child of this.activeChildren) {
+      try {
+        child.kill('SIGTERM');
+      } catch {
+        // Ignore already-exited child processes
+      }
+    }
+    this.activeChildren.clear();
   }
 
   public isHealthy(): boolean {
@@ -291,9 +364,11 @@ export class WhisperWorkerProcess {
     const tempWav = join(tmpdir(), `pulpit_audio_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.wav`);
     this.writeWavFile(tempWav, segment.samples, 16000);
 
+    const optimalThreads = computeOptimalWhisperThreads();
     const args = [
       '-m', modelPath,
       '-f', tempWav,
+      '-t', String(optimalThreads),
       '--language', 'en',
       '--prompt', CANONICAL_PROMPT_BIAS,
       '--output-json',
@@ -304,12 +379,19 @@ export class WhisperWorkerProcess {
       '-et', '2.40'
     ];
 
+    // Allow operators on older integrated GPUs to force pure CPU AVX2 mode
+    if (process.env.WHISPER_NO_GPU === '1') {
+      args.push('-ng');
+    }
+
     return new Promise<TranscriptionJobResult>((resolve, reject) => {
       let stdout = '';
       let stderr = '';
       const child = spawn(binPath, args);
+      this.activeChildren.add(child);
 
       const timer = setTimeout(() => {
+        this.activeChildren.delete(child);
         child.kill('SIGKILL');
         try { unlinkSync(tempWav); } catch {}
         try { unlinkSync(`${tempWav}.json`); } catch {}
@@ -321,6 +403,7 @@ export class WhisperWorkerProcess {
 
       child.on('close', (code, signal) => {
         clearTimeout(timer);
+        this.activeChildren.delete(child);
         try { unlinkSync(tempWav); } catch {}
 
         if (code !== 0 && code !== null) {
@@ -369,6 +452,7 @@ export class WhisperWorkerProcess {
 
       child.on('error', (err) => {
         clearTimeout(timer);
+        this.activeChildren.delete(child);
         try { unlinkSync(tempWav); } catch {}
         try { unlinkSync(`${tempWav}.json`); } catch {}
         reject(err);
@@ -377,10 +461,11 @@ export class WhisperWorkerProcess {
   }
 
   private writeWavFile(filePath: string, samples: Int16Array, sampleRate: number): void {
-    const buffer = Buffer.alloc(44 + samples.length * 2);
+    const dataBytes = samples.length * 2;
+    const buffer = Buffer.allocUnsafe(44 + dataBytes);
     // RIFF header
     buffer.write('RIFF', 0);
-    buffer.writeUInt32LE(36 + samples.length * 2, 4);
+    buffer.writeUInt32LE(36 + dataBytes, 4);
     buffer.write('WAVE', 8);
     // fmt subchunk
     buffer.write('fmt ', 12);
@@ -393,10 +478,15 @@ export class WhisperWorkerProcess {
     buffer.writeUInt16LE(16, 34); // bits per sample
     // data subchunk
     buffer.write('data', 36);
-    buffer.writeUInt32LE(samples.length * 2, 40);
+    buffer.writeUInt32LE(dataBytes, 40);
 
-    for (let i = 0; i < samples.length; i++) {
-      buffer.writeInt16LE(samples[i], 44 + i * 2);
+    // Zero-loop native C++ memcpy on little-endian CPUs (x86_64 / ARM64)
+    if (endianness() === 'LE') {
+      Buffer.from(samples.buffer, samples.byteOffset, samples.byteLength).copy(buffer, 44);
+    } else {
+      for (let i = 0; i < samples.length; i++) {
+        buffer.writeInt16LE(samples[i], 44 + i * 2);
+      }
     }
 
     writeFileSync(filePath, buffer);

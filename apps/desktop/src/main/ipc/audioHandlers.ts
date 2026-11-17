@@ -11,6 +11,7 @@ import {
   WhisperWorkerProcess,
   ModelManager
 } from '@pulpit-ai/speech-engine';
+import { MAX_IPC_AUDIO_CHUNK_BYTES, MAX_IPC_TRANSCRIPT_CHARS } from './ipcValidation.js';
 
 export interface AudioHandlerDeps {
   audioDeviceManager: AudioDeviceManager;
@@ -70,15 +71,24 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
       return;
     }
 
-    // Safely extract 16-bit PCM samples from Node.js Buffer or raw ArrayBuffer without byte-splitting
+    // Safely extract 16-bit PCM samples from Node.js Buffer or raw ArrayBuffer with size guard
+    let byteLen = 0;
+    if (Buffer.isBuffer(buffer)) byteLen = buffer.byteLength;
+    else if (buffer instanceof ArrayBuffer) byteLen = buffer.byteLength;
+    else if (ArrayBuffer.isView(buffer)) byteLen = (buffer as ArrayBufferView).byteLength;
+
+    if (byteLen === 0 || byteLen > MAX_IPC_AUDIO_CHUNK_BYTES) {
+      return;
+    }
+
     let int16: Int16Array;
     if (Buffer.isBuffer(buffer)) {
-      int16 = new Int16Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 2);
+      int16 = new Int16Array(buffer.buffer, buffer.byteOffset, Math.floor(buffer.byteLength / 2));
     } else if (buffer instanceof ArrayBuffer) {
-      int16 = new Int16Array(buffer);
+      int16 = new Int16Array(buffer, 0, Math.floor(buffer.byteLength / 2));
     } else if (ArrayBuffer.isView(buffer)) {
       const v = buffer as ArrayBufferView;
-      int16 = new Int16Array(v.buffer, v.byteOffset, v.byteLength / 2);
+      int16 = new Int16Array(v.buffer, v.byteOffset, Math.floor(v.byteLength / 2));
     } else {
       int16 = new Int16Array(0);
     }
@@ -123,9 +133,10 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
   });
 
   // Live Physical Microphone Direct Speech Transcript Handler
-  ipcMain.on('speech:direct-transcript', (_event, { text, isSinging }: { text: string; isSinging?: boolean }) => {
-    if (!text || text.trim().length === 0) return;
-    if (isSinging) {
+  ipcMain.on('speech:direct-transcript', (_event, payload: { text: string; isSinging?: boolean }) => {
+    if (!payload || typeof payload.text !== 'string' || payload.text.trim().length === 0) return;
+    const safeText = payload.text.trim().slice(0, MAX_IPC_TRANSCRIPT_CHARS);
+    if (payload.isSinging) {
       const toneFrame = new Int16Array(480);
       for (let i = 0; i < 480; i++) {
         toneFrame[i] = Math.round(10000 * Math.sin((2 * Math.PI * 220 * i) / 16000));
@@ -134,7 +145,7 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
         singingActivityDetector.processFrame(toneFrame);
       }
     }
-    speechEngine.ingestDirectTranscript(text.trim(), 'physical_mic');
+    speechEngine.ingestDirectTranscript(safeText, 'physical_mic');
   });
 
   ipcMain.handle('audio:simulate-speech', async (_event, phrase: string) => {

@@ -1,6 +1,7 @@
 import { ipcMain, app } from 'electron';
 import { FreeShowAdapter, MockFreeShowServer } from '@pulpit-ai/presentation-contracts';
 import { AllowlistedAction, FreeShowCommand } from '@pulpit-ai/shared-types';
+import { isAllowlistedAction, isValidLocalPort } from './ipcValidation.js';
 
 export function registerFreeShowHandlers(
   getFreeShowAdapter: () => FreeShowAdapter | null,
@@ -9,9 +10,10 @@ export function registerFreeShowHandlers(
   setVirtualMockServer: (server: MockFreeShowServer | null) => void
 ): void {
   ipcMain.handle('freeshow:connect', async (_event, port = 5510) => {
-    let adapter = initFreeShow(port);
+    const safePort = isValidLocalPort(port) ? port : 5510;
+    let adapter = initFreeShow(safePort);
     let connected = await adapter.connect();
-    if (!connected && port === 5510) {
+    if (!connected && safePort === 5510) {
       adapter = initFreeShow(5505);
       connected = await adapter.connect();
     }
@@ -52,15 +54,19 @@ export function registerFreeShowHandlers(
 
   ipcMain.handle(
     'freeshow:dispatch-command',
-    async (_event, { action, data }: { action: AllowlistedAction; data?: any }) => {
+    async (_event, payload: { action: AllowlistedAction; data?: any }) => {
+      if (!payload || !isAllowlistedAction(payload.action)) {
+        return { success: false, reason: 'Blocked: Action is not on the strict FreeShow allowlist' };
+      }
+
       const adapter = getFreeShowAdapter();
       if (!adapter) {
         return { success: false, reason: 'FreeShow adapter not initialized' };
       }
 
       const command: FreeShowCommand = {
-        action,
-        data,
+        action: payload.action,
+        data: payload.data,
         source: 'operator',
         correlationId: `op_cmd_${Date.now()}`,
         createdAt: Date.now()
