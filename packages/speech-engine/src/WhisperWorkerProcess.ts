@@ -2,7 +2,8 @@ import { SpeechSegment } from '@pulpit-ai/audio-engine';
 import { spawn, ChildProcess } from 'node:child_process';
 import { existsSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir, homedir, cpus, totalmem, freemem, endianness } from 'node:os';
+import { tmpdir, homedir, cpus, totalmem, freemem } from 'node:os';
+import { WhisperServerDaemon, buildWavBuffer } from './WhisperServerDaemon.js';
 
 export interface HardwareProfile {
   platform: NodeJS.Platform;
@@ -16,7 +17,8 @@ export interface HardwareProfile {
 }
 
 /**
- * Computes optimal whisper.cpp thread count, leaving headroom for Electron UI & FreeShow projection.
+ * Computes optimal whisper.cpp thread count, guaranteeing >=50% CPU headroom on low-spec 4-core
+ * sanctuary PCs so Electron UI and FreeShow 60fps projection never stutter.
  */
 export function computeOptimalWhisperThreads(logicalCores = cpus().length): number {
   const envOverride = parseInt(process.env.WHISPER_THREADS || '', 10);
@@ -24,8 +26,7 @@ export function computeOptimalWhisperThreads(logicalCores = cpus().length): numb
     return envOverride;
   }
   if (logicalCores <= 2) return 1;
-  if (logicalCores <= 4) return Math.max(2, logicalCores - 1);
-  // Reserve at least 2 logical cores for Electron renderer & FreeShow projection smoothness, cap at 8
+  if (logicalCores <= 4) return 2; // Preserves >=50% CPU headroom for Electron + FreeShow on 4-core PCs
   return Math.max(2, Math.min(8, Math.floor(logicalCores * 0.75)));
 }
 
@@ -68,9 +69,17 @@ export interface TranscriptionJobResult {
 
 export type WorkerCrashListener = (exitCode: number | null, signal: string | null) => void;
 
+export interface WhisperWorkerOptions {
+  binaryPath?: string;
+  serverBinaryPath?: string;
+  modelPath?: string;
+  /** Optional pre-running whisper-server URL (useful for integration testing) */
+  serverEndpointUrl?: string;
+}
+
 /**
  * Initial decoder prompt primed with canonical Protestant books and liturgical cues.
- * Biases acoustic attention heads towards Biblical proper nouns.
+ * Biases acoustic attention heads towards Biblical proper nouns during spoken preaching.
  */
 export const CANONICAL_PROMPT_BIAS =
   'Genesis, Exodus, Leviticus, Numbers, Deuteronomy, Joshua, Judges, Ruth, ' +
@@ -83,25 +92,55 @@ export const CANONICAL_PROMPT_BIAS =
 
 export class WhisperWorkerProcess {
   private isRunning = false;
+  private singingGuardActive = false;
   private crashListeners: Set<WorkerCrashListener> = new Set();
   private mockResults: Map<string, Partial<TranscriptionJobResult>> = new Map();
-  private transcriberPromise: Promise<any> | null = null;
   private customBinaryPath?: string;
+  private customServerBinaryPath?: string;
   private customModelPath?: string;
   private activeChildren: Set<ChildProcess> = new Set();
+  private readonly serverDaemon: WhisperServerDaemon;
 
-  constructor(options: { binaryPath?: string; modelPath?: string } = {}) {
+  constructor(options: WhisperWorkerOptions = {}) {
     this.isRunning = true;
     this.customBinaryPath = options.binaryPath;
+    this.customServerBinaryPath = options.serverBinaryPath;
     this.customModelPath = options.modelPath;
+    this.serverDaemon = new WhisperServerDaemon({
+      endpointUrl: options.serverEndpointUrl
+    });
+    this.serverDaemon.onCrash((code, signal) => {
+      this.simulateCrash(code ?? 1, signal || 'SIGERR');
+    });
   }
 
   public getHardwareProfile(): HardwareProfile {
     return detectHardwareProfile();
   }
 
+  /**
+   * Choir Singing Guard: when singing or sustained worship pads are active, strips
+   * CANONICAL_PROMPT_BIAS to eliminate Whisper 24.5s biblical-name hallucination loops.
+   */
+  public setSingingGuardActive(active: boolean): void {
+    this.singingGuardActive = active;
+  }
+
+  public isSingingGuardActive(): boolean {
+    return this.singingGuardActive;
+  }
+
+  public getEffectivePrompt(): string {
+    return this.singingGuardActive ? '' : CANONICAL_PROMPT_BIAS;
+  }
+
+  public isServerDaemonReady(): boolean {
+    return this.serverDaemon.isReady();
+  }
+
   public shutdown(): void {
     this.isRunning = false;
+    this.serverDaemon.stop();
     for (const child of this.activeChildren) {
       try {
         child.kill('SIGTERM');
@@ -137,7 +176,35 @@ export class WhisperWorkerProcess {
   }
 
   /**
-   * Resolves the native whisper.cpp executable path.
+   * Resolves the persistent whisper-server binary path (preferred Phase 1 engine).
+   */
+  public resolveServerBinaryPath(): string | null {
+    if (this.customServerBinaryPath && existsSync(this.customServerBinaryPath)) {
+      return this.customServerBinaryPath;
+    }
+
+    if (process.env.WHISPER_SERVER_PATH && existsSync(process.env.WHISPER_SERVER_PATH)) {
+      return process.env.WHISPER_SERVER_PATH;
+    }
+
+    const binaryName = process.platform === 'win32' ? 'whisper-server.exe' : 'whisper-server';
+    const candidatePaths = [
+      join(process.cwd(), 'bin', binaryName),
+      join(process.cwd(), 'packages', 'speech-engine', 'bin', binaryName),
+      join(__dirname, '..', 'bin', binaryName),
+      join(__dirname, '..', '..', 'bin', binaryName),
+      join((process as any).resourcesPath || '', 'app.asar.unpacked', 'node_modules', '@pulpit-ai', 'speech-engine', 'bin', binaryName)
+    ];
+
+    for (const p of candidatePaths) {
+      if (existsSync(p)) return p;
+    }
+
+    return null;
+  }
+
+  /**
+   * Resolves the legacy native whisper-cli executable path (fallback if whisper-server is absent).
    */
   public resolveBinaryPath(): string | null {
     if (this.customBinaryPath && existsSync(this.customBinaryPath)) {
@@ -154,7 +221,6 @@ export class WhisperWorkerProcess {
       join(process.cwd(), 'packages', 'speech-engine', 'bin', binaryName),
       join(__dirname, '..', 'bin', binaryName),
       join(__dirname, '..', '..', 'bin', binaryName),
-      // Packaged app path
       join((process as any).resourcesPath || '', 'app.asar.unpacked', 'node_modules', '@pulpit-ai', 'speech-engine', 'bin', binaryName)
     ];
 
@@ -167,6 +233,8 @@ export class WhisperWorkerProcess {
 
   /**
    * Resolves the native Whisper GGML model file path.
+   * Prioritizes quantized multilingual models (ggml-base-q5_1.bin) for superior
+   * Nigerian/African accented English phonology before falling back to .en variants.
    */
   public resolveModelPath(): string | null {
     if (this.customModelPath && existsSync(this.customModelPath)) {
@@ -178,8 +246,13 @@ export class WhisperWorkerProcess {
     }
 
     const candidateModels = [
+      'ggml-base-q5_1.bin',
+      'ggml-small-q5_1.bin',
       'ggml-base.en-q5_1.bin',
+      'ggml-small.en-q5_1.bin',
+      'ggml-base.bin',
       'ggml-base.en.bin',
+      'ggml-tiny-q5_1.bin',
       'ggml-tiny.en-q5_1.bin',
       'ggml-tiny.en.bin'
     ];
@@ -211,31 +284,19 @@ export class WhisperWorkerProcess {
     return null;
   }
 
-  private async getTranscriber(): Promise<any> {
-    if (!this.transcriberPromise) {
-      this.transcriberPromise = (async () => {
-        try {
-          const { pipeline } = await import('@xenova/transformers');
-          return await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
-            quantized: true
-          });
-        } catch (err) {
-          console.warn('Whisper ONNX fallback pipeline load deferred or failed:', err);
-          return null;
-        }
-      })();
-    }
-    return this.transcriberPromise;
-  }
-
+  /**
+   * Pre-warms the persistent RAM-resident whisper-server daemon at startup so the first
+   * spoken scripture reference incurs zero cold-start model loading delay.
+   */
   public async warmup(): Promise<void> {
     try {
-      const nativeBin = this.resolveBinaryPath();
-      if (!nativeBin) {
-        await this.getTranscriber();
+      const serverBin = this.resolveServerBinaryPath();
+      const modelPath = this.resolveModelPath();
+      if (serverBin && modelPath) {
+        await this.serverDaemon.start(serverBin, modelPath, computeOptimalWhisperThreads());
       }
     } catch (err) {
-      console.warn('Warmup error in Whisper worker:', err);
+      console.warn('[WhisperWorkerProcess] Daemon warmup deferred:', err);
     }
   }
 
@@ -274,7 +335,6 @@ export class WhisperWorkerProcess {
     }
 
     // 2. Minimum Acoustic Energy Gate: If average RMS < 0.002, audio is silence or low ambient hiss.
-    // Discard immediately to prevent native Whisper from decoding hallucination loops on silence.
     if (segment.samples && segment.samples.length > 0) {
       let sumSquares = 0;
       for (let i = 0; i < segment.samples.length; i++) {
@@ -291,60 +351,50 @@ export class WhisperWorkerProcess {
       }
     }
 
-    // 3. Try Native whisper.cpp Subprocess if binary and model are present
+    const effectivePrompt = this.getEffectivePrompt();
+
+    // 3. Primary Path: Persistent RAM-Resident whisper-server HTTP Daemon (Zero Cold Start, Zero Disk I/O)
+    if (this.serverDaemon.isReady()) {
+      try {
+        return await this.serverDaemon.transcribe(segment.samples, effectivePrompt, timeoutMs);
+      } catch (daemonErr) {
+        console.warn('[WhisperWorkerProcess] Persistent daemon error, falling back:', daemonErr);
+      }
+    } else {
+      const serverBin = this.resolveServerBinaryPath();
+      const nativeModel = this.resolveModelPath();
+      if (serverBin && nativeModel) {
+        const started = await this.serverDaemon.start(
+          serverBin,
+          nativeModel,
+          computeOptimalWhisperThreads()
+        );
+        if (started) {
+          try {
+            return await this.serverDaemon.transcribe(segment.samples, effectivePrompt, timeoutMs);
+          } catch (daemonErr) {
+            console.warn('[WhisperWorkerProcess] Persistent daemon error after start:', daemonErr);
+          }
+        }
+      }
+    }
+
+    // 4. Legacy Fallback: whisper-cli subprocess (only if whisper-server binary is not installed yet)
     const nativeBin = this.resolveBinaryPath();
     const nativeModel = this.resolveModelPath();
     if (nativeBin && nativeModel) {
       try {
-        return await this.transcribeWithSubprocess(nativeBin, nativeModel, segment, timeoutMs, startTime);
+        return await this.transcribeWithSubprocess(
+          nativeBin,
+          nativeModel,
+          segment,
+          effectivePrompt,
+          timeoutMs,
+          startTime
+        );
       } catch (nativeErr) {
-        console.warn('[WhisperWorkerProcess] Native whisper execution error, attempting fallback:', nativeErr);
+        console.warn('[WhisperWorkerProcess] Native whisper-cli fallback error:', nativeErr);
       }
-    }
-
-    // 3. Fallback to in-process ONNX if available
-    try {
-      const transcriber = await this.getTranscriber();
-      if (transcriber && segment.samples && segment.samples.length > 0) {
-        const float32 = new Float32Array(segment.samples.length);
-        let sumSquares = 0;
-        for (let i = 0; i < segment.samples.length; i++) {
-          const val = segment.samples[i] / 32768.0;
-          float32[i] = val;
-          sumSquares += val * val;
-        }
-
-        const rms = Math.sqrt(sumSquares / float32.length);
-        if (rms < 0.003) {
-          return { text: '', confidence: null, latencyMs: Date.now() - startTime };
-        }
-
-        const resultPromise = transcriber(float32, {
-          language: 'english',
-          task: 'transcribe',
-          num_beams: 1,
-          temperature: 0.0,
-          max_new_tokens: 96
-        });
-
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error(`Whisper transcription timed out after ${timeoutMs}ms.`)), timeoutMs);
-        });
-
-        const output: any = await Promise.race([resultPromise, timeoutPromise]);
-        const recognizedText = (output?.text || '').trim();
-
-        // Extract real confidence if probability is available, else null
-        const realConfidence = typeof output?.confidence === 'number' ? output.confidence : null;
-
-        return {
-          text: recognizedText,
-          confidence: realConfidence,
-          latencyMs: Date.now() - startTime
-        };
-      }
-    } catch (fallbackErr) {
-      console.warn('Whisper inference error:', fallbackErr);
     }
 
     return {
@@ -358,11 +408,12 @@ export class WhisperWorkerProcess {
     binPath: string,
     modelPath: string,
     segment: SpeechSegment,
+    prompt: string,
     timeoutMs: number,
     startTime: number
   ): Promise<TranscriptionJobResult> {
     const tempWav = join(tmpdir(), `pulpit_audio_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.wav`);
-    this.writeWavFile(tempWav, segment.samples, 16000);
+    writeFileSync(tempWav, buildWavBuffer(segment.samples, 16000));
 
     const optimalThreads = computeOptimalWhisperThreads();
     const args = [
@@ -370,7 +421,6 @@ export class WhisperWorkerProcess {
       '-f', tempWav,
       '-t', String(optimalThreads),
       '--language', 'en',
-      '--prompt', CANONICAL_PROMPT_BIAS,
       '--output-json',
       '--no-prints',
       '--no-timestamps',
@@ -379,7 +429,10 @@ export class WhisperWorkerProcess {
       '-et', '2.40'
     ];
 
-    // Allow operators on older integrated GPUs to force pure CPU AVX2 mode
+    if (prompt) {
+      args.push('--prompt', prompt);
+    }
+
     if (process.env.WHISPER_NO_GPU === '1') {
       args.push('-ng');
     }
@@ -387,7 +440,7 @@ export class WhisperWorkerProcess {
     return new Promise<TranscriptionJobResult>((resolve, reject) => {
       let stdout = '';
       let stderr = '';
-      const child = spawn(binPath, args);
+      const child = spawn(binPath, args, { windowsHide: true });
       this.activeChildren.add(child);
 
       const timer = setTimeout(() => {
@@ -416,7 +469,6 @@ export class WhisperWorkerProcess {
         let parsedText = '';
         let parsedConfidence: number | null = null;
 
-        // In whisper.cpp, --output-json writes output to `${tempWav}.json`
         const jsonPath = `${tempWav}.json`;
         if (existsSync(jsonPath)) {
           try {
@@ -460,38 +512,6 @@ export class WhisperWorkerProcess {
     });
   }
 
-  private writeWavFile(filePath: string, samples: Int16Array, sampleRate: number): void {
-    const dataBytes = samples.length * 2;
-    const buffer = Buffer.allocUnsafe(44 + dataBytes);
-    // RIFF header
-    buffer.write('RIFF', 0);
-    buffer.writeUInt32LE(36 + dataBytes, 4);
-    buffer.write('WAVE', 8);
-    // fmt subchunk
-    buffer.write('fmt ', 12);
-    buffer.writeUInt32LE(16, 16);
-    buffer.writeUInt16LE(1, 20); // PCM format
-    buffer.writeUInt16LE(1, 22); // Mono
-    buffer.writeUInt32LE(sampleRate, 24);
-    buffer.writeUInt32LE(sampleRate * 2, 28); // byte rate
-    buffer.writeUInt16LE(2, 32); // block align
-    buffer.writeUInt16LE(16, 34); // bits per sample
-    // data subchunk
-    buffer.write('data', 36);
-    buffer.writeUInt32LE(dataBytes, 40);
-
-    // Zero-loop native C++ memcpy on little-endian CPUs (x86_64 / ARM64)
-    if (endianness() === 'LE') {
-      Buffer.from(samples.buffer, samples.byteOffset, samples.byteLength).copy(buffer, 44);
-    } else {
-      for (let i = 0; i < samples.length; i++) {
-        buffer.writeInt16LE(samples[i], 44 + i * 2);
-      }
-    }
-
-    writeFileSync(filePath, buffer);
-  }
-
   public simulateCrash(code = 1, signal = 'SIGSEGV'): void {
     this.isRunning = false;
     for (const l of this.crashListeners) {
@@ -505,10 +525,8 @@ export class WhisperWorkerProcess {
 
   public onCrash(listener: WorkerCrashListener): () => void {
     this.crashListeners.add(listener);
-    return () => this.crashListeners.delete(listener);
-  }
-
-  public stop(): void {
-    this.isRunning = false;
+    return () => {
+      this.crashListeners.delete(listener);
+    };
   }
 }

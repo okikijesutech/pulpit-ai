@@ -75,9 +75,9 @@ describe('v1.0.0 Security & Performance Hardening Suite', () => {
   });
 
   describe('Performance: Hardware Detection, Thread Allocation & Clean Shutdown', () => {
-    it('computes safe whisper.cpp thread counts across low-end and high-end CPUs', () => {
+    it('computes safe whisper.cpp thread counts preserving >=50% headroom on 4-core PCs', () => {
       expect(computeOptimalWhisperThreads(2)).toBe(1);
-      expect(computeOptimalWhisperThreads(4)).toBe(3);
+      expect(computeOptimalWhisperThreads(4)).toBe(2);
       expect(computeOptimalWhisperThreads(8)).toBe(6);
       expect(computeOptimalWhisperThreads(16)).toBe(8);
       expect(computeOptimalWhisperThreads(32)).toBe(8);

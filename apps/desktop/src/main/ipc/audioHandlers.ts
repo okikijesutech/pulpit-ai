@@ -95,11 +95,13 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
     const metrics = audioLevelMeter.analyze(int16, isMuted);
     const activityMetrics = singingActivityDetector.processFrame(int16);
 
-    // Send singing away from the speech path
+    // Send singing away from the speech path and engage Choir Singing Guard
     if (activityMetrics.isSinging) {
       speechSegmenter.setSingingActive(true);
+      whisperWorker.setSingingGuardActive(true);
     } else {
       speechSegmenter.setSingingActive(false);
+      whisperWorker.setSingingGuardActive(false);
       speechSegmenter.pushFrame(int16);
     }
 

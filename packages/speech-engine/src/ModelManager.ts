@@ -16,6 +16,22 @@ export interface WhisperModelInfo {
  * from the official whisper.cpp repository (ggerganov/whisper.cpp).
  */
 export const WHISPER_MODELS: Record<string, WhisperModelInfo> = {
+  'base-q5_1': {
+    id: 'base-q5_1',
+    name: 'Whisper Base Multilingual (Q5_1 Quantized — Recommended for Accented Preaching)',
+    sizeBytes: 59707625, // 59.7 MB
+    expectedSha256: '422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898',
+    downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin',
+    recommendedRamMb: 260
+  },
+  'small-q5_1': {
+    id: 'small-q5_1',
+    name: 'Whisper Small Multilingual (Q5_1 Quantized — High Accuracy / 8+ Cores or GPU)',
+    sizeBytes: 190085487, // 190.1 MB
+    expectedSha256: 'ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb',
+    downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin',
+    recommendedRamMb: 620
+  },
   'tiny.en-q5_1': {
     id: 'tiny.en-q5_1',
     name: 'Whisper Tiny English (Q5_1 Quantized)',
@@ -26,7 +42,7 @@ export const WHISPER_MODELS: Record<string, WhisperModelInfo> = {
   },
   'base.en-q5_1': {
     id: 'base.en-q5_1',
-    name: 'Whisper Base English (Q5_1 Quantized - Default)',
+    name: 'Whisper Base English (Q5_1 Quantized)',
     sizeBytes: 59721011, // 59.7 MB
     expectedSha256: '4baf70dd0d7c4247ba2b81fafd9c01005ac77c2f9ef064e00dcf195d0e2fdd2f',
     downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en-q5_1.bin',
