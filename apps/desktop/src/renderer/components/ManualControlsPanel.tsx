@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   RotateCcw,
   Sliders,
-  Sparkles,
   BookOpen,
   Megaphone,
   LayoutGrid,
@@ -19,7 +18,6 @@ import { ActiveAnnouncement } from "./QuickAnnouncementModal.js";
 
 interface ManualControlsPanelProps {
   onDispatch: (action: AllowlistedAction, data?: any) => void;
-  onAddMockCandidate: () => void;
   disabled: boolean;
   onOpenBibleExplorer?: () => void;
   onOpenAnnouncements?: () => void;
@@ -36,7 +34,6 @@ interface ManualControlsPanelProps {
 
 export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
   onDispatch,
-  onAddMockCandidate,
   disabled,
   onOpenBibleExplorer,
   onOpenAnnouncements,

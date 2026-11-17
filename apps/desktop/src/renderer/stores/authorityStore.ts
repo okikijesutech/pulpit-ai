@@ -54,7 +54,7 @@ export const useAuthorityStore = create<AuthorityStoreState>((set, get) => ({
         nextLock,
         nextLock ? 'Operator engaged Manual Safety Lock' : 'Operator released lock'
       );
-      if (res.success) {
+      if (!res || res.success) {
         set((s) => ({
           authorityState: { ...s.authorityState, manualLockActive: nextLock }
         }));

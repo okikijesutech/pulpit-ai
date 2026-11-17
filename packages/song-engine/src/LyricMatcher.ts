@@ -11,7 +11,7 @@
 
 import { Song, SongSection, SongVersion } from '@pulpit-ai/shared-types';
 import { SongDatabase } from './SongDatabase.js';
-import { ConsecutiveEvidenceTracker, ActiveSongHypothesis } from './ConsecutiveEvidenceTracker.js';
+import { ConsecutiveEvidenceTracker } from './ConsecutiveEvidenceTracker.js';
 
 export interface LyricMatchCandidate {
   song: Song;

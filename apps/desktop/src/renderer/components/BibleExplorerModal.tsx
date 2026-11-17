@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CANON_BOOKS, CanonBook } from '../data/canonBooks.js';
-import { BookOpen, Search, X, Check, Cast, Sparkles, Layers, ChevronRight } from 'lucide-react';
+import { CANON_BOOKS, CanonBook } from '@pulpit-ai/shared-types';
+import { BookOpen, Search, X, Cast, Sparkles } from 'lucide-react';
 import { parseQuickScripture } from '../utils/quickScriptureParser.js';
 
 interface BibleExplorerModalProps {
@@ -76,10 +76,11 @@ export const BibleExplorerModal: React.FC<BibleExplorerModalProps> = ({
             setAttribution(`${selectedBook.name} ${selectedChapter}:${verseStart} (${activeTranslation})`);
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           if (!isMounted) return;
           setIsLoadingPassage(false);
-          setPreviewText(`Error loading passage: ${err.message}`);
+          const msg = err instanceof Error ? err.message : String(err);
+          setPreviewText(`Error loading passage: ${msg}`);
         });
     }
 

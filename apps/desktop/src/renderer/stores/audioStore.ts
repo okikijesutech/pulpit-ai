@@ -27,7 +27,7 @@ interface AudioStoreState {
   reconnectMic: () => Promise<void>;
 }
 
-export const useAudioStore = create<AudioStoreState>((set) => ({
+export const useAudioStore = create<AudioStoreState>((set, get) => ({
   audioDevices: [],
   activeDeviceId: 'default_mic',
   micGainDb: physicalMicService.getGainDb(),
@@ -63,7 +63,9 @@ export const useAudioStore = create<AudioStoreState>((set) => ({
   },
 
   toggleMicMute: async () => {
-    await physicalMicService.toggleMute();
+    const nextMuted = !get().isMicMuted;
+    set({ isMicMuted: nextMuted });
+    await physicalMicService.setMuted(nextMuted);
   },
 
   reconnectMic: async () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, Clock, CheckCircle, Sparkles, AudioWaveform } from 'lucide-react';
+import { Mic, Clock, CheckCircle } from 'lucide-react';
 
 export interface RecognizedTranscriptEvent {
   id: string;

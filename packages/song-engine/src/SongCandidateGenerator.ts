@@ -31,7 +31,7 @@ export class SongCandidateGenerator {
   private evaluationListeners: Set<SongEvaluationListener> = new Set();
 
   constructor(
-    private database: SongDatabase,
+    database: SongDatabase,
     matcherOrOptions?: LyricMatcher | SongCandidateGeneratorOptions,
     options?: SongCandidateGeneratorOptions
   ) {

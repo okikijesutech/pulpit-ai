@@ -6,10 +6,8 @@ import {
   Music,
   Volume2,
   ShieldCheck,
-  ChevronDown,
   X,
-  Sliders,
-  Check
+  Sliders
 } from 'lucide-react';
 import { useUIStore } from '../stores/uiStore.js';
 import { useAuthorityStore } from '../stores/authorityStore.js';

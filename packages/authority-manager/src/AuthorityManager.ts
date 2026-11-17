@@ -7,7 +7,7 @@ import {
   SuggestionCandidate
 } from '@pulpit-ai/shared-types';
 import { AuditLogger } from './AuditLogger.js';
-import { CandidateRegistry, CandidateRegistryOptions } from './CandidateRegistry.js';
+import { CandidateRegistry } from './CandidateRegistry.js';
 
 export type StateListener = (state: Readonly<AuthorityState>) => void;
 

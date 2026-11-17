@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FreeShowStateSnapshot, DisplayTarget } from '@pulpit-ai/shared-types';
+import { FreeShowStateSnapshot } from '@pulpit-ai/shared-types';
 import {
   Monitor,
   EyeOff,
@@ -10,8 +10,7 @@ import {
   Tv,
   Clock,
   ArrowRight,
-  Sliders,
-  Sparkles
+  Sliders
 } from 'lucide-react';
 import { usePresentationStore } from '../stores/presentationStore.js';
 import { useUIStore } from '../stores/uiStore.js';

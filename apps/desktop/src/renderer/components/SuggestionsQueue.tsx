@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SuggestionCandidate } from '@pulpit-ai/shared-types';
-import { Sparkles, Check, X, BookOpen, Music, ShieldAlert, Search, Cast, ArrowRight } from 'lucide-react';
+import { Sparkles, Check, X, BookOpen, Music, ShieldAlert, Search, Cast } from 'lucide-react';
 import { parseQuickScripture, ParsedQuickScripture } from '../utils/quickScriptureParser.js';
 
 interface SuggestionsQueueProps {
@@ -12,7 +12,6 @@ interface SuggestionsQueueProps {
   onDirectProject?: (reference: string, fullText?: string) => void;
   onQueueManualScripture?: (reference: string, previewText: string, attribution: string) => void;
   activeTranslation?: string;
-  onOpenBibleExplorer?: () => void;
   freeShowConnected?: boolean;
 }
 
@@ -25,7 +24,6 @@ export const SuggestionsQueue: React.FC<SuggestionsQueueProps> = ({
   onDirectProject,
   onQueueManualScripture,
   activeTranslation = 'WEB',
-  onOpenBibleExplorer,
   freeShowConnected = false
 }) => {
   const [lookupText, setLookupText] = useState('');

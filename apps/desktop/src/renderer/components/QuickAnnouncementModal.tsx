@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Megaphone, Car, Baby, CreditCard, AlertCircle, X, Cast, Clock, Sparkles, Check, Trash2 } from 'lucide-react';
+import { Megaphone, Car, Baby, CreditCard, AlertCircle, X, Cast, Clock, Trash2 } from 'lucide-react';
 
 export type AnnouncementCategory = 'parking' | 'nursery' | 'giving' | 'custom';
 export type AnnouncementStyle = 'amber' | 'indigo' | 'emerald';

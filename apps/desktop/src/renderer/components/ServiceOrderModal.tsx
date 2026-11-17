@@ -4,7 +4,6 @@ import {
   ListOrdered,
   Radio,
   ArrowRight,
-  ChevronRight,
   CheckCircle2,
   Clock,
   Sparkles,

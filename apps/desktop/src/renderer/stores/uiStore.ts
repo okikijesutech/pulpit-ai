@@ -7,6 +7,7 @@ interface UIState {
   isStanzaMatrixOpen: boolean;
   isAnnouncementModalOpen: boolean;
   isServiceOrderOpen: boolean;
+  isStageDisplayModalOpen: boolean;
   isAudioPopoverOpen: boolean;
   isAuditLogVisible: boolean;
 

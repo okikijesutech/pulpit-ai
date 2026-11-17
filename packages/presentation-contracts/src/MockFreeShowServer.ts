@@ -10,7 +10,6 @@ export class MockFreeShowServer {
   private httpServer: HttpServer | null = null;
   private io: SocketIOServer | null = null;
   private port: number;
-  private authKey?: string;
   private currentSlideIndex = 0;
   private currentShowId = 'show_mock_1';
   private currentSlideText = 'Welcome to Church';
@@ -19,7 +18,6 @@ export class MockFreeShowServer {
 
   constructor(options: MockServerOptions = {}) {
     this.port = options.port ?? 0; // 0 chooses an available dynamic port for testing
-    this.authKey = options.authKey;
   }
 
   public async start(): Promise<number> {

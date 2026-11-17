@@ -51,7 +51,7 @@ export interface RecognizedTranscriptEvent {
 
 export interface PulpitAPI {
   getAuthorityState: () => Promise<AuthorityState>;
-  setManualLock: (active: boolean) => Promise<void>;
+  setManualLock: (active: boolean, reason?: string) => Promise<{ success: boolean }>;
   setOperatorMode: (mode: OperatorMode) => Promise<void>;
   connectFreeShow: (port?: number) => Promise<boolean>;
   disconnectFreeShow: () => Promise<void>;
@@ -144,7 +144,8 @@ export interface PulpitAPI {
 
 const api: PulpitAPI = {
   getAuthorityState: () => ipcRenderer.invoke('authority:get-state'),
-  setManualLock: (active: boolean) => ipcRenderer.invoke('authority:set-lock', active),
+  setManualLock: (active: boolean, reason?: string) =>
+    ipcRenderer.invoke('authority:set-lock', active, reason),
   setOperatorMode: (mode: OperatorMode) => ipcRenderer.invoke('authority:set-mode', mode),
   connectFreeShow: (port?: number) => ipcRenderer.invoke('freeshow:connect', port),
   disconnectFreeShow: () => ipcRenderer.invoke('freeshow:disconnect'),

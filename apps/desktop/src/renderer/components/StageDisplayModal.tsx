@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { usePresentationStore } from '../stores/presentationStore.js';
 import { useUIStore } from '../stores/uiStore.js';
-import { DisplayTarget } from '@pulpit-ai/shared-types';
 
 export const StageDisplayModal: React.FC = () => {
   const isOpen = useUIStore((s) => s.isStageDisplayModalOpen);

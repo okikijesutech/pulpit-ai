@@ -4,7 +4,7 @@
  * chapter and verse numbers against exact historical chapter/verse limits.
  */
 
-import { CanonBook, CANON_BOOKS, findCanonBook } from './CanonData.js';
+import { CanonBook, findCanonBook } from './CanonData.js';
 
 export interface CanonValidationResult {
   isValid: boolean;

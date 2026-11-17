@@ -7,7 +7,6 @@ import {
   AudioDeviceManager,
   AudioLevelMeter,
   SpeechSegmenter,
-  VirtualAudioSource,
   SingingActivityDetector
 } from '@pulpit-ai/audio-engine';
 import {
@@ -48,7 +47,6 @@ const modelManager = new ModelManager();
 const whisperWorker = new WhisperWorkerProcess();
 whisperWorker.warmup();
 const speechEngine = new SpeechRecognitionEngine(whisperWorker);
-const virtualAudio = new VirtualAudioSource(16000);
 const singingActivityDetector = new SingingActivityDetector({ sampleRate: 16000 });
 
 // Initialize Verified Scripture Storage & Generator
@@ -73,7 +71,6 @@ const songCandidateGenerator = new SongCandidateGenerator(songDatabase, {
 
 let freeShowAdapter: FreeShowAdapter | null = null;
 let virtualMockServer: MockFreeShowServer | null = null;
-let isRealMicStreaming = false;
 
 function detectTrailingBookName(text: string): string | null {
   if (!text) return null;
@@ -271,9 +268,7 @@ registerAudioHandlers({
   whisperWorker,
   modelManager,
   getMainWindow: () => mainWindow,
-  onRealMicStreaming: (active) => {
-    isRealMicStreaming = active;
-  }
+  onRealMicStreaming: () => {}
 });
 registerScriptureHandlers(scriptureDatabase, scriptureGenerator);
 registerSongHandlers(songDatabase, songReviewManager, auditLogger, () => freeShowAdapter);

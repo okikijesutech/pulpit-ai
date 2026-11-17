@@ -7,8 +7,6 @@
  * - Conflict resolution models that preserve local church arrangements
  */
 
-import { Song } from './content.js';
-
 export interface CuratedSongEntry {
   canonicalTitle: string;
   alternativeTitles: string[];

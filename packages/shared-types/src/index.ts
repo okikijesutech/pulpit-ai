@@ -6,4 +6,6 @@ export * from './audio.js';
 export * from './sync.js';
 export * from './licensing.js';
 export * from './multiscreen.js';
+export * from './canon.js';
 export { DEFAULT_STAGE_PRESETS } from './multiscreen.js';
+export { CANON_BOOKS, findCanonBook } from './canon.js';

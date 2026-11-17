@@ -9,9 +9,6 @@ import {
   CheckCircle,
   AlertTriangle,
   Trash2,
-  Eye,
-  ShieldCheck,
-  FileText,
   Play,
   X,
   Music,
@@ -266,7 +263,7 @@ export const SongLibraryPanel: React.FC<SongLibraryPanelProps> = ({
   const displayedSongs = searchQuery.trim()
     ? songs.filter((s) =>
         searchResults.length > 0
-          ? searchResults.some((r) => r.songId === s.id)
+          ? searchResults.some((r) => r.song.id === s.id)
           : s.canonicalTitle.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : songs;
@@ -354,7 +351,7 @@ export const SongLibraryPanel: React.FC<SongLibraryPanelProps> = ({
             ) : (
               displayedSongs.map((song) => {
                 const isSelected = song.id === selectedSong?.id;
-                const matchInfo = searchResults.find((r) => r.songId === song.id);
+                const matchInfo = searchResults.find((r) => r.song.id === song.id);
 
                 return (
                   <div
@@ -382,9 +379,9 @@ export const SongLibraryPanel: React.FC<SongLibraryPanelProps> = ({
                       <span className="truncate">{song.license || 'Public Domain'}</span>
                     </div>
 
-                    {matchInfo && matchInfo.matchedLines.length > 0 && (
+                    {matchInfo && matchInfo.matchedLyrics.length > 0 && (
                       <div className="mt-2 text-[10px] bg-slate-950/80 p-1.5 rounded border border-indigo-900/40 text-indigo-300 font-mono italic">
-                        "{matchInfo.matchedLines[0]}"
+                        "{matchInfo.matchedLyrics[0].line}"
                       </div>
                     )}
                   </div>
@@ -452,7 +449,6 @@ export const SongLibraryPanel: React.FC<SongLibraryPanelProps> = ({
               <div className="flex-1 overflow-y-auto p-5 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   {currentVersion?.sections.map((section, idx) => {
-                    const isVerse = section.type === 'verse';
                     const isChorus = section.type === 'chorus';
                     const isBridge = section.type === 'bridge';
                     const isProjecting = projectingSectionId === section.id;

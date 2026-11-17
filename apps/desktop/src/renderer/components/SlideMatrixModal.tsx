@@ -9,8 +9,7 @@ import {
   EyeOff,
   Image as ImageIcon,
   Snowflake,
-  Search,
-  Sparkles
+  Search
 } from 'lucide-react';
 
 export interface SlideItem {

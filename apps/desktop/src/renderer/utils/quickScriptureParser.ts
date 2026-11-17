@@ -1,4 +1,4 @@
-import { CANON_BOOKS, CanonBook } from '../data/canonBooks.js';
+import { CANON_BOOKS, CanonBook } from '@pulpit-ai/shared-types';
 
 export interface ParsedQuickScripture {
   isValid: boolean;

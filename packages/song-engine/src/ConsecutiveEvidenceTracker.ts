@@ -8,7 +8,6 @@
  */
 
 import { Song, SongSection, SongVersion } from '@pulpit-ai/shared-types';
-import { SongDatabase } from './SongDatabase.js';
 
 export interface ActiveSongHypothesis {
   songId: string;

@@ -10,19 +10,13 @@ import {
   AuthorityState,
   FreeShowStateSnapshot,
   AuditEvent,
+  AuditAction,
   AudioInputDevice,
   SuggestionCandidate,
-  Song,
-  FreeShowCommand
+  Song
 } from '@pulpit-ai/shared-types';
 
-declare global {
-  interface Window {
-    pulpitAPI?: any;
-  }
-}
-
-if (typeof window !== 'undefined' && !window.pulpitAPI) {
+if (typeof window !== 'undefined' && !(window as any).pulpitAPI) {
   console.info('Pulpit AI: In-Browser Simulation Bridge active (running outside Electron shell).');
 
   // 1. Initial State Definitions
@@ -43,7 +37,7 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
     currentShowId: 'show_service_sunday',
     currentSlideIndex: 0,
     currentSlideText: 'Welcome to Sanctuary',
-    isCleared: false,
+    isOutputCleared: false,
     lastHeartbeat: Date.now()
   };
 
@@ -207,8 +201,9 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
     {
       id: 'audit_init',
       timestamp: Date.now(),
-      action: 'authority_state_changed',
-      operatorId: 'system',
+      action: 'mode_changed',
+      actor: 'system',
+      severity: 'info',
       details: { message: 'Pulpit AI Virtual Engine Initialized with 3 Verified Seed Hymns.' }
     }
   ];
@@ -228,12 +223,13 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
 
   const emitAuthority = () => authorityListeners.forEach((fn) => fn({ ...authorityState }));
   const emitFreeShow = () => freeShowListeners.forEach((fn) => fn({ ...freeShowSnapshot }));
-  const emitAudit = (action: any, details?: any) => {
+  const emitAudit = (action: AuditAction, details: Record<string, unknown> = {}) => {
     const ev: AuditEvent = {
       id: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       timestamp: Date.now(),
       action,
-      operatorId: 'operator',
+      actor: 'operator',
+      severity: 'info',
       details
     };
     auditEvents.unshift(ev);
@@ -250,7 +246,7 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
   }, 300);
 
   // 2. Construct window.pulpitAPI
-  window.pulpitAPI = {
+  (window as any).pulpitAPI = {
     getAuthorityState: async () => ({ ...authorityState }),
     setManualLock: async (active: boolean) => {
       authorityState.manualLockActive = active;
@@ -262,7 +258,7 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
     setOperatorMode: async (mode: any) => {
       authorityState.operatorMode = mode;
       emitAuthority();
-      emitAudit('operator_mode_changed', { mode });
+      emitAudit('mode_changed', { mode });
     },
     connectFreeShow: async () => {
       // Connect to virtual FreeShow mock
@@ -272,7 +268,7 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
         currentShowId: 'show_sunday_service',
         currentSlideIndex: 0,
         currentSlideText: 'Welcome to Sanctuary',
-        isCleared: false,
+        isOutputCleared: false,
         lastHeartbeat: Date.now()
       };
       authorityState.freeShowConnected = true;
@@ -294,22 +290,22 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
       if (authorityState.manualLockActive) {
         return { success: false, reason: 'Emergency Manual Lock is active. Projection blocked.' };
       }
-      if (action === 'clear_all') {
-        freeShowSnapshot.isCleared = true;
+      if (action === 'clear_all' || action === 'clear_slide') {
+        freeShowSnapshot.isOutputCleared = true;
         freeShowSnapshot.currentSlideText = '[Output Cleared]';
-      } else if (action === 'show_slide' || action === 'update_text') {
-        freeShowSnapshot.isCleared = false;
-        freeShowSnapshot.currentSlideText = data?.text || data?.slideId || 'Slide Updated';
+      } else if (action === 'index_select_slide' || action === 'start_scripture' || action === 'restore_output') {
+        freeShowSnapshot.isOutputCleared = false;
+        freeShowSnapshot.currentSlideText = data?.text || data?.reference || data?.slideId || 'Slide Updated';
       }
       emitFreeShow();
-      emitAudit('action_dispatched', { action, data });
+      emitAudit('command_dispatched', { action, data });
       return { success: true };
     },
     approveCandidate: async (candidateId: string) => {
       if (authorityState.manualLockActive) {
         return { success: false, reason: 'Projection inhibited: Manual Lock is active.' };
       }
-      freeShowSnapshot.isCleared = false;
+      freeShowSnapshot.isOutputCleared = false;
       freeShowSnapshot.currentShowId = `Approved: ${candidateId}`;
       freeShowSnapshot.currentSlideText = `Candidate ${candidateId} projected`;
       emitFreeShow();
@@ -410,12 +406,14 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
           detectedAt: Date.now(),
           status: 'pending',
           actionPayload: {
-            action: 'update_text',
+            action: 'start_scripture',
             data: {
+              reference: 'Romans 8:28',
               text: 'We know that all things work together for good for those who love God. — Romans 8:28 (WEB)'
             },
-            source: 'ai_scripture_engine',
-            correlationId: `ref_${Date.now()}`
+            source: 'ai',
+            correlationId: `ref_${Date.now()}`,
+            createdAt: Date.now()
           }
         };
         scriptureListeners.forEach((fn) => fn(cand));
@@ -462,15 +460,16 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
           detectedAt: Date.now(),
           status: 'pending',
           actionPayload: {
-            action: 'show_slide',
+            action: 'index_select_slide',
             data: {
               slideText:
                 'Amazing grace! How sweet the sound\nThat saved a wretch like me!\nI once was lost, but now am found;\nWas blind, but now I see.',
               title: 'Amazing Grace',
               label: 'Verse 1'
             },
-            source: 'ai_song_engine',
-            correlationId: `song_${Date.now()}`
+            source: 'ai',
+            correlationId: `song_${Date.now()}`,
+            createdAt: Date.now()
           }
         };
         songListeners.forEach((fn) => fn(cand));
@@ -603,7 +602,7 @@ if (typeof window !== 'undefined' && !window.pulpitAPI) {
         totalVersions: seedSongs.length
       };
       backups.unshift(b);
-      emitAudit('disaster_recovery_backup_created', { backupId: b.id });
+      emitAudit('command_dispatched', { action: 'backup_created', backupId: b.id });
       return { success: true, backup: b, backupPath: 'C:/PulpitAI/backups/pulpit-ai-backup-mock.json' };
     },
     listBackups: async () => [...backups],
