@@ -12,6 +12,8 @@ interface UIState {
   isTimerModalOpen: boolean;
   isAudioPopoverOpen: boolean;
   isAuditLogVisible: boolean;
+  toastMessage: string | null;
+  toastType: 'info' | 'success' | 'warning' | 'error' | null;
 
   // Actions
   setCurrentView: (view: 'live' | 'songs') => void;
@@ -52,6 +54,9 @@ interface UIState {
 
   toggleAuditLog: () => void;
   setAuditLogVisible: (visible: boolean) => void;
+  closeAllModals: () => void;
+  showToast: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
+  clearToast: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -66,6 +71,8 @@ export const useUIStore = create<UIState>((set) => ({
   isTimerModalOpen: false,
   isAudioPopoverOpen: false,
   isAuditLogVisible: typeof window !== 'undefined' && window.localStorage?.getItem('pulpit_audit_log_visible') === 'true',
+  toastMessage: null,
+  toastType: null,
 
   setCurrentView: (view) => set({ currentView: view }),
   openBibleExplorer: () => set({ isBibleExplorerOpen: true }),
@@ -117,5 +124,21 @@ export const useUIStore = create<UIState>((set) => ({
       window.localStorage.setItem('pulpit_audit_log_visible', String(visible));
     }
     set({ isAuditLogVisible: visible });
-  }
+  },
+
+  closeAllModals: () =>
+    set({
+      isBibleExplorerOpen: false,
+      isSlideMatrixOpen: false,
+      isStanzaMatrixOpen: false,
+      isAnnouncementModalOpen: false,
+      isServiceOrderOpen: false,
+      isStageDisplayModalOpen: false,
+      isMediaModalOpen: false,
+      isTimerModalOpen: false,
+      isAudioPopoverOpen: false
+    }),
+
+  showToast: (message, type = 'warning') => set({ toastMessage: message, toastType: type }),
+  clearToast: () => set({ toastMessage: null, toastType: null })
 }));

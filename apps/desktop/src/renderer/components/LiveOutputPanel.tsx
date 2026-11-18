@@ -21,7 +21,7 @@ interface LiveOutputPanelProps {
   onOpenSlideMatrix?: () => void;
 }
 
-export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot, onOpenSlideMatrix }) => {
+export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = React.memo(({ snapshot, onOpenSlideMatrix }) => {
   const activeTarget = usePresentationStore((s) => s.activeMonitorTarget);
   const setActiveTarget = usePresentationStore((s) => s.setActiveMonitorTarget);
   const stagePresets = usePresentationStore((s) => s.stagePresets);
@@ -368,4 +368,6 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = ({ snapshot, onOp
       </div>
     </div>
   );
-};
+});
+
+LiveOutputPanel.displayName = 'LiveOutputPanel';

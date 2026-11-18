@@ -5,6 +5,7 @@ import {
   FreeShowStateSnapshot,
   OperatorMode
 } from '@pulpit-ai/shared-types';
+import { useUIStore } from './uiStore.js';
 
 interface AuthorityStoreState {
   authorityState: AuthorityState;
@@ -84,8 +85,9 @@ export const useAuthorityStore = create<AuthorityStoreState>((set, get) => ({
   dispatchCommand: async (action: AllowlistedAction, data?: any) => {
     if (typeof window !== 'undefined' && window.pulpitAPI) {
       const res = await window.pulpitAPI.dispatchOperatorCommand(action, data);
-      if (!res.success && res.reason && typeof alert !== 'undefined') {
-        alert(`Command rejected: ${res.reason}`);
+      if (!res.success && res.reason) {
+        console.warn(`[Authority] Command rejected: ${res.reason}`);
+        useUIStore.getState().showToast(`Command rejected: ${res.reason}`, 'warning');
       }
       return res;
     }

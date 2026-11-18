@@ -94,7 +94,7 @@ export const QuickAnnouncementModal: React.FC<QuickAnnouncementModalProps> = ({
   const previewText = computeAnnouncementText();
 
   const handleBroadcast = () => {
-    if (!previewText || isLocked || !freeShowConnected) return;
+    if (!previewText || !freeShowConnected) return;
     onBroadcast(previewText, duration, style);
     onClose();
   };
@@ -460,7 +460,7 @@ export const QuickAnnouncementModal: React.FC<QuickAnnouncementModalProps> = ({
             {!freeShowConnected ? (
               <span className="text-rose-400 font-medium">FreeShow Disconnected</span>
             ) : isLocked ? (
-              <span className="text-amber-400 font-medium">Manual Safety Locked</span>
+              <span className="text-amber-400 font-medium">Manual Lock Active (Operator Direct Control)</span>
             ) : (
               <span className="text-emerald-400 font-medium">Ready to Overlay</span>
             )}
@@ -491,7 +491,7 @@ export const QuickAnnouncementModal: React.FC<QuickAnnouncementModalProps> = ({
 
             <button
               type="button"
-              disabled={!freeShowConnected || isLocked}
+              disabled={!freeShowConnected}
               onClick={handleBroadcast}
               className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-xl text-xs font-bold text-white transition-all shadow-lg active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
                 style === 'amber'

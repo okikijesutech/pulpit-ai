@@ -25,13 +25,16 @@ import { useUIStore } from './stores/uiStore.js';
 import { useAuthorityStore } from './stores/authorityStore.js';
 import { useAudioStore } from './stores/audioStore.js';
 import { usePresentationStore } from './stores/presentationStore.js';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, X } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Subscribe to view & security state from Zustand stores
   const currentView = useUIStore((s) => s.currentView);
   const isAuditLogVisible = useUIStore((s) => s.isAuditLogVisible);
   const toggleAuditLog = useUIStore((s) => s.toggleAuditLog);
+  const toastMessage = useUIStore((s) => s.toastMessage);
+  const toastType = useUIStore((s) => s.toastType);
+  const clearToast = useUIStore((s) => s.clearToast);
 
   const authorityState = useAuthorityStore((s) => s.authorityState);
   const freeShowSnapshot = useAuthorityStore((s) => s.freeShowSnapshot);
@@ -42,12 +45,19 @@ export const App: React.FC = () => {
 
   const candidates = usePresentationStore((s) => s.candidates);
   const pinnedScriptures = usePresentationStore((s) => s.pinnedScriptures);
-  const transcripts = usePresentationStore((s) => s.transcripts);
   const auditEvents = usePresentationStore((s) => s.auditEvents);
-  const activeTranslation = usePresentationStore((s) => s.activeTranslation);
   const activeAnnouncement = usePresentationStore((s) => s.activeAnnouncement);
   const serviceCues = usePresentationStore((s) => s.serviceCues);
   const activeCueIndex = usePresentationStore((s) => s.activeCueIndex);
+
+  // Auto-dismiss non-blocking operator toasts after 5 seconds
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => {
+      clearToast();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [toastMessage, clearToast]);
 
   // Initialize Global Hotkeys, Announcement Timers & Countdown Timer
   useGlobalHotkeys(true);
@@ -248,12 +258,8 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Center Column: Sermon Scripture Pinboard, Live Transcript & Suggested Content Queue */}
-          <div
-            className={`col-span-12 ${
-              isAuditLogVisible ? 'lg:col-span-5' : 'lg:col-span-8'
-            } flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0 transition-all`}
-          >
+          {/* Center Column (4 cols): Sermon Scripture Pinboard & Live Preaching Transcript */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0">
             <div className="flex-shrink-0">
               <SermonScripturePinboard
                 pinnedScriptures={pinnedScriptures}
@@ -266,52 +272,57 @@ export const App: React.FC = () => {
               />
             </div>
 
-            <div className="flex-1 min-h-[160px] lg:min-h-0">
-              <LiveTranscriptPanel transcripts={transcripts} />
-            </div>
-
-            <div className="flex-1 min-h-[200px] lg:min-h-0">
-              <SuggestionsQueue
-                candidates={candidates}
-                isLocked={authorityState.manualLockActive}
-                onApprove={(c) => usePresentationStore.getState().approveCandidate(c)}
-                onDismiss={(id) => usePresentationStore.getState().dismissCandidate(id)}
-                onManualLookup={(ref) => {
-                  if (window.pulpitAPI) window.pulpitAPI.simulateSpeechInput(ref);
-                }}
-                onDirectProject={(ref, text) => usePresentationStore.getState().directProjectScripture(ref, text)}
-                onQueueManualScripture={(ref, preview, attr) => {
-                  usePresentationStore.getState().addCandidate({
-                    id: `cand_manual_${Date.now()}`,
-                    type: 'scripture',
-                    title: ref,
-                    contentPreview: preview,
-                    confidence: 1.0,
-                    evidence: `Manual Omnibar Entry (${attr})`,
-                    detectedAt: Date.now(),
-                    status: 'pending',
-                    actionPayload: {
-                      action: 'start_scripture',
-                      data: { reference: ref, attribution: attr },
-                      source: 'operator',
-                      correlationId: `manual_${Date.now()}`,
-                      createdAt: Date.now()
-                    }
-                  });
-                }}
-                activeTranslation={activeTranslation}
-                freeShowConnected={freeShowSnapshot.connected}
-              />
+            <div className="flex-1 min-h-[220px] lg:min-h-0">
+              <LiveTranscriptPanel />
             </div>
           </div>
 
-          {/* Right Column (3 cols): Central Authority Audit Log (Collapsible) */}
-          {isAuditLogVisible && (
-            <div className="col-span-12 lg:col-span-3 flex flex-col min-h-[180px] lg:min-h-0 min-w-0 animate-in fade-in slide-in-from-right-2 duration-150">
-              <AuditTrailPanel events={auditEvents} onClose={toggleAuditLog} />
-            </div>
-          )}
+          {/* Right Column (4 cols): Full-Height AI Candidate Intelligence Queue */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col min-h-[240px] lg:min-h-0 min-w-0">
+            <SuggestionsQueue
+              candidates={candidates}
+              isLocked={authorityState.manualLockActive}
+              onApprove={(c) => usePresentationStore.getState().approveCandidate(c)}
+              onDismiss={(id) => usePresentationStore.getState().dismissCandidate(id)}
+              onManualLookup={(ref) => {
+                if (window.pulpitAPI) window.pulpitAPI.simulateSpeechInput(ref);
+              }}
+            />
+          </div>
         </main>
+      )}
+
+      {/* Slide-Over Authority Security Audit Drawer (never compresses the 3-column live desk) */}
+      {isAuditLogVisible && (
+        <aside className="fixed right-0 top-14 bottom-0 w-80 sm:w-96 z-40 p-3 bg-[#070a12]/95 border-l border-slate-800 shadow-2xl animate-in fade-in slide-in-from-right-2 duration-150 flex flex-col">
+          <AuditTrailPanel events={auditEvents} onClose={toggleAuditLog} />
+        </aside>
+      )}
+
+      {/* Non-Blocking Operator Toast Notification */}
+      {toastMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-4 right-4 z-50 max-w-md px-3.5 py-2.5 rounded-xl border shadow-2xl flex items-center gap-2.5 text-xs font-medium animate-in fade-in slide-in-from-bottom-2 duration-150 ${
+            toastType === 'error'
+              ? 'bg-rose-950 border-rose-600/80 text-rose-100'
+              : toastType === 'success'
+                ? 'bg-emerald-950 border-emerald-600/80 text-emerald-100'
+                : 'bg-amber-950 border-amber-600/80 text-amber-100'
+          }`}
+        >
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-400" />
+          <span className="leading-snug">{toastMessage}</span>
+          <button
+            type="button"
+            onClick={clearToast}
+            aria-label="Dismiss notification"
+            className="ml-1 p-0.5 rounded hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
 
       {/* Floating Edge Tab to easily reopen Audit Log when collapsed */}

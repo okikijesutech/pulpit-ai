@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mic, Clock, CheckCircle, Cpu, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import type { SpeechRoutingPlan } from '@pulpit-ai/speech-engine';
 import { useAudioStore } from '../stores/audioStore.js';
+import { usePresentationStore } from '../stores/presentationStore.js';
 import { formatEngineStatusBadge } from '../utils/speechEngineStatus.js';
 
 export interface RecognizedTranscriptEvent {
@@ -17,18 +18,21 @@ export interface RecognizedTranscriptEvent {
 }
 
 interface LiveTranscriptPanelProps {
-  transcripts: RecognizedTranscriptEvent[];
+  transcripts?: RecognizedTranscriptEvent[];
   engineStatus?: SpeechRoutingPlan | null;
 }
 
-export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = ({
-  transcripts,
+export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = React.memo(({
+  transcripts: propTranscripts,
   engineStatus
 }) => {
+  const storeTranscripts = usePresentationStore((s) => s.transcripts);
+  const transcripts = propTranscripts !== undefined ? propTranscripts : storeTranscripts;
   const storeEngineStatus = useAudioStore((s) => s.speechEngineStatus);
   const activePlan = engineStatus !== undefined ? engineStatus : storeEngineStatus;
   const badge = formatEngineStatusBadge(activePlan, 'whisper.cpp (AVX2)');
   const [showEngineDetails, setShowEngineDetails] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   // Highlight recognized biblical cues & book names in the transcript text
   const highlightScriptureKeywords = (text: string) => {
     const clean = text.replace(/^["'\s]+|["'\s]+$/g, '');
@@ -158,6 +162,23 @@ export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = ({
               </div>
             </div>
           </div>
+
+          <div className="sm:col-span-3 pt-1.5 border-t border-slate-800/80 flex items-center justify-between">
+            <span className="text-[9px] text-slate-400 font-mono">
+              ASR Diagnostics (raw tokens &amp; per-segment latency)
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowDiagnostics((prev) => !prev)}
+              className={`px-2 py-0.5 rounded font-mono text-[9px] font-bold border transition-colors cursor-pointer ${
+                showDiagnostics
+                  ? 'bg-indigo-950/80 text-indigo-300 border-indigo-600/60'
+                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+              }`}
+            >
+              {showDiagnostics ? 'Diagnostics: ON' : 'Diagnostics: OFF'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -186,27 +207,29 @@ export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = ({
               key={t.id}
               className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/90 hover:border-slate-700/80 transition-all shadow-sm hover:shadow-md"
             >
-              <div className="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
                 <span className="text-slate-400 font-mono text-[10px] flex items-center gap-1">
                   <Clock className="w-3 h-3 text-slate-500" />
                   {new Date(t.timestamp).toLocaleTimeString()}
                 </span>
-                <div className="flex items-center space-x-2">
-                  <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-indigo-400 font-mono text-[10px]">
-                    <span>⚡ {t.latencyMs}ms</span>
-                  </span>
-                  <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-emerald-400 font-mono text-[10px]">
-                    <CheckCircle className="w-2.5 h-2.5 text-emerald-400" />
-                    <span>{t.confidence !== null ? `${Math.round(t.confidence * 100)}%` : '—'}</span>
-                  </span>
-                </div>
+                {showDiagnostics && (
+                  <div className="flex items-center space-x-2">
+                    <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-indigo-400 font-mono text-[10px]">
+                      <span>⚡ {t.latencyMs}ms</span>
+                    </span>
+                    <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-emerald-400 font-mono text-[10px]">
+                      <CheckCircle className="w-2.5 h-2.5 text-emerald-400" />
+                      <span>{t.confidence !== null ? `${Math.round(t.confidence * 100)}%` : '—'}</span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               <p className="text-sm text-slate-100 font-serif leading-relaxed">
                 "{highlightScriptureKeywords(t.rawText)}"
               </p>
 
-              {t.tokens && t.tokens.length > 0 && (
+              {showDiagnostics && t.tokens && t.tokens.length > 0 && (
                 <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex flex-wrap gap-1">
                   {t.tokens.map((token, idx) => (
                     <span
@@ -224,4 +247,6 @@ export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = ({
       </div>
     </div>
   );
-};
+});
+
+LiveTranscriptPanel.displayName = 'LiveTranscriptPanel';

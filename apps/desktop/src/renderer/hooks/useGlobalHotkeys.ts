@@ -22,6 +22,32 @@ export function useGlobalHotkeys(enabled = true) {
       const { dispatchCommand } = useAuthorityStore.getState();
       const ui = useUIStore.getState();
 
+      const isAnyModalOpen =
+        ui.isBibleExplorerOpen ||
+        ui.isSlideMatrixOpen ||
+        ui.isStanzaMatrixOpen ||
+        ui.isAnnouncementModalOpen ||
+        ui.isServiceOrderOpen ||
+        ui.isStageDisplayModalOpen ||
+        ui.isMediaModalOpen ||
+        ui.isTimerModalOpen;
+
+      // Guard: If any modal is open, Escape closes the modal instead of triggering live projector blackout,
+      // and single-key desk shortcuts are suppressed so modals never leak into live output.
+      if (isAnyModalOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          ui.closeAllModals();
+        }
+        return;
+      }
+
+      if (e.key === 'Escape' && ui.isAudioPopoverOpen) {
+        e.preventDefault();
+        ui.setAudioPopoverOpen(false);
+        return;
+      }
+
       if (e.key === ' ' || e.key === 'ArrowRight') {
         e.preventDefault();
         dispatchCommand('next_slide');

@@ -275,7 +275,7 @@ export const SongStanzaMatrixModal: React.FC<SongStanzaMatrixModalProps> = ({
   onProjectStanza,
   onClearOutput,
   freeShowConnected,
-  isLocked,
+  isLocked: _isLocked,
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedSongIndex, setSelectedSongIndex] = useState<number>(0);
@@ -370,12 +370,12 @@ export const SongStanzaMatrixModal: React.FC<SongStanzaMatrixModalProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, activeSong, liveStanzaIndex, freeShowConnected, isLocked]);
+  }, [isOpen, activeSong, liveStanzaIndex, freeShowConnected]);
 
   if (!isOpen) return null;
 
   const handleJumpStanza = (sectionIndex: number) => {
-    if (!freeShowConnected || isLocked) return;
+    if (!freeShowConnected) return;
     const section = activeSong.sections[sectionIndex];
     if (!section) return;
 
@@ -506,7 +506,7 @@ export const SongStanzaMatrixModal: React.FC<SongStanzaMatrixModalProps> = ({
                 <button
                   key={section.id}
                   onClick={() => handleJumpStanza(index)}
-                  disabled={!freeShowConnected || isLocked}
+                  disabled={!freeShowConnected}
                   className={`group relative text-left p-3.5 rounded-xl border transition-all flex flex-col justify-between min-h-[140px] cursor-pointer shadow-sm ${badgeStyle} disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {/* Top Bar: Section Badge & Live Status */}
@@ -555,7 +555,7 @@ export const SongStanzaMatrixModal: React.FC<SongStanzaMatrixModalProps> = ({
           <div className='flex items-center space-x-2'>
             <button
               type='button'
-              disabled={!freeShowConnected || isLocked || liveStanzaIndex <= 0}
+              disabled={!freeShowConnected || liveStanzaIndex <= 0}
               onClick={() => handleJumpStanza(Math.max(0, liveStanzaIndex - 1))}
               className='px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 disabled:opacity-40 text-xs text-slate-300 font-semibold transition-all flex items-center space-x-1.5 active:scale-95'
             >
@@ -567,7 +567,6 @@ export const SongStanzaMatrixModal: React.FC<SongStanzaMatrixModalProps> = ({
               type='button'
               disabled={
                 !freeShowConnected ||
-                isLocked ||
                 liveStanzaIndex >= activeSong.sections.length - 1
               }
               onClick={() =>

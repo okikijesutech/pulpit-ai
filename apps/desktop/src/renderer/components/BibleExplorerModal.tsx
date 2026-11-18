@@ -22,7 +22,7 @@ export const BibleExplorerModal: React.FC<BibleExplorerModalProps> = ({
   onDirectProject,
   onQueueSuggestion,
   freeShowConnected,
-  isLocked
+  isLocked: _isLocked
 }) => {
   const [selectedBook, setSelectedBook] = useState<CanonBook>(
     CANON_BOOKS.find((b) => b.name === 'Romans') || CANON_BOOKS[0]
@@ -131,7 +131,7 @@ export const BibleExplorerModal: React.FC<BibleExplorerModalProps> = ({
   };
 
   const handleModalKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !isLocked && freeShowConnected) {
+    if (e.key === 'Enter' && freeShowConnected && !isLoadingPassage) {
       e.preventDefault();
       handleProjectNow();
     } else if (e.key === 'Escape') {
@@ -353,7 +353,7 @@ export const BibleExplorerModal: React.FC<BibleExplorerModalProps> = ({
             {/* Launch Actions */}
             <div className="space-y-2 pt-3 border-t border-slate-800/80">
               <button
-                disabled={!freeShowConnected || isLocked || isLoadingPassage}
+                disabled={!freeShowConnected || isLoadingPassage}
                 onClick={handleProjectNow}
                 className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-600 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white transition-all shadow-lg shadow-indigo-900/40 flex items-center justify-center space-x-2 active:scale-95"
               >
@@ -362,7 +362,7 @@ export const BibleExplorerModal: React.FC<BibleExplorerModalProps> = ({
               </button>
 
               <button
-                disabled={isLocked || isLoadingPassage}
+                disabled={isLoadingPassage}
                 onClick={handleQueueSuggestion}
                 className="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800/90 border border-slate-800 hover:border-slate-700 disabled:opacity-40 text-xs font-bold text-slate-300 hover:text-white transition-all flex items-center justify-center space-x-2 active:scale-95 shadow-sm"
               >

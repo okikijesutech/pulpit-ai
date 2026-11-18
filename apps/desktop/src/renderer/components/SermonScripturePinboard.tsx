@@ -21,14 +21,14 @@ interface SermonScripturePinboardProps {
   isLocked: boolean;
 }
 
-export const SermonScripturePinboard: React.FC<SermonScripturePinboardProps> = ({
+export const SermonScripturePinboard: React.FC<SermonScripturePinboardProps> = React.memo(({
   pinnedScriptures,
   onReProject,
   onClear,
   onRemovePin,
   onLoadPresets,
   freeShowConnected,
-  isLocked
+  isLocked: _isLocked
 }) => {
   const [isPresetOpen, setIsPresetOpen] = useState(false);
   const [presetInput, setPresetInput] = useState('');
@@ -80,7 +80,7 @@ export const SermonScripturePinboard: React.FC<SermonScripturePinboardProps> = (
                   <button
                     type="button"
                     onClick={() => onReProject(item.reference, item.textSnippet)}
-                    disabled={!freeShowConnected || isLocked}
+                    disabled={!freeShowConnected}
                     title={`1-Click Recall: Project ${item.reference} (${item.translation})${item.textSnippet ? `\n"${item.textSnippet}"` : ''}`}
                     className="px-2.5 py-1 text-left hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
                   >
@@ -209,4 +209,6 @@ export const SermonScripturePinboard: React.FC<SermonScripturePinboardProps> = (
       )}
     </div>
   );
-};
+});
+
+SermonScripturePinboard.displayName = 'SermonScripturePinboard';

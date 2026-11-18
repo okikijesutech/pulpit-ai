@@ -38,7 +38,7 @@ interface ManualControlsPanelProps {
   onClearAnnouncement?: () => void;
 }
 
-export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
+export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = React.memo(({
   onDispatch,
   disabled,
   onOpenBibleExplorer,
@@ -425,4 +425,6 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = ({
       </div>
     </div>
   );
-};
+});
+
+ManualControlsPanel.displayName = 'ManualControlsPanel';

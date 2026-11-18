@@ -70,7 +70,7 @@ export const SlideMatrixModal: React.FC<SlideMatrixModalProps> = ({
   onShowLogo,
   onBlackout,
   freeShowConnected,
-  isLocked
+  isLocked: _isLocked
 }) => {
   const [jumpInput, setJumpInput] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -115,7 +115,7 @@ export const SlideMatrixModal: React.FC<SlideMatrixModalProps> = ({
   });
 
   const handleSlideClick = (index: number) => {
-    if (!freeShowConnected || isLocked) return;
+    if (!freeShowConnected) return;
     onSelectSlide(index);
     onClose();
   };
@@ -188,7 +188,7 @@ export const SlideMatrixModal: React.FC<SlideMatrixModalProps> = ({
             </div>
             <button
               type="submit"
-              disabled={!jumpInput.trim() || !freeShowConnected || isLocked}
+              disabled={!jumpInput.trim() || !freeShowConnected}
               className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white transition-all shadow-sm flex items-center space-x-1 active:scale-95"
             >
               <span>Jump</span>
@@ -212,7 +212,7 @@ export const SlideMatrixModal: React.FC<SlideMatrixModalProps> = ({
           <div className="flex items-center space-x-2">
             <button
               type="button"
-              disabled={!freeShowConnected || isLocked}
+              disabled={!freeShowConnected}
               onClick={() => onSelectSlide(0)}
               className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 disabled:opacity-40 text-xs text-slate-300 font-semibold transition-all"
               title="Jump to first slide (#1)"
@@ -221,7 +221,7 @@ export const SlideMatrixModal: React.FC<SlideMatrixModalProps> = ({
             </button>
             <button
               type="button"
-              disabled={!freeShowConnected || isLocked || currentSlideIndex <= 0}
+              disabled={!freeShowConnected || currentSlideIndex <= 0}
               onClick={() => onSelectSlide(Math.max(0, currentSlideIndex - 1))}
               className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 disabled:opacity-40 text-slate-300 transition-all"
               title="Previous Slide"
@@ -230,7 +230,7 @@ export const SlideMatrixModal: React.FC<SlideMatrixModalProps> = ({
             </button>
             <button
               type="button"
-              disabled={!freeShowConnected || isLocked || currentSlideIndex >= slides.length - 1}
+              disabled={!freeShowConnected || currentSlideIndex >= slides.length - 1}
               onClick={() => onSelectSlide(Math.min(slides.length - 1, currentSlideIndex + 1))}
               className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 disabled:opacity-40 text-slate-300 transition-all"
               title="Next Slide"
@@ -239,7 +239,7 @@ export const SlideMatrixModal: React.FC<SlideMatrixModalProps> = ({
             </button>
             <button
               type="button"
-              disabled={!freeShowConnected || isLocked}
+              disabled={!freeShowConnected}
               onClick={() => onSelectSlide(slides.length - 1)}
               className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 disabled:opacity-40 text-xs text-slate-300 font-semibold transition-all"
               title={`Jump to last slide (#${slides.length})`}
@@ -268,7 +268,7 @@ export const SlideMatrixModal: React.FC<SlideMatrixModalProps> = ({
                   <button
                     key={slide.index}
                     onClick={() => handleSlideClick(slide.index)}
-                    disabled={!freeShowConnected || isLocked}
+                    disabled={!freeShowConnected}
                     className={`group relative text-left p-3 rounded-xl border transition-all flex flex-col justify-between min-h-[110px] cursor-pointer shadow-sm ${
                       isLive
                         ? 'bg-indigo-950/90 border-emerald-500/90 ring-2 ring-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
@@ -352,7 +352,7 @@ export const SlideMatrixModal: React.FC<SlideMatrixModalProps> = ({
             {onFreezeOutput && (
               <button
                 type="button"
-                disabled={!freeShowConnected || isLocked}
+                disabled={!freeShowConnected}
                 onClick={handleToggleFreeze}
                 className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm active:scale-95 ${
                   isFrozen
@@ -370,7 +370,7 @@ export const SlideMatrixModal: React.FC<SlideMatrixModalProps> = ({
             {onShowLogo && (
               <button
                 type="button"
-                disabled={!freeShowConnected || isLocked}
+                disabled={!freeShowConnected}
                 onClick={() => {
                   onShowLogo();
                   onClose();
