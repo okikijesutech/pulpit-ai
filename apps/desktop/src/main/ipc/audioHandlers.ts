@@ -9,7 +9,9 @@ import {
 import {
   SpeechRecognitionEngine,
   WhisperWorkerProcess,
-  ModelManager
+  ModelManager,
+  DualEngineVerifier,
+  SpeechRoutingPlan
 } from '@pulpit-ai/speech-engine';
 import { MAX_IPC_AUDIO_CHUNK_BYTES, MAX_IPC_TRANSCRIPT_CHARS } from './ipcValidation.js';
 
@@ -28,6 +30,8 @@ export interface AudioHandlerDeps {
     pushPcmFrame: (samples: Int16Array) => void;
     reset: () => void;
   };
+  dualEngineVerifier?: DualEngineVerifier;
+  getSpeechRoutingPlan?: () => SpeechRoutingPlan;
 }
 
 export function registerAudioHandlers(deps: AudioHandlerDeps): void {
@@ -41,7 +45,9 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
     modelManager,
     getMainWindow,
     onRealMicStreaming,
-    sherpaManager
+    sherpaManager,
+    dualEngineVerifier,
+    getSpeechRoutingPlan
   } = deps;
 
   ipcMain.handle('audio:get-devices', () => {
@@ -68,6 +74,7 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
     if (isMuted) {
       speechSegmenter.reset();
       sherpaManager?.reset();
+      dualEngineVerifier?.resetBuffer();
       mainWindow.webContents.send('audio:level-changed', {
         rmsLevel: 0,
         decibels: -100,
@@ -104,6 +111,9 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
 
     // Route live PCM frames: Phase 2 Sherpa Streaming UtilityProcess (with Silero VAD v5) if active,
     // otherwise Phase 1 SpeechSegmenter + persistent whisper-server with Choir Singing Guard.
+    if (!activityMetrics.isSinging) {
+      dualEngineVerifier?.pushPcmFrame(int16);
+    }
     if (sherpaManager?.isStreamingAvailable()) {
       whisperWorker.setSingingGuardActive(activityMetrics.isSinging);
       sherpaManager.pushPcmFrame(int16);
@@ -126,9 +136,13 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     if (state === 'disconnected') {
       speechSegmenter.reset();
+      sherpaManager?.reset();
+      dualEngineVerifier?.resetBuffer();
       mainWindow.webContents.send('audio:level-changed', AudioLevelMeter.disconnectedMetrics());
     } else if (state === 'muted') {
       speechSegmenter.reset();
+      sherpaManager?.reset();
+      dualEngineVerifier?.resetBuffer();
       mainWindow.webContents.send('audio:level-changed', {
         rmsLevel: 0,
         decibels: -100,
@@ -137,6 +151,11 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
         state: 'muted'
       });
     }
+  });
+
+  // Phase 3: Active hardware tier, primary speech engine, and secondary verifier status
+  ipcMain.handle('speech:get-engine-status', () => {
+    return getSpeechRoutingPlan?.() ?? null;
   });
 
   // Explicit model download permission and disk safety check

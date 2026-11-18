@@ -1,6 +1,6 @@
 {
   "name": "@pulpit-ai/speech-engine",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "description": "Local speech recognition engine with whisper.cpp and fail-closed crash recovery",
   "main": "./dist/index.js",

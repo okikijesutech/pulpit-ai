@@ -16,6 +16,7 @@ import {
   BackupArchive,
   RestoreResult
 } from '@pulpit-ai/song-engine';
+import type { SpeechRoutingPlan } from '@pulpit-ai/speech-engine';
 
 export type AudioStreamState = 'active' | 'silent' | 'muted' | 'disconnected';
 
@@ -124,6 +125,7 @@ export interface PulpitAPI {
   // Live Physical Microphone & Speech Stream
   streamAudioChunk: (chunk: ArrayBuffer) => void;
   sendDirectTranscript: (text: string, isSinging?: boolean) => void;
+  getSpeechEngineStatus: () => Promise<SpeechRoutingPlan | null>;
 
   // Backup & Disaster Recovery
   createBackup: () => Promise<BackupArchive>;
@@ -195,6 +197,7 @@ const api: PulpitAPI = {
     ipcRenderer.send('audio:stream-chunk', chunk, isMuted),
   sendDirectTranscript: (text: string, isSinging?: boolean) =>
     ipcRenderer.send('speech:direct-transcript', { text, isSinging }),
+  getSpeechEngineStatus: () => ipcRenderer.invoke('speech:get-engine-status'),
   createBackup: () => ipcRenderer.invoke('backup:create'),
   restoreBackup: (archive, clearExisting) =>
     ipcRenderer.invoke('backup:restore', { archive, clearExisting }),

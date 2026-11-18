@@ -5,5 +5,7 @@ export * from './WhisperServerDaemon.js';
 export * from './LiturgicalHotwords.js';
 export * from './StreamingTokenSegmenter.js';
 export * from './SherpaStreamingEngine.js';
+export * from './HybridSpeechRouter.js';
+export * from './DualEngineVerifier.js';
 export * from './SpeechRecognitionEngine.js';
 export * from './PhantomPhraseFilter.js';

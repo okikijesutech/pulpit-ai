@@ -12,11 +12,15 @@ import {
 import {
   SpeechRecognitionEngine,
   WhisperWorkerProcess,
-  ModelManager
+  ModelManager,
+  DualEngineVerifier,
+  resolveSpeechRoutingPlan,
+  SpeechRoutingPlan
 } from '@pulpit-ai/speech-engine';
 import {
   ScriptureDatabase,
   ScriptureCandidateGenerator,
+  ScriptureReferenceParser,
   loadFullBiblePackages,
   findCanonBook
 } from '@pulpit-ai/scripture-engine';
@@ -55,9 +59,94 @@ const whisperWorker = new WhisperWorkerProcess();
 whisperWorker.warmup();
 const speechEngine = new SpeechRecognitionEngine(whisperWorker);
 const singingActivityDetector = new SingingActivityDetector({ sampleRate: 16000 });
+
+function extractCanonicalReferenceKey(text: string): string | null {
+  const parsed = ScriptureReferenceParser.parse(text);
+  if (!parsed.hasReference || !parsed.isCanonValid || !parsed.reference) {
+    return null;
+  }
+  const ref = parsed.reference;
+  return `${ref.book} ${ref.chapter}:${ref.verseStart}${ref.verseEnd ? `-${ref.verseEnd}` : ''}`;
+}
+
+const dualEngineVerifier = new DualEngineVerifier(
+  {
+    name: 'whisper_server_daemon',
+    transcribeSlice: async (samples, sampleRate, timeoutMs) => {
+      if (!whisperWorker.isHealthy()) {
+        return { text: '', confidence: null };
+      }
+      if (!whisperWorker.isServerDaemonReady() && !whisperWorker.resolveServerBinaryPath()) {
+        return { text: '', confidence: null };
+      }
+      const res = await whisperWorker.transcribeSegment(
+        {
+          id: `verify-${Date.now()}`,
+          samples,
+          durationSeconds: samples.length / sampleRate,
+          sourceId: 'dual_engine_verifier',
+          timestamp: Date.now()
+        },
+        timeoutMs
+      );
+      return { text: res.text, confidence: res.confidence };
+    }
+  },
+  {
+    rollingSeconds: 6,
+    confidenceThreshold: 0.78,
+    timeoutMs: 2500,
+    extractReferenceKey: extractCanonicalReferenceKey
+  }
+);
+
 const sherpaProcessManager = new SherpaProcessManager({
   onUtterance: (text) => {
     speechEngine.ingestDirectTranscript(text, 'sherpa_zipformer');
+
+    const plan = getSpeechRoutingPlan();
+    if (plan.secondaryVerifier === 'none') return;
+
+    const parsed = ScriptureReferenceParser.parse(text);
+    const canonicalRef =
+      parsed.hasReference && parsed.isCanonValid && parsed.reference
+        ? `${parsed.reference.book} ${parsed.reference.chapter}:${parsed.reference.verseStart}${parsed.reference.verseEnd ? `-${parsed.reference.verseEnd}` : ''}`
+        : undefined;
+
+    const shouldCheck =
+      !plan.verifyAmbiguousCitationsOnly ||
+      Boolean(parsed.needsReview) ||
+      (parsed.hasReference && parsed.confidence < 0.78) ||
+      (!parsed.hasReference && detectTrailingBookName(text) !== null);
+
+    if (!shouldCheck) return;
+
+    void dualEngineVerifier
+      .verifyCandidate(
+        {
+          transcript: text,
+          canonicalReference: canonicalRef,
+          confidence: parsed.hasReference ? parsed.confidence : null,
+          needsReview: Boolean(parsed.needsReview),
+          isFuzzyMatch: Boolean(parsed.needsReview && parsed.hasReference)
+        },
+        plan.verifyAmbiguousCitationsOnly
+      )
+      .then((verification) => {
+        if (
+          verification.outcome === 'upgraded' &&
+          verification.finalTranscript &&
+          verification.finalTranscript !== text
+        ) {
+          console.log(
+            `[DualEngineVerifier] Rescued ambiguous citation (${verification.latencyMs}ms): "${verification.finalTranscript}"`
+          );
+          scriptureGenerator.processUtterance(verification.finalTranscript);
+        }
+      })
+      .catch(() => {
+        // Non-fatal: primary streaming transcript already emitted cleanly
+      });
   },
   onEarlyBookCue: (bookName) => {
     console.log(`[Sherpa] Early canonical book cue pre-staged: ${bookName}`);
@@ -66,6 +155,16 @@ const sherpaProcessManager = new SherpaProcessManager({
     console.log(`[Sherpa] Streaming worker available=${available}${reason ? ` (${reason})` : ''}`);
   }
 });
+
+function getSpeechRoutingPlan(): SpeechRoutingPlan {
+  return resolveSpeechRoutingPlan(whisperWorker.getHardwareProfile(), {
+    sherpaStreamingAvailable: sherpaProcessManager.isStreamingAvailable(),
+    whisperServerAvailable:
+      whisperWorker.isServerDaemonReady() || whisperWorker.resolveServerBinaryPath() !== null,
+    whisperCliAvailable: whisperWorker.resolveBinaryPath() !== null,
+    moonshineAvailable: false
+  });
+}
 
 // Initialize Verified Scripture Storage & Generator
 const scriptureDatabase = new ScriptureDatabase(':memory:');
@@ -296,7 +395,9 @@ registerAudioHandlers({
   modelManager,
   getMainWindow: () => mainWindow,
   onRealMicStreaming: () => {},
-  sherpaManager: sherpaProcessManager
+  sherpaManager: sherpaProcessManager,
+  dualEngineVerifier,
+  getSpeechRoutingPlan
 });
 registerScriptureHandlers(scriptureDatabase, scriptureGenerator);
 registerSongHandlers(songDatabase, songReviewManager, auditLogger, () => freeShowAdapter);
@@ -307,6 +408,10 @@ app.whenReady().then(() => {
   const adapter = initFreeShow(5510);
   adapter.connect().catch(() => {});
   sherpaProcessManager.start();
+  const plan = getSpeechRoutingPlan();
+  console.log(
+    `[SpeechRouter] ${plan.tierLabel} | primary=${plan.primaryEngine} | verifier=${plan.secondaryVerifier} | model=${plan.recommendedWhisperModel} | threads=${plan.maxWhisperThreads}`
+  );
   createWindow();
 
   app.on('activate', () => {
