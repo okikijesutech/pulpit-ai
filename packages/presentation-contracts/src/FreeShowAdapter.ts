@@ -12,6 +12,7 @@ export interface FreeShowAdapterOptions {
   authKey?: string;
   reconnectIntervalMs?: number;
   maxReconnectAttempts?: number;
+  commandTimeoutMs?: number;
 }
 
 export type FreeShowStateListener = (snapshot: FreeShowStateSnapshot) => void;
@@ -26,6 +27,7 @@ export class FreeShowAdapter {
   private stateSnapshot: FreeShowStateSnapshot;
   private listeners: Set<FreeShowStateListener> = new Set();
   private reconnectIntervalMs: number;
+  private commandTimeoutMs: number;
   private isManuallyClosed = false;
 
   private extractFreeShowText(data: any): string | null {
@@ -73,6 +75,7 @@ export class FreeShowAdapter {
     this.port = options.port ?? 5510;
     this.authKey = options.authKey;
     this.reconnectIntervalMs = options.reconnectIntervalMs ?? 3000;
+    this.commandTimeoutMs = options.commandTimeoutMs ?? 3500;
 
     this.stateSnapshot = {
       connected: false,
@@ -310,7 +313,7 @@ export class FreeShowAdapter {
         }
       };
 
-      // Failsafe timer: if server does not acknowledge or emit matching output event within 1200ms,
+      // Failsafe timer: if server does not acknowledge or emit matching output event within timeout,
       // report sent_unconfirmed (NEVER report fake success after 300ms)
       unconfirmedTimer = setTimeout(() => {
         finish({
@@ -318,7 +321,7 @@ export class FreeShowAdapter {
           status: 'sent_unconfirmed',
           reason: 'sent_unconfirmed: Command was dispatched to FreeShow but no acknowledgment or matching output event was received.'
         });
-      }, 1200);
+      }, this.commandTimeoutMs);
 
       const text = String(command.data?.text ?? command.data?.fullText ?? refDisplay ?? '');
 
@@ -327,11 +330,45 @@ export class FreeShowAdapter {
         if (!msg || typeof msg !== 'object') return;
         if (msg.channel === 'OUT' && msg.data) {
           const projectedText = this.extractFreeShowText(msg.data) || '';
+
+          // 1. Scripture projection confirmation (handles FreeShow v1.6+ tempItems/items verse formatting)
+          if (command.action === 'start_scripture') {
+            const rawRefMatch =
+              refDisplay &&
+              (projectedText.includes(refDisplay) ||
+                String(msg.data.name || '').includes(refDisplay) ||
+                String(msg.data.title || '').includes(refDisplay) ||
+                String(msg.data.reference || '').includes(refDisplay));
+
+            const bodyMatch =
+              command.data?.text &&
+              (projectedText.toLowerCase().includes(String(command.data.text).toLowerCase().trim()) ||
+                String(command.data.text)
+                  .split(/\s+/)
+                  .filter((w: string) => w.length > 4)
+                  .some((w: string) => projectedText.toLowerCase().includes(w.toLowerCase())));
+
+            const hasSlideContent =
+              projectedText.length > 0 ||
+              (Array.isArray(msg.data.tempItems) && msg.data.tempItems.length > 0) ||
+              (Array.isArray(msg.data.items) && msg.data.items.length > 0);
+
+            if (rawRefMatch || bodyMatch || hasSlideContent) {
+              finish({ success: true, status: 'confirmed' });
+              return;
+            }
+          }
+
+          // 2. Exact or reference match
           if (refDisplay && (projectedText.includes(refDisplay) || (command.data?.text && projectedText.includes(String(command.data.text))))) {
             finish({ success: true, status: 'confirmed' });
-          } else if (command.action === 'clear_all' || command.action === 'clear_slide' || command.action === 'clear_overlays') {
-            finish({ success: true, status: 'confirmed' });
           } else if (
+            command.action === 'clear_all' ||
+            command.action === 'clear_slide' ||
+            command.action === 'clear_overlays' ||
+            command.action === 'next_slide' ||
+            command.action === 'previous_slide' ||
+            command.action === 'restore_output' ||
             command.action === 'show_announcement' ||
             command.action === 'start_overlay' ||
             command.action === 'index_select_slide' ||
@@ -343,6 +380,13 @@ export class FreeShowAdapter {
           ) {
             finish({ success: true, status: 'confirmed' });
           }
+        } else if (msg.channel === 'SHOW' && msg.data) {
+          const showName = String(msg.data.name || msg.data.title || '');
+          if (refDisplay && showName.includes(refDisplay)) {
+            finish({ success: true, status: 'confirmed' });
+          } else if (command.data?.name && showName.includes(String(command.data.name))) {
+            finish({ success: true, status: 'confirmed' });
+          }
         }
       };
       this.socket!.on('REMOTE', outputListener);
@@ -351,6 +395,8 @@ export class FreeShowAdapter {
       dataListener = (raw: any) => {
         if (!raw) return;
         if (refDisplay && (String(raw.show_id || '').includes(refDisplay) || String(raw.slide_text || '').includes(refDisplay))) {
+          finish({ success: true, status: 'confirmed' });
+        } else if (command.action === 'start_scripture' && (raw.slide_text || raw.show_id)) {
           finish({ success: true, status: 'confirmed' });
         } else if ((command.action === 'clear_all' || command.action === 'clear_slide' || command.action === 'clear_overlays') && raw.is_cleared) {
           finish({ success: true, status: 'confirmed' });

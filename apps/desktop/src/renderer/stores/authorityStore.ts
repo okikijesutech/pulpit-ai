@@ -86,8 +86,14 @@ export const useAuthorityStore = create<AuthorityStoreState>((set, get) => ({
     if (typeof window !== 'undefined' && window.pulpitAPI) {
       const res = await window.pulpitAPI.dispatchOperatorCommand(action, data);
       if (!res.success && res.reason) {
-        console.warn(`[Authority] Command rejected: ${res.reason}`);
-        useUIStore.getState().showToast(`Command rejected: ${res.reason}`, 'warning');
+        if ((res as any).status === 'sent_unconfirmed') {
+          console.warn(`[Authority] Command dispatched unconfirmed: ${res.reason}`);
+          // sent_unconfirmed was dispatched to FreeShow over network, pending confirmation.
+          // Do not alarm the operator with a scary "Command rejected" warning toast.
+        } else {
+          console.warn(`[Authority] Command rejected: ${res.reason}`);
+          useUIStore.getState().showToast(`Command rejected: ${res.reason}`, 'warning');
+        }
       }
       return res;
     }

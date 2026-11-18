@@ -17,7 +17,8 @@ describe('FreeShowAdapter Integration with MockFreeShowServer', () => {
     adapter = new FreeShowAdapter(authorityManager, {
       host: '127.0.0.1',
       port,
-      reconnectIntervalMs: 500
+      reconnectIntervalMs: 500,
+      commandTimeoutMs: 400
     });
   });
 
@@ -163,6 +164,77 @@ describe('FreeShowAdapter Integration with MockFreeShowServer', () => {
       const received = mockServer.getReceivedCommands().filter((c) => c.action === 'start_scripture');
       // Must be sent exactly ONCE, not twice!
       expect(received.length).toBe(1);
+    });
+
+    it('confirms start_scripture when FreeShow v1.6+ emits OUT event with verse slide body (without citation in slide body)', async () => {
+      await adapter.connect();
+
+      const rawSocket = (adapter as any).socket;
+
+      const scriptureCommand: FreeShowCommand = {
+        action: 'start_scripture',
+        data: {
+          reference: 'Philippians 3:10',
+          text: 'That I may know him, and the power of his resurrection...'
+        },
+        source: 'operator',
+        correlationId: 'test_real_freeshow_verse',
+        createdAt: Date.now()
+      };
+
+      // Simulate FreeShow v1.6+ responding with REMOTE OUT event containing verse body
+      const dispatchPromise = adapter.dispatchCommand(scriptureCommand);
+
+      setTimeout(() => {
+        rawSocket.emit('REMOTE', {
+          channel: 'OUT',
+          data: {
+            tempItems: [
+              {
+                lines: [
+                  {
+                    items: [
+                      {
+                        text: '[10] that I may know him and the power of his resurrection, and the fellowship of his sufferings, becoming conformed to his death,'
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        });
+      }, 30);
+
+      const result = await dispatchPromise;
+      expect(result.success).toBe(true);
+      expect(result.status).toBe('confirmed');
+    });
+
+    it('confirms navigation commands (next_slide, previous_slide) when FreeShow emits REMOTE OUT', async () => {
+      await adapter.connect();
+      const rawSocket = (adapter as any).socket;
+
+      const nextCommand: FreeShowCommand = {
+        action: 'next_slide',
+        source: 'operator',
+        correlationId: 'test_remote_next',
+        createdAt: Date.now()
+      };
+
+      const dispatchPromise = adapter.dispatchCommand(nextCommand);
+      setTimeout(() => {
+        rawSocket.emit('REMOTE', {
+          channel: 'OUT',
+          data: {
+            items: [{ lines: [{ items: [{ text: 'Slide 2 content' }] }] }]
+          }
+        });
+      }, 30);
+
+      const result = await dispatchPromise;
+      expect(result.success).toBe(true);
+      expect(result.status).toBe('confirmed');
     });
 
     it('reports sent_unconfirmed when FreeShow does not acknowledge or emit matching output event within timeout', async () => {
