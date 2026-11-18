@@ -305,7 +305,7 @@ export class WhisperWorkerProcess {
    */
   public async transcribeSegment(
     segment: SpeechSegment,
-    timeoutMs = 15000
+    timeoutMs = 30000
   ): Promise<TranscriptionJobResult> {
     if (!this.isRunning) {
       throw new Error('Whisper worker is not running.');

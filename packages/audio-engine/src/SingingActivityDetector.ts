@@ -53,8 +53,8 @@ export class SingingActivityDetector {
     const maxF0 = options.maxF0Hz ?? 600;
     this.minLag = Math.max(2, Math.floor(this.sampleRate / maxF0));
     this.maxLag = Math.min(this.frameSize - 2, Math.floor(this.sampleRate / minF0));
-    this.harmonicityThreshold = options.harmonicityThreshold ?? 0.60;
-    this.minSustainedFrames = options.minSustainedFrames ?? 6;
+    this.harmonicityThreshold = options.harmonicityThreshold ?? 0.66;
+    this.minSustainedFrames = options.minSustainedFrames ?? 8;
     this.hangoverFrames = options.hangoverFrames ?? 20;
     this.energySilenceThreshold = options.energySilenceThreshold ?? 0.012;
   }

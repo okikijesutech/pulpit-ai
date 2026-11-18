@@ -125,8 +125,7 @@ export class WhisperServerDaemon {
           '-t', String(threads),
           '--host', '127.0.0.1',
           '--port', String(port),
-          '--inference-path', '/inference',
-          '--convert'
+          '--inference-path', '/inference'
         ];
 
         if (this.disableGpu) {
@@ -206,7 +205,7 @@ export class WhisperServerDaemon {
   public async transcribe(
     samples: Int16Array,
     prompt: string,
-    timeoutMs = 10000,
+    timeoutMs = 30000,
     language = 'en',
     sampleRate = 16000
   ): Promise<DaemonTranscriptionResult> {

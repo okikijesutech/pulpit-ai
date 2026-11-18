@@ -117,13 +117,10 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
     if (sherpaManager?.isStreamingAvailable()) {
       whisperWorker.setSingingGuardActive(activityMetrics.isSinging);
       sherpaManager.pushPcmFrame(int16);
-    } else if (activityMetrics.isSinging) {
-      speechSegmenter.setSingingActive(true);
-      whisperWorker.setSingingGuardActive(true);
     } else {
-      speechSegmenter.setSingingActive(false);
-      whisperWorker.setSingingGuardActive(false);
-      speechSegmenter.pushFrame(int16);
+      speechSegmenter.setSingingActive(activityMetrics.isSinging);
+      whisperWorker.setSingingGuardActive(activityMetrics.isSinging);
+      speechSegmenter.pushFrame(int16, activityMetrics.isSinging);
     }
 
     mainWindow.webContents.send('audio:level-changed', metrics);
