@@ -228,8 +228,8 @@ export const App: React.FC = () => {
         />
       ) : (
         <main className="flex-1 p-3 sm:p-4 lg:p-4 xl:p-5 grid grid-cols-12 gap-3 sm:gap-4 lg:gap-4 xl:gap-5 min-h-0 min-w-0 overflow-y-auto lg:overflow-hidden">
-          {/* Left Column (5 cols): Hero 16:9 Stage Confidence Monitor & Live Preaching Transcript */}
-          <div className="col-span-12 lg:col-span-5 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0">
+          {/* Column 1 (7 cols): Live Presentation Output (Hero stage confidence monitor) and Live Speech Transcript */}
+          <div className="col-span-12 lg:col-span-7 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0">
             <div className="flex-[1.35] min-h-[300px] lg:min-h-0">
               <LiveOutputPanel
                 snapshot={freeShowSnapshot}
@@ -242,20 +242,8 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Center Column (4 cols): Pastoral Memory Pinboard & Tactile Manual Controls */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0 overflow-y-auto custom-scrollbar">
-            <div className="flex-shrink-0">
-              <SermonScripturePinboard
-                pinnedScriptures={pinnedScriptures}
-                onReProject={(ref, text) => usePresentationStore.getState().directProjectScripture(ref, text)}
-                onClear={() => usePresentationStore.getState().clearPinnedScriptures()}
-                onRemovePin={(id) => usePresentationStore.getState().removePinnedScripture(id)}
-                onLoadPresets={(rawText) => usePresentationStore.getState().loadPresetScriptures(rawText)}
-                freeShowConnected={freeShowSnapshot.connected}
-                isLocked={authorityState.manualLockActive}
-              />
-            </div>
-
+          {/* Column 2 (5 cols): Manual Controls Panel, Suggested Content Queue, and Pastoral Memory Pinboard */}
+          <div className="col-span-12 lg:col-span-5 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0 overflow-y-auto custom-scrollbar">
             <div className="flex-shrink-0">
               <ManualControlsPanel
                 onDispatch={dispatchCommand}
@@ -276,24 +264,35 @@ export const App: React.FC = () => {
                 onClearAnnouncement={() => usePresentationStore.getState().clearOverlay()}
               />
             </div>
-          </div>
 
-          {/* Right Column (3 cols): Full-Height AI Candidate Intelligence Queue */}
-          <div className="col-span-12 lg:col-span-3 flex flex-col min-h-[240px] lg:min-h-0 min-w-0">
-            <SuggestionsQueue
-              candidates={candidates}
-              isLocked={authorityState.manualLockActive}
-              onApprove={(c) => usePresentationStore.getState().approveCandidate(c)}
-              onDismiss={(id) => usePresentationStore.getState().dismissCandidate(id)}
-              onManualLookup={(ref) => {
-                if (window.pulpitAPI) window.pulpitAPI.simulateSpeechInput(ref);
-              }}
-            />
+            <div className="flex-1 min-h-[220px] lg:min-h-0 min-w-0 flex flex-col">
+              <SuggestionsQueue
+                candidates={candidates}
+                isLocked={authorityState.manualLockActive}
+                onApprove={(c) => usePresentationStore.getState().approveCandidate(c)}
+                onDismiss={(id) => usePresentationStore.getState().dismissCandidate(id)}
+                onManualLookup={(ref) => {
+                  if (window.pulpitAPI) window.pulpitAPI.simulateSpeechInput(ref);
+                }}
+              />
+            </div>
+
+            <div className="flex-shrink-0">
+              <SermonScripturePinboard
+                pinnedScriptures={pinnedScriptures}
+                onReProject={(ref, text) => usePresentationStore.getState().directProjectScripture(ref, text)}
+                onClear={() => usePresentationStore.getState().clearPinnedScriptures()}
+                onRemovePin={(id) => usePresentationStore.getState().removePinnedScripture(id)}
+                onLoadPresets={(rawText) => usePresentationStore.getState().loadPresetScriptures(rawText)}
+                freeShowConnected={freeShowSnapshot.connected}
+                isLocked={authorityState.manualLockActive}
+              />
+            </div>
           </div>
         </main>
       )}
 
-      {/* Slide-Over Authority Security Audit Drawer (never compresses the 3-column live desk) */}
+      {/* Slide-Over Authority Security Audit Drawer (never compresses the 2-column live desk) */}
       {isAuditLogVisible && (
         <aside className="fixed right-0 top-14 bottom-0 w-80 sm:w-96 z-40 p-3 bg-[#070a12]/95 border-l border-slate-800 shadow-2xl animate-in fade-in slide-in-from-right-2 duration-150 flex flex-col">
           <AuditTrailPanel events={auditEvents} onClose={toggleAuditLog} />

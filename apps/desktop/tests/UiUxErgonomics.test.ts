@@ -104,4 +104,41 @@ describe('UI/UX Ergonomics & Live Sanctuary Booth Safety', () => {
     const cssContent = readFileSync(join(RENDERER_DIR, 'index.css'), 'utf8');
     expect(cssContent).not.toMatch(/backdrop-filter\s*:/i);
   });
+
+  it('renders live presentation desk as a responsive two-column layout with all five panels visible', () => {
+    const appContent = readFileSync(join(RENDERER_DIR, 'App.tsx'), 'utf8');
+
+    // Confirm main live desk is structured as a 2-column layout rather than 3-column
+    expect(appContent).toContain('grid grid-cols-12');
+    expect(appContent).toContain('lg:col-span-7');
+    expect(appContent).toContain('lg:col-span-5');
+    expect(appContent).not.toContain('lg:col-span-4');
+    expect(appContent).not.toContain('lg:col-span-3');
+
+    // Column 1 must house Live Presentation Output and Live Speech Transcript
+    const col1Idx = appContent.indexOf('lg:col-span-7');
+    const col2Idx = appContent.indexOf('lg:col-span-5');
+    expect(col1Idx).toBeGreaterThan(-1);
+    expect(col2Idx).toBeGreaterThan(col1Idx);
+
+    const col1Slice = appContent.slice(col1Idx, col2Idx);
+    expect(col1Slice).toContain('<LiveOutputPanel');
+    expect(col1Slice).toContain('<LiveTranscriptPanel');
+    expect(col1Slice).not.toContain('<ManualControlsPanel');
+    expect(col1Slice).not.toContain('<SuggestionsQueue');
+    expect(col1Slice).not.toContain('<SermonScripturePinboard');
+
+    // Column 2 must house Manual Controls Panel, Suggested Content Queue, and Pastoral Memory Pinboard
+    const col2Slice = appContent.slice(col2Idx, appContent.indexOf('</main>'));
+    expect(col2Slice).toContain('<ManualControlsPanel');
+    expect(col2Slice).toContain('<SuggestionsQueue');
+    expect(col2Slice).toContain('<SermonScripturePinboard');
+    expect(col2Slice).not.toContain('<LiveOutputPanel');
+    expect(col2Slice).not.toContain('<LiveTranscriptPanel');
+
+    // Confirm overflow guards preventing horizontal scrolling
+    expect(col1Slice).toContain('min-w-0');
+    expect(col2Slice).toContain('min-w-0');
+    expect(col2Slice).toContain('custom-scrollbar');
+  });
 });
