@@ -153,6 +153,7 @@ export interface PulpitAPI {
   onAudioLevelChange: (callback: (metrics: AudioLevelMetrics) => void) => () => void;
   onAudioActivityMode: (callback: (metrics: AudioActivityMetrics) => void) => () => void;
   onTranscriptEvent: (callback: (event: RecognizedTranscriptEvent) => void) => () => void;
+  onSpeechEngineStatusChange: (callback: (plan: SpeechRoutingPlan) => void) => () => void;
   onScriptureCandidate: (callback: (candidate: SuggestionCandidate) => void) => () => void;
   onSongCandidate: (callback: (candidate: SuggestionCandidate) => void) => () => void;
 }
@@ -237,6 +238,12 @@ const api: PulpitAPI = {
     const handler = (_event: any, event: RecognizedTranscriptEvent) => callback(event);
     ipcRenderer.on('speech:transcript', handler);
     return () => ipcRenderer.removeListener('speech:transcript', handler);
+  },
+
+  onSpeechEngineStatusChange: (callback) => {
+    const handler = (_event: any, plan: SpeechRoutingPlan) => callback(plan);
+    ipcRenderer.on('speech:engine-status-changed', handler);
+    return () => ipcRenderer.removeListener('speech:engine-status-changed', handler);
   },
 
   onScriptureCandidate: (callback) => {

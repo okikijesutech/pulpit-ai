@@ -328,6 +328,26 @@ if (typeof window !== 'undefined' && !(window as any).pulpitAPI) {
       isDefault: id === 'default_mic'
     }),
     reportAudioState: (_state: string) => {},
+    getSpeechEngineStatus: async () => ({
+      tier: 'tier1_low_spec_cpu',
+      tierLabel: 'Tier 1 (Low-Spec Sanctuary CPU)',
+      primaryEngine: 'whisper_server_daemon',
+      secondaryVerifier: 'none',
+      recommendedWhisperModel: 'base-q5_1',
+      maxWhisperThreads: 2,
+      verifyAmbiguousCitationsOnly: true,
+      hardware: {
+        platform: 'win32',
+        arch: 'x64',
+        cpuModel: 'Browser Dev Preview CPU',
+        logicalCores: 4,
+        optimalWhisperThreads: 2,
+        totalRamGb: 8,
+        freeRamGb: 4,
+        recommendedBackend: 'cpu_avx2'
+      }
+    }),
+    onSpeechEngineStatusChange: (_cb: any) => () => {},
     simulateSpeechInput: async (phrase: string) => {
       const transcriptEvent = {
         id: `tr_${Date.now()}`,

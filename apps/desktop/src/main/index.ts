@@ -56,7 +56,9 @@ const audioLevelMeter = new AudioLevelMeter();
 const speechSegmenter = new SpeechSegmenter({ sampleRate: 16000, silenceHangoverFrames: 25, minSegmentRms: 0.0020 });
 const modelManager = new ModelManager();
 const whisperWorker = new WhisperWorkerProcess();
-whisperWorker.warmup();
+void whisperWorker.warmup().then(() => {
+  broadcastSpeechEngineStatus();
+});
 const speechEngine = new SpeechRecognitionEngine(whisperWorker);
 const singingActivityDetector = new SingingActivityDetector({ sampleRate: 16000 });
 
@@ -153,6 +155,7 @@ const sherpaProcessManager = new SherpaProcessManager({
   },
   onStatusChange: (available, reason) => {
     console.log(`[Sherpa] Streaming worker available=${available}${reason ? ` (${reason})` : ''}`);
+    broadcastSpeechEngineStatus();
   }
 });
 
@@ -164,6 +167,12 @@ function getSpeechRoutingPlan(): SpeechRoutingPlan {
     whisperCliAvailable: whisperWorker.resolveBinaryPath() !== null,
     moonshineAvailable: false
   });
+}
+
+function broadcastSpeechEngineStatus(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('speech:engine-status-changed', getSpeechRoutingPlan());
+  }
 }
 
 // Initialize Verified Scripture Storage & Generator

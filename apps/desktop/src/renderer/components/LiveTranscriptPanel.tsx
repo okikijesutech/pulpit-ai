@@ -1,5 +1,8 @@
-import React from 'react';
-import { Mic, Clock, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Mic, Clock, CheckCircle, Cpu, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import type { SpeechRoutingPlan } from '@pulpit-ai/speech-engine';
+import { useAudioStore } from '../stores/audioStore.js';
+import { formatEngineStatusBadge } from '../utils/speechEngineStatus.js';
 
 export interface RecognizedTranscriptEvent {
   id: string;
@@ -15,11 +18,17 @@ export interface RecognizedTranscriptEvent {
 
 interface LiveTranscriptPanelProps {
   transcripts: RecognizedTranscriptEvent[];
+  engineStatus?: SpeechRoutingPlan | null;
 }
 
 export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = ({
-  transcripts
+  transcripts,
+  engineStatus
 }) => {
+  const storeEngineStatus = useAudioStore((s) => s.speechEngineStatus);
+  const activePlan = engineStatus !== undefined ? engineStatus : storeEngineStatus;
+  const badge = formatEngineStatusBadge(activePlan, 'whisper.cpp (AVX2)');
+  const [showEngineDetails, setShowEngineDetails] = useState(false);
   // Highlight recognized biblical cues & book names in the transcript text
   const highlightScriptureKeywords = (text: string) => {
     const clean = text.replace(/^["'\s]+|["'\s]+$/g, '');
@@ -67,14 +76,90 @@ export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = ({
           </div>
         </div>
 
-        {/* Engine Badge with Required AVX2 Identifier */}
-        <div className="flex items-center space-x-2 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-xs shadow-inner">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-mono text-[10px] font-semibold text-slate-300">
-            whisper.cpp (AVX2)
+        {/* Live Hardware Tier & Active Speech Engine Badge */}
+        <button
+          type="button"
+          onClick={() => setShowEngineDetails((prev) => !prev)}
+          title={badge.tooltip}
+          aria-expanded={showEngineDetails}
+          className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 hover:bg-slate-800/90 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs shadow-inner transition-colors cursor-pointer"
+        >
+          <span
+            className={`w-2 h-2 rounded-full animate-pulse ${
+              badge.tierTone === 'indigo' ? 'bg-indigo-400' : 'bg-emerald-500'
+            }`}
+          />
+          <span
+            className={`px-1.5 py-0.2 rounded font-mono text-[9px] font-bold tracking-wider ${
+              badge.tierTone === 'indigo'
+                ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/60'
+                : 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60'
+            }`}
+          >
+            {badge.tierTag}
           </span>
-        </div>
+          <span className="font-mono text-[10px] font-semibold text-slate-200">
+            {badge.engineLabel}
+          </span>
+          {badge.hasSecondaryVerifier && (
+            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-950/70 text-amber-300 border border-amber-700/50 font-mono text-[9px] font-semibold">
+              <ShieldCheck className="w-2.5 h-2.5" />
+              <span>2x</span>
+            </span>
+          )}
+          {showEngineDetails ? (
+            <ChevronUp className="w-3 h-3 text-slate-500" />
+          ) : (
+            <ChevronDown className="w-3 h-3 text-slate-500" />
+          )}
+        </button>
       </div>
+
+      {/* Expandable Hardware Tier & Dual-Engine Telemetry Strip */}
+      {showEngineDetails && (
+        <div className="mb-3 p-2.5 rounded-xl bg-slate-950/90 border border-slate-800/90 text-[10px] text-slate-300 grid grid-cols-1 sm:grid-cols-3 gap-2 shadow-inner">
+          <div className="flex items-start gap-1.5">
+            <Cpu className="w-3.5 h-3.5 text-indigo-400 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">
+                Hardware Tier
+              </div>
+              <div className="font-mono text-slate-200 truncate">
+                {activePlan ? activePlan.tierLabel : 'Tier 1 (Default)'}
+              </div>
+              <div className="font-mono text-[9px] text-slate-400 truncate">
+                {badge.hardwareSummary}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-1.5">
+            <Mic className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">
+                Primary ASR & Model
+              </div>
+              <div className="font-mono text-slate-200 truncate">{badge.engineLabel}</div>
+              <div className="font-mono text-[9px] text-slate-400 truncate">
+                {badge.modelSummary}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">
+                Semantic Verifier
+              </div>
+              <div className="font-mono text-slate-200 truncate">{badge.verifierLabel}</div>
+              <div className="font-mono text-[9px] text-slate-400 truncate">
+                {badge.verificationPolicy}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Transcript Stream */}
       <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { AudioInputDevice } from '@pulpit-ai/shared-types';
+import type { SpeechRoutingPlan } from '@pulpit-ai/speech-engine';
 import { AudioLevelMetrics, AudioActivityMetrics } from '../../preload/index.js';
 import { physicalMicService } from '../services/MicrophoneAudioService.js';
 
@@ -11,6 +12,7 @@ interface AudioStoreState {
   micError: string | null;
   audioLevel: AudioLevelMetrics;
   audioActivity: AudioActivityMetrics | undefined;
+  speechEngineStatus: SpeechRoutingPlan | null;
 
   setAudioDevices: (devices: AudioInputDevice[]) => void;
   setActiveDeviceId: (id: string) => void;
@@ -19,6 +21,7 @@ interface AudioStoreState {
   setMicError: (error: string | null) => void;
   setAudioLevel: (metrics: AudioLevelMetrics) => void;
   setAudioActivity: (activity: AudioActivityMetrics | undefined) => void;
+  setSpeechEngineStatus: (plan: SpeechRoutingPlan | null) => void;
 
   // Domain Actions
   selectAudioDevice: (deviceId: string) => Promise<void>;
@@ -40,6 +43,7 @@ export const useAudioStore = create<AudioStoreState>((set, get) => ({
     isSilent: true
   },
   audioActivity: undefined,
+  speechEngineStatus: null,
 
   setAudioDevices: (devices) => set({ audioDevices: devices }),
   setActiveDeviceId: (id) => set({ activeDeviceId: id }),
@@ -48,6 +52,7 @@ export const useAudioStore = create<AudioStoreState>((set, get) => ({
   setMicError: (error) => set({ micError: error }),
   setAudioLevel: (metrics) => set({ audioLevel: metrics }),
   setAudioActivity: (activity) => set({ audioActivity: activity }),
+  setSpeechEngineStatus: (plan) => set({ speechEngineStatus: plan }),
 
   selectAudioDevice: async (deviceId: string) => {
     set({ activeDeviceId: deviceId });

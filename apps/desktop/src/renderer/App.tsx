@@ -69,6 +69,12 @@ export const App: React.FC = () => {
         usePresentationStore.getState().setAuditEvents(events);
       }).catch(console.error);
 
+      if (typeof window.pulpitAPI.getSpeechEngineStatus === 'function') {
+        window.pulpitAPI.getSpeechEngineStatus().then((plan) => {
+          useAudioStore.getState().setSpeechEngineStatus(plan);
+        }).catch(console.error);
+      }
+
       // Real physical audio devices enumeration
       physicalMicService
         .enumerateDevices()
@@ -115,6 +121,13 @@ export const App: React.FC = () => {
         usePresentationStore.getState().addTranscript(event);
       });
 
+      const unsubSpeechEngine =
+        typeof window.pulpitAPI.onSpeechEngineStatusChange === 'function'
+          ? window.pulpitAPI.onSpeechEngineStatusChange((plan) => {
+              useAudioStore.getState().setSpeechEngineStatus(plan);
+            })
+          : () => {};
+
       const unsubScripture = window.pulpitAPI.onScriptureCandidate((candidate: SuggestionCandidate) => {
         usePresentationStore.getState().addCandidate(candidate);
       });
@@ -144,6 +157,7 @@ export const App: React.FC = () => {
         unsubAudioLevel();
         unsubAudioActivity();
         unsubTranscript();
+        unsubSpeechEngine();
         unsubScripture();
         unsubSong();
       };
