@@ -123,7 +123,7 @@ export const Header: React.FC = () => {
             </span>
           </div>
           <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-800/50 font-mono hidden lg:inline">
-            v1.1.0
+            v1.2.0
           </span>
         </div>
 

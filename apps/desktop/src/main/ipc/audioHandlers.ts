@@ -23,6 +23,11 @@ export interface AudioHandlerDeps {
   modelManager: ModelManager;
   getMainWindow: () => BrowserWindow | null;
   onRealMicStreaming?: (active: boolean) => void;
+  sherpaManager?: {
+    isStreamingAvailable: () => boolean;
+    pushPcmFrame: (samples: Int16Array) => void;
+    reset: () => void;
+  };
 }
 
 export function registerAudioHandlers(deps: AudioHandlerDeps): void {
@@ -35,7 +40,8 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
     whisperWorker,
     modelManager,
     getMainWindow,
-    onRealMicStreaming
+    onRealMicStreaming,
+    sherpaManager
   } = deps;
 
   ipcMain.handle('audio:get-devices', () => {
@@ -61,6 +67,7 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
 
     if (isMuted) {
       speechSegmenter.reset();
+      sherpaManager?.reset();
       mainWindow.webContents.send('audio:level-changed', {
         rmsLevel: 0,
         decibels: -100,
@@ -95,8 +102,12 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
     const metrics = audioLevelMeter.analyze(int16, isMuted);
     const activityMetrics = singingActivityDetector.processFrame(int16);
 
-    // Send singing away from the speech path and engage Choir Singing Guard
-    if (activityMetrics.isSinging) {
+    // Route live PCM frames: Phase 2 Sherpa Streaming UtilityProcess (with Silero VAD v5) if active,
+    // otherwise Phase 1 SpeechSegmenter + persistent whisper-server with Choir Singing Guard.
+    if (sherpaManager?.isStreamingAvailable()) {
+      whisperWorker.setSingingGuardActive(activityMetrics.isSinging);
+      sherpaManager.pushPcmFrame(int16);
+    } else if (activityMetrics.isSinging) {
       speechSegmenter.setSingingActive(true);
       whisperWorker.setSingingGuardActive(true);
     } else {

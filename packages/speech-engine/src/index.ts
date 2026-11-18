@@ -2,5 +2,8 @@ export * from './ModelManager.js';
 export * from './TranscriptNormalizer.js';
 export * from './WhisperWorkerProcess.js';
 export * from './WhisperServerDaemon.js';
+export * from './LiturgicalHotwords.js';
+export * from './StreamingTokenSegmenter.js';
+export * from './SherpaStreamingEngine.js';
 export * from './SpeechRecognitionEngine.js';
 export * from './PhantomPhraseFilter.js';

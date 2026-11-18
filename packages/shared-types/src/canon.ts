@@ -300,7 +300,7 @@ export const CANON_BOOKS: CanonBook[] = [
     id: 'HOS',
     name: 'Hosea',
     testament: 'OT',
-    aliases: ['hosea', 'hos'],
+    aliases: ['hosea', 'hos', 'osea'],
     totalChapters: 14,
     versesPerChapter: [11, 23, 5, 19, 15, 11, 16, 14, 17, 15, 12, 14, 16, 9]
   },
@@ -356,7 +356,7 @@ export const CANON_BOOKS: CanonBook[] = [
     id: 'HAB',
     name: 'Habakkuk',
     testament: 'OT',
-    aliases: ['habakkuk', 'hab'],
+    aliases: ['habakkuk', 'hab', 'abakkuk'],
     totalChapters: 3,
     versesPerChapter: [17, 20, 19]
   },
@@ -372,7 +372,7 @@ export const CANON_BOOKS: CanonBook[] = [
     id: 'HAG',
     name: 'Haggai',
     testament: 'OT',
-    aliases: ['haggai', 'hag'],
+    aliases: ['haggai', 'hag', 'aggai'],
     totalChapters: 2,
     versesPerChapter: [15, 23]
   },
@@ -495,7 +495,7 @@ export const CANON_BOOKS: CanonBook[] = [
     id: 'PHP',
     name: 'Philippians',
     testament: 'NT',
-    aliases: ['philippians', 'phil', 'php'],
+    aliases: ['philippians', 'phil', 'php', 'pilipians', 'filipians'],
     totalChapters: 4,
     versesPerChapter: [30, 30, 21, 23]
   },
@@ -557,7 +557,7 @@ export const CANON_BOOKS: CanonBook[] = [
     id: 'PHM',
     name: 'Philemon',
     testament: 'NT',
-    aliases: ['philemon', 'phm'],
+    aliases: ['philemon', 'phm', 'pilemon'],
     totalChapters: 1,
     versesPerChapter: [25]
   },
@@ -565,7 +565,7 @@ export const CANON_BOOKS: CanonBook[] = [
     id: 'HEB',
     name: 'Hebrews',
     testament: 'NT',
-    aliases: ['hebrews', 'heb'],
+    aliases: ['hebrews', 'heb', 'ebrews'],
     totalChapters: 13,
     versesPerChapter: [14, 18, 19, 16, 14, 20, 28, 13, 28, 39, 40, 29, 25]
   },

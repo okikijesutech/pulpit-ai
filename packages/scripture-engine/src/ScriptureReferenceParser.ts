@@ -36,6 +36,65 @@ const NON_SCRIPTURE_UNITS_REGEX = /^\s*(?:times|time|weeks?|days?|months?|years?
 
 const NUMBER_WORDS_REGEX = /\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\d+)\b/i;
 
+/** Common everyday English words that must NEVER fuzzy-match short 3-4 letter Bible books */
+const SHORT_BOOK_STOPWORDS = new Set([
+  'joy', 'bob', 'rob', 'cat', 'cats', 'car', 'far', 'war', 'art', 'part',
+  'park', 'dark', 'bark', 'make', 'made', 'take', 'lake', 'like', 'look',
+  'love', 'live', 'life', 'good', 'god', 'lord', 'just', 'must', 'much',
+  'more', 'most', 'come', 'some', 'home', 'time', 'line', 'fine', 'mine',
+  'rule', 'rush', 'push', 'truth', 'youth', 'almost', 'among', 'about'
+]);
+
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (Math.abs(m - n) > 2) return Math.abs(m - n);
+  const dp = new Array<number>(n + 1);
+  for (let j = 0; j <= n; j++) dp[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const temp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = temp;
+    }
+  }
+  return dp[n];
+}
+
+/**
+ * Phase 2 Length-Conditioned Levenshtein Fuzzy Canon Book Matcher.
+ * - Books <= 4 chars: requires max distance <= 1 AND explicit cue/number (rejects "Joy"/"Cats").
+ * - Books >= 5 chars: allows max distance <= 2 to rescue garbled ASR transcriptions ("Deuteronmy").
+ */
+export function fuzzyMatchCanonBook(rawToken: string, hasCueOrNumber: boolean): CanonBook | null {
+  const clean = rawToken.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '');
+  if (!clean || clean.length < 3 || SHORT_BOOK_STOPWORDS.has(clean)) {
+    return null;
+  }
+
+  let bestBook: CanonBook | null = null;
+  let bestDist = Infinity;
+
+  for (const book of CANON_BOOKS) {
+    const target = book.name.toLowerCase();
+    // Skip numbered books when input has no leading numeral
+    if (/^[1-3]\s/.test(target) && !/^[1-3]\s/.test(clean)) continue;
+
+    const maxDist = target.length <= 4 ? 1 : 2;
+    if (target.length <= 4 && !hasCueOrNumber) continue;
+
+    const dist = levenshteinDistance(clean, target);
+    if (dist > 0 && dist <= maxDist && dist < bestDist) {
+      bestDist = dist;
+      bestBook = book;
+    }
+  }
+
+  return bestBook;
+}
+
 export class ScriptureReferenceParser {
   private static bookRegexPattern: RegExp | null = null;
   private static bookGlobalRegexPattern: RegExp | null = null;
@@ -122,6 +181,37 @@ export class ScriptureReferenceParser {
 
       if (parsed && parsed.hasReference) {
         results.push(parsed);
+      }
+    }
+
+    // Phase 2 Fallback: Length-Conditioned Levenshtein Fuzzy Recovery for slightly garbled ASR book names
+    // Only executes when exact regex found no references AND a chapter:verse or chapter+number pattern exists.
+    if (results.length === 0) {
+      const fuzzyPattern = /\b((?:[1-3]\s+)?[a-z]{4,})\s+(?:chapter\s+)?(\d+(?:\s*[:\s]\s*(?:verse\s+)?\d+(?:\s*[-–to]+\s*\d+)?)?)/gi;
+      let fMatch: RegExpExecArray | null;
+      while ((fMatch = fuzzyPattern.exec(normalized)) !== null) {
+        const candidateWord = fMatch[1];
+        const matchIndex = fMatch.index;
+        const textBefore = normalized.slice(Math.max(0, matchIndex - 40), matchIndex).trim();
+        const hasPrecedingCue = PRECEDING_CUE_REGEX.test(textBefore);
+        const hasExplicitColonOrCue = hasPrecedingCue || /:|chapter|verse/i.test(fMatch[0]);
+
+        const fuzzyBook = fuzzyMatchCanonBook(candidateWord, hasExplicitColonOrCue);
+        if (!fuzzyBook) continue;
+
+        const afterBook = normalized.slice(matchIndex + candidateWord.length).trim();
+        const parsed = this.parseAfterBook(
+          fuzzyBook,
+          candidateWord,
+          matchIndex,
+          afterBook,
+          hasPrecedingCue,
+          trimmed,
+          defaultTranslation
+        );
+        if (parsed && parsed.hasReference) {
+          results.push(parsed);
+        }
       }
     }
 

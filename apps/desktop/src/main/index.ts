@@ -29,6 +29,7 @@ import {
 } from '@pulpit-ai/song-engine';
 
 import { syncHymnsToFreeShow } from './services/freeShowSongSync.js';
+import { SherpaProcessManager } from './services/sherpaProcessManager.js';
 import { registerAuthorityHandlers } from './ipc/authorityHandlers.js';
 import { registerFreeShowHandlers } from './ipc/freeShowHandlers.js';
 import { registerAudioHandlers } from './ipc/audioHandlers.js';
@@ -54,6 +55,17 @@ const whisperWorker = new WhisperWorkerProcess();
 whisperWorker.warmup();
 const speechEngine = new SpeechRecognitionEngine(whisperWorker);
 const singingActivityDetector = new SingingActivityDetector({ sampleRate: 16000 });
+const sherpaProcessManager = new SherpaProcessManager({
+  onUtterance: (text) => {
+    speechEngine.ingestDirectTranscript(text, 'sherpa_zipformer');
+  },
+  onEarlyBookCue: (bookName) => {
+    console.log(`[Sherpa] Early canonical book cue pre-staged: ${bookName}`);
+  },
+  onStatusChange: (available, reason) => {
+    console.log(`[Sherpa] Streaming worker available=${available}${reason ? ` (${reason})` : ''}`);
+  }
+});
 
 // Initialize Verified Scripture Storage & Generator
 const scriptureDatabase = new ScriptureDatabase(':memory:');
@@ -283,7 +295,8 @@ registerAudioHandlers({
   whisperWorker,
   modelManager,
   getMainWindow: () => mainWindow,
-  onRealMicStreaming: () => {}
+  onRealMicStreaming: () => {},
+  sherpaManager: sherpaProcessManager
 });
 registerScriptureHandlers(scriptureDatabase, scriptureGenerator);
 registerSongHandlers(songDatabase, songReviewManager, auditLogger, () => freeShowAdapter);
@@ -293,6 +306,7 @@ registerMediaHandlers();
 app.whenReady().then(() => {
   const adapter = initFreeShow(5510);
   adapter.connect().catch(() => {});
+  sherpaProcessManager.start();
   createWindow();
 
   app.on('activate', () => {
@@ -303,6 +317,7 @@ app.whenReady().then(() => {
 });
 
 app.on('before-quit', () => {
+  sherpaProcessManager.shutdown();
   whisperWorker.shutdown();
   if (freeShowAdapter) {
     freeShowAdapter.disconnect();
@@ -310,6 +325,7 @@ app.on('before-quit', () => {
 });
 
 app.on('window-all-closed', () => {
+  sherpaProcessManager.shutdown();
   whisperWorker.shutdown();
   if (freeShowAdapter) {
     freeShowAdapter.disconnect();
