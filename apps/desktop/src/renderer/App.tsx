@@ -228,14 +228,34 @@ export const App: React.FC = () => {
         />
       ) : (
         <main className="flex-1 p-3 sm:p-4 lg:p-4 xl:p-5 grid grid-cols-12 gap-3 sm:gap-4 lg:gap-4 xl:gap-5 min-h-0 min-w-0 overflow-y-auto lg:overflow-hidden">
-          {/* Left Column (4 cols): Live Screen confidence monitor and Tactile Manual Controls */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0 overflow-y-auto custom-scrollbar">
-            <div className="flex-1 min-h-[160px] sm:min-h-0">
+          {/* Left Column (5 cols): Hero 16:9 Stage Confidence Monitor & Live Preaching Transcript */}
+          <div className="col-span-12 lg:col-span-5 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0">
+            <div className="flex-[1.35] min-h-[300px] lg:min-h-0">
               <LiveOutputPanel
                 snapshot={freeShowSnapshot}
                 onOpenSlideMatrix={() => useUIStore.getState().openSlideMatrix()}
               />
             </div>
+
+            <div className="flex-1 min-h-[200px] lg:min-h-0">
+              <LiveTranscriptPanel />
+            </div>
+          </div>
+
+          {/* Center Column (4 cols): Pastoral Memory Pinboard & Tactile Manual Controls */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0 overflow-y-auto custom-scrollbar">
+            <div className="flex-shrink-0">
+              <SermonScripturePinboard
+                pinnedScriptures={pinnedScriptures}
+                onReProject={(ref, text) => usePresentationStore.getState().directProjectScripture(ref, text)}
+                onClear={() => usePresentationStore.getState().clearPinnedScriptures()}
+                onRemovePin={(id) => usePresentationStore.getState().removePinnedScripture(id)}
+                onLoadPresets={(rawText) => usePresentationStore.getState().loadPresetScriptures(rawText)}
+                freeShowConnected={freeShowSnapshot.connected}
+                isLocked={authorityState.manualLockActive}
+              />
+            </div>
+
             <div className="flex-shrink-0">
               <ManualControlsPanel
                 onDispatch={dispatchCommand}
@@ -258,27 +278,8 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Center Column (4 cols): Sermon Scripture Pinboard & Live Preaching Transcript */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0">
-            <div className="flex-shrink-0">
-              <SermonScripturePinboard
-                pinnedScriptures={pinnedScriptures}
-                onReProject={(ref, text) => usePresentationStore.getState().directProjectScripture(ref, text)}
-                onClear={() => usePresentationStore.getState().clearPinnedScriptures()}
-                onRemovePin={(id) => usePresentationStore.getState().removePinnedScripture(id)}
-                onLoadPresets={(rawText) => usePresentationStore.getState().loadPresetScriptures(rawText)}
-                freeShowConnected={freeShowSnapshot.connected}
-                isLocked={authorityState.manualLockActive}
-              />
-            </div>
-
-            <div className="flex-1 min-h-[220px] lg:min-h-0">
-              <LiveTranscriptPanel />
-            </div>
-          </div>
-
-          {/* Right Column (4 cols): Full-Height AI Candidate Intelligence Queue */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col min-h-[240px] lg:min-h-0 min-w-0">
+          {/* Right Column (3 cols): Full-Height AI Candidate Intelligence Queue */}
+          <div className="col-span-12 lg:col-span-3 flex flex-col min-h-[240px] lg:min-h-0 min-w-0">
             <SuggestionsQueue
               candidates={candidates}
               isLocked={authorityState.manualLockActive}

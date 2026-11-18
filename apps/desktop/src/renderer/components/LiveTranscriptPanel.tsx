@@ -86,15 +86,15 @@ export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = React.mem
           onClick={() => setShowEngineDetails((prev) => !prev)}
           title={badge.tooltip}
           aria-expanded={showEngineDetails}
-          className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 hover:bg-slate-800/90 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs shadow-inner transition-colors cursor-pointer"
+          className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 hover:bg-slate-800/90 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs shadow-inner transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
         >
           <span
-            className={`w-2 h-2 rounded-full animate-pulse ${
+            className={`w-2 h-2 rounded-full animate-pulse flex-shrink-0 ${
               badge.tierTone === 'indigo' ? 'bg-indigo-400' : 'bg-emerald-500'
             }`}
           />
           <span
-            className={`px-1.5 py-0.2 rounded font-mono text-[9px] font-bold tracking-wider ${
+            className={`px-1.5 py-0.2 rounded font-mono text-[9px] font-bold tracking-wider whitespace-nowrap ${
               badge.tierTone === 'indigo'
                 ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/60'
                 : 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60'
@@ -102,19 +102,19 @@ export const LiveTranscriptPanel: React.FC<LiveTranscriptPanelProps> = React.mem
           >
             {badge.tierTag}
           </span>
-          <span className="font-mono text-[10px] font-semibold text-slate-200">
+          <span className="font-mono text-[10px] font-semibold text-slate-200 whitespace-nowrap">
             {badge.engineLabel}
           </span>
           {badge.hasSecondaryVerifier && (
-            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-950/70 text-amber-300 border border-amber-700/50 font-mono text-[9px] font-semibold">
+            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-950/70 text-amber-300 border border-amber-700/50 font-mono text-[9px] font-semibold whitespace-nowrap">
               <ShieldCheck className="w-2.5 h-2.5" />
               <span>2x</span>
             </span>
           )}
           {showEngineDetails ? (
-            <ChevronUp className="w-3 h-3 text-slate-500" />
+            <ChevronUp className="w-3 h-3 text-slate-500 flex-shrink-0" />
           ) : (
-            <ChevronDown className="w-3 h-3 text-slate-500" />
+            <ChevronDown className="w-3 h-3 text-slate-500 flex-shrink-0" />
           )}
         </button>
       </div>

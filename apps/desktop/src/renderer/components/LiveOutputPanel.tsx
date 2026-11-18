@@ -107,30 +107,30 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = React.memo(({ sna
       </div>
 
       {/* Target Routing Switcher Tabs */}
-      <div className="flex items-center gap-1.5 mb-2.5 p-1 bg-slate-950/70 rounded-xl border border-slate-800/80">
+      <div className="flex items-center gap-1.5 mb-2.5 p-1 bg-slate-950/70 rounded-xl border border-slate-800/80 flex-shrink-0">
         <button
           type="button"
           onClick={() => setActiveTarget('main')}
-          className={`flex-1 flex items-center justify-center space-x-1.5 py-1 px-2 rounded-lg text-xs font-bold transition-all ${
+          className={`flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
             activeTarget === 'main'
               ? 'bg-indigo-600 text-white shadow-md'
               : 'text-slate-400 hover:text-white hover:bg-slate-900'
           }`}
         >
-          <Monitor className="w-3 h-3" />
+          <Monitor className="w-3.5 h-3.5 flex-shrink-0" />
           <span>Main (Projector)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTarget('foldback')}
-          className={`flex-1 flex items-center justify-center space-x-1.5 py-1 px-2 rounded-lg text-xs font-bold transition-all ${
+          className={`flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
             activeTarget === 'foldback'
               ? 'bg-amber-600 text-slate-950 shadow-md font-extrabold'
               : 'text-slate-400 hover:text-white hover:bg-slate-900'
           }`}
         >
-          <Tv className="w-3 h-3" />
+          <Tv className="w-3.5 h-3.5 flex-shrink-0" />
           <span>Stage Foldback</span>
           {stagePrivateMessage && (
             <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
@@ -140,26 +140,32 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = React.memo(({ sna
         <button
           type="button"
           onClick={() => setActiveTarget('stream')}
-          className={`flex-1 flex items-center justify-center space-x-1.5 py-1 px-2 rounded-lg text-xs font-bold transition-all ${
+          className={`flex-1 flex items-center justify-center space-x-1.5 py-1.5 px-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
             activeTarget === 'stream'
               ? 'bg-emerald-600 text-white shadow-md'
               : 'text-slate-400 hover:text-white hover:bg-slate-900'
           }`}
         >
-          <Radio className="w-3 h-3" />
+          <Radio className="w-3.5 h-3.5 flex-shrink-0" />
           <span>Live Stream</span>
         </button>
       </div>
 
-      {/* 16:9 Stage Confidence Monitor Viewport */}
-      <div className="flex-1 flex flex-col justify-between bg-gradient-to-b from-[#060913] to-[#0a0f1d] rounded-xl p-3.5 border border-slate-800/90 shadow-inner relative overflow-hidden group">
+      {/* Hero 16:9 Stage Confidence Monitor Viewport */}
+      <div
+        className={`flex-1 min-h-0 flex flex-col justify-between bg-gradient-to-b from-[#060913] to-[#0a0f1d] rounded-xl p-3.5 border shadow-inner relative overflow-hidden group transition-colors ${
+          isOnAir
+            ? 'border-rose-500/80 ring-1 ring-rose-500/35'
+            : 'border-slate-800/90'
+        }`}
+      >
         {/* Subtle Stage Viewport Bezel & Crosshairs */}
         <div className="absolute top-2 left-2 text-[10px] font-mono text-slate-700 select-none pointer-events-none">+</div>
         <div className="absolute top-2 right-2 text-[10px] font-mono text-slate-700 select-none pointer-events-none">+</div>
         <div className="absolute bottom-2 left-2 text-[10px] font-mono text-slate-700 select-none pointer-events-none">+</div>
         <div className="absolute bottom-2 right-2 text-[10px] font-mono text-slate-700 select-none pointer-events-none">+</div>
 
-        <div>
+        <div className="flex-1 min-h-0 flex flex-col">
           {/* Top Monitor Tag Bar */}
           <div className="flex items-center justify-between text-[11px] text-slate-400 mb-2 px-1">
             <span className="flex items-center space-x-1.5 font-mono text-[10px] text-slate-500">
@@ -232,35 +238,35 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = React.memo(({ sna
           {/* Canvas Display Viewport */}
           {activeTarget === 'foldback' ? (
             /* Pastor & Choir Foldback Confidence Screen */
-            <div className="mt-1 p-3 rounded-lg bg-slate-950/90 border border-amber-900/40 min-h-[110px] flex flex-col justify-between">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="mt-1 flex-1 min-h-[160px] p-3.5 rounded-lg bg-slate-950/90 border border-amber-900/40 flex flex-col justify-between">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
                 {/* Current Slide Display */}
-                <div className="p-2.5 rounded-md bg-slate-900/80 border border-slate-800">
-                  <div className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">
+                <div className="p-3 rounded-md bg-slate-900/80 border border-slate-800 flex flex-col justify-center">
+                  <div className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1.5">
                     Current Slide (Live)
                   </div>
                   {snapshot.isOutputCleared ? (
-                    <div className="text-xs text-rose-400 font-semibold italic">Screen Blanked</div>
+                    <div className="text-sm text-rose-400 font-semibold italic">Screen Blanked</div>
                   ) : snapshot.currentSlideText ? (
-                    <p className="text-sm font-sans font-bold text-white leading-snug">
+                    <p className="text-base font-sans font-bold text-white leading-snug">
                       "{snapshot.currentSlideText}"
                     </p>
                   ) : (
-                    <div className="text-xs text-slate-500">Standby (No Slide)</div>
+                    <div className="text-sm text-slate-500">Standby (No Slide)</div>
                   )}
                 </div>
 
                 {/* Coming Up Next Preview */}
                 {foldbackPreset.showNextSlide && (
-                  <div className="p-2.5 rounded-md bg-slate-900/40 border border-slate-800/80">
-                    <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1 flex items-center space-x-1">
+                  <div className="p-3 rounded-md bg-slate-900/40 border border-slate-800/80 flex flex-col justify-center">
+                    <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1.5 flex items-center space-x-1">
                       <span>Coming Up Next</span>
                       <ArrowRight className="w-2.5 h-2.5" />
                     </div>
                     {nextCue ? (
                       <div>
-                        <div className="text-xs font-bold text-slate-200 truncate">{nextCue.title}</div>
-                        <div className="text-[10px] text-slate-400 truncate mt-0.5">{nextCue.subtitle}</div>
+                        <div className="text-sm font-bold text-slate-200 truncate">{nextCue.title}</div>
+                        <div className="text-xs text-slate-400 truncate mt-0.5">{nextCue.subtitle}</div>
                       </div>
                     ) : (
                       <div className="text-xs text-slate-500 italic">End of Liturgy Run-Sheet</div>
@@ -281,68 +287,68 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = React.memo(({ sna
             </div>
           ) : activeTarget === 'stream' ? (
             /* Broadcast Lower-Third Preview */
-            <div className="mt-1.5 p-3 rounded-lg bg-slate-950/80 border border-emerald-900/40 min-h-[110px] flex flex-col justify-end relative shadow-inner overflow-hidden">
+            <div className="mt-1.5 flex-1 min-h-[160px] p-4 rounded-lg bg-slate-950/80 border border-emerald-900/40 flex flex-col justify-end relative shadow-inner overflow-hidden">
               <div className="absolute inset-0 bg-slate-900/30 flex items-center justify-center">
-                <span className="text-[10px] uppercase tracking-widest text-slate-600 font-mono">
+                <span className="text-xs uppercase tracking-widest text-slate-600 font-mono">
                   [1080p Video Feed Background]
                 </span>
               </div>
-              <div className="relative z-10 p-2.5 rounded-lg bg-slate-950/95 border-l-4 border-emerald-500 border border-slate-800/90 shadow-2xl">
+              <div className="relative z-10 p-3 rounded-lg bg-slate-950/95 border-l-4 border-emerald-500 border border-slate-800/90 shadow-2xl">
                 <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-0.5 flex items-center space-x-1.5">
                   <Radio className="w-2.5 h-2.5" />
                   <span>Lower-Third Broadcast Overlay</span>
                 </div>
-                <p className="text-xs font-semibold text-slate-100 truncate">
+                <p className="text-sm font-semibold text-slate-100 truncate">
                   {snapshot.currentSlideText || 'Ready for scripture reference / speaker name key'}
                 </p>
               </div>
             </div>
           ) : (
             /* Auditorium Sanctuary Projector Canvas */
-            <div className="mt-1.5 p-3 sm:p-4 rounded-lg bg-slate-950/80 border border-slate-800/80 text-center min-h-[105px] flex flex-col items-center justify-center relative shadow-inner overflow-hidden">
+            <div className="mt-1.5 flex-1 min-h-[160px] p-4 sm:p-6 rounded-lg bg-slate-950/90 border border-slate-800/80 text-center flex flex-col items-center justify-center relative shadow-inner overflow-hidden">
               {countdownTimer.isProjected ? (
-                <div className="flex flex-col items-center justify-center space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                <div className="flex flex-col items-center justify-center space-y-1.5">
+                  <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
                     {countdownTimer.label}
                   </span>
-                  <span className="text-3xl font-mono font-extrabold text-white tracking-wider">
+                  <span className="text-4xl sm:text-5xl font-mono font-extrabold text-white tracking-wider">
                     {formatTimerMMSS(countdownTimer.remainingSeconds)}
                   </span>
                 </div>
               ) : activeMediaAsset ? (
-                <div className="flex flex-col items-center justify-center w-full space-y-1">
+                <div className="flex flex-col items-center justify-center w-full space-y-1.5">
                   <img
                     src={activeMediaAsset.dataUrl}
                     alt={activeMediaAsset.name}
-                    className="max-h-24 max-w-full object-contain rounded shadow-md"
+                    className="max-h-44 max-w-full object-contain rounded shadow-md"
                   />
-                  <span className="text-[10px] font-mono text-cyan-300 truncate max-w-full">
+                  <span className="text-[11px] font-mono text-cyan-300 truncate max-w-full">
                     Graphic: {activeMediaAsset.name}
                   </span>
                 </div>
               ) : snapshot.connected ? (
                 snapshot.isOutputCleared ? (
                   <div className="flex flex-col items-center text-slate-600">
-                    <EyeOff className="w-6 h-6 mb-1 opacity-50 text-rose-500" />
-                    <p className="text-xs font-medium text-slate-400">Projector Screen Blanked</p>
-                    <p className="text-[10px] text-slate-600">Click Restore in Manual Controls to resume</p>
+                    <EyeOff className="w-8 h-8 mb-1.5 opacity-50 text-rose-500" />
+                    <p className="text-sm font-medium text-slate-400">Projector Screen Blanked</p>
+                    <p className="text-xs text-slate-600 mt-0.5">Click Restore in Manual Controls to resume</p>
                   </div>
                 ) : snapshot.currentSlideText ? (
-                  <p className="text-base sm:text-lg font-serif text-slate-100 italic leading-relaxed drop-shadow-md">
+                  <p className="text-lg sm:text-xl font-serif text-slate-100 italic leading-relaxed drop-shadow-md max-w-lg">
                     "{snapshot.currentSlideText}"
                   </p>
                 ) : (
                   <div className="flex flex-col items-center text-slate-500">
-                    <Cast className="w-6 h-6 mb-1 text-indigo-400/50" />
-                    <p className="text-xs font-semibold text-slate-300">Ready on Stage 1</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">Approve a suggestion or select a slide to project</p>
+                    <Cast className="w-8 h-8 mb-1.5 text-indigo-400/50" />
+                    <p className="text-sm font-semibold text-slate-300">Ready on Stage 1</p>
+                    <p className="text-xs text-slate-500 mt-1">Approve a suggestion or select a slide to project</p>
                   </div>
                 )
               ) : (
                 <div className="flex flex-col items-center text-slate-500 p-2">
-                  <Monitor className="w-7 h-7 mb-2 opacity-30 text-indigo-400" />
-                  <p className="text-xs font-medium text-slate-400">No Live Projector Feed</p>
-                  <p className="text-[11px] text-slate-600 mt-1 max-w-xs text-center">
+                  <Monitor className="w-10 h-10 mb-2 opacity-30 text-indigo-400" />
+                  <p className="text-sm font-semibold text-slate-300">No Live Projector Feed</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm text-center">
                     Connect to FreeShow (:5510) to mirror the sanctuary projection screen in real time.
                   </p>
                 </div>
