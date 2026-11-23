@@ -495,7 +495,7 @@ export const CANON_BOOKS: CanonBook[] = [
     id: 'PHP',
     name: 'Philippians',
     testament: 'NT',
-    aliases: ['philippians', 'phil', 'php', 'pilipians', 'filipians'],
+    aliases: ['philippians', 'phil', 'php', 'pilipians', 'filipians', 'philipains', 'philippian', 'phillippians', 'philipeans'],
     totalChapters: 4,
     versesPerChapter: [30, 30, 21, 23]
   },
@@ -644,6 +644,32 @@ for (const book of CANON_BOOKS) {
   for (const alias of book.aliases) {
     aliasMap.set(alias.toLowerCase(), book);
   }
+}
+
+export function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  if (Math.abs(a.length - b.length) > 3) return 99;
+
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
 }
 
 /**

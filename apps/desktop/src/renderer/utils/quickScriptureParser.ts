@@ -1,5 +1,31 @@
 import { CANON_BOOKS, CanonBook } from '@pulpit-ai/shared-types';
 
+export function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  if (Math.abs(a.length - b.length) > 3) return 99;
+
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
 export interface ParsedQuickScripture {
   isValid: boolean;
   book?: CanonBook;
@@ -69,6 +95,31 @@ export function parseQuickScripture(input: string): ParsedQuickScripture {
       matchedBook = entry.book;
       remainingText = text.substring(match[0].length).trim();
       break;
+    }
+  }
+
+  // Fallback fuzzy recovery for typographical/phonetic misspellings (e.g. "philipains 4:6")
+  if (!matchedBook) {
+    const firstWordMatch = text.match(/^([1-3]?\s*[a-z]+)(.*)$/i);
+    if (firstWordMatch) {
+      const candidateWord = firstWordMatch[1].trim();
+      const rest = firstWordMatch[2].trim();
+      if (candidateWord.length >= 4) {
+        let bestDist = 3;
+        let bestEntry: AliasEntry | null = null;
+        for (const entry of ALL_ALIASES) {
+          if (Math.abs(entry.alias.length - candidateWord.length) > 2) continue;
+          const dist = levenshteinDistance(candidateWord, entry.alias);
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestEntry = entry;
+          }
+        }
+        if (bestEntry && bestDist <= 2) {
+          matchedBook = bestEntry.book;
+          remainingText = rest;
+        }
+      }
     }
   }
 
@@ -145,22 +196,42 @@ export function findMatchingCanonBooks(query: string, limit = 6): CanonBook[] {
   const exactStarts: CanonBook[] = [];
   const aliasStarts: CanonBook[] = [];
   const contains: CanonBook[] = [];
+  const fuzzy: CanonBook[] = [];
+  const seenIds = new Set<string>();
 
   for (const book of CANON_BOOKS) {
     const lowerName = book.name.toLowerCase();
     if (lowerName.startsWith(cleaned)) {
-      exactStarts.push(book);
+      if (!seenIds.has(book.id)) {
+        seenIds.add(book.id);
+        exactStarts.push(book);
+      }
     } else if (book.aliases.some((a) => a.toLowerCase().startsWith(cleaned))) {
-      aliasStarts.push(book);
+      if (!seenIds.has(book.id)) {
+        seenIds.add(book.id);
+        aliasStarts.push(book);
+      }
     } else if (
       lowerName.includes(cleaned) ||
       book.aliases.some((a) => a.toLowerCase().includes(cleaned))
     ) {
-      contains.push(book);
+      if (!seenIds.has(book.id)) {
+        seenIds.add(book.id);
+        contains.push(book);
+      }
+    } else if (cleaned.length >= 4) {
+      const minDistance = Math.min(
+        levenshteinDistance(cleaned, lowerName),
+        ...book.aliases.map((a) => levenshteinDistance(cleaned, a.toLowerCase()))
+      );
+      if (minDistance <= 2 && !seenIds.has(book.id)) {
+        seenIds.add(book.id);
+        fuzzy.push(book);
+      }
     }
   }
 
-  return [...exactStarts, ...aliasStarts, ...contains].slice(0, limit);
+  return [...exactStarts, ...aliasStarts, ...contains, ...fuzzy].slice(0, limit);
 }
 
 export interface EasyWorshipCompletionState {

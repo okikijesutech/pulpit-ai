@@ -211,6 +211,28 @@ describe('FreeShowAdapter Integration with MockFreeShowServer', () => {
       expect(result.status).toBe('confirmed');
     });
 
+    it('translates canonical scripture reference to FreeShow native numeric format (e.g. Philippians 4:6 -> 50.4.6)', async () => {
+      await adapter.connect();
+
+      const scriptureCommand: FreeShowCommand = {
+        action: 'start_scripture',
+        data: {
+          reference: 'Philippians 4:6'
+        },
+        source: 'operator',
+        correlationId: 'test_canonical_freeshow_num',
+        createdAt: Date.now()
+      };
+
+      const result = await adapter.dispatchCommand(scriptureCommand);
+      expect(result.success).toBe(true);
+
+      const received = mockServer.getReceivedCommands().find((c) => c.action === 'start_scripture');
+      expect(received).toBeDefined();
+      expect(received?.data?.reference).toBe('50.4.6');
+      expect(received?.data?.referenceDisplay).toBe('Philippians 4:6');
+    });
+
     it('confirms navigation commands (next_slide, previous_slide) when FreeShow emits REMOTE OUT', async () => {
       await adapter.connect();
       const rawSocket = (adapter as any).socket;

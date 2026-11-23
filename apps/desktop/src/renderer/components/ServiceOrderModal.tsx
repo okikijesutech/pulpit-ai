@@ -48,7 +48,7 @@ interface ServiceOrderModalProps {
   onRemoveCue?: (index: number) => void;
   onMoveCue?: (fromIndex: number, toIndex: number) => void;
   freeShowConnected: boolean;
-  isLocked: boolean;
+  isLocked?: boolean;
 }
 
 export const DEFAULT_SUNDAY_LITURGY: LiturgyCueItem[] = [
@@ -147,7 +147,7 @@ export const ServiceOrderModal: React.FC<ServiceOrderModalProps> = ({
   onRemoveCue,
   onMoveCue,
   freeShowConnected,
-  isLocked
+  isLocked: _isLocked
 }) => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -333,7 +333,7 @@ export const ServiceOrderModal: React.FC<ServiceOrderModalProps> = ({
               <button
                 type="button"
                 onClick={onAdvanceCue}
-                disabled={!freeShowConnected || isLocked}
+                disabled={!freeShowConnected}
                 className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-40 text-white text-xs font-bold shadow-md shadow-amber-900/30 flex items-center space-x-1.5 transition-all active:scale-95"
               >
                 <span>Advance to: {nextCue.title}</span>
@@ -480,7 +480,7 @@ export const ServiceOrderModal: React.FC<ServiceOrderModalProps> = ({
                   <button
                     type="button"
                     onClick={() => onSelectCue(index)}
-                    disabled={!freeShowConnected || isLocked}
+                    disabled={!freeShowConnected}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
                       isActive
                         ? 'bg-amber-500 text-slate-950 border border-amber-400 shadow-md font-extrabold'

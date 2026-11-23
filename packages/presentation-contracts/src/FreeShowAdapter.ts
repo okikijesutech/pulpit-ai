@@ -1,5 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import {
+  CANON_BOOKS,
+  findCanonBook,
   FreeShowCommand,
   FreeShowConnectionStatus,
   FreeShowStateSnapshot
@@ -254,23 +256,67 @@ export class FreeShowAdapter {
 
     // 2. Validate scripture command reference (strictly no 43.3.16 or John 3:16 fallbacks)
     let refDisplay: string | undefined = undefined;
+    let freeshowRef: string | undefined = undefined;
     if (command.action === 'start_scripture') {
       const rawRef = command.data?.reference;
       const displayRef = command.data?.referenceDisplay;
       const book = command.data?.book;
+      const chapter = command.data?.chapter;
+      const verseStart = command.data?.verseStart ?? command.data?.verse;
 
       if (displayRef && typeof displayRef === 'string' && displayRef.trim().length > 0) {
         refDisplay = displayRef.trim();
       } else if (rawRef && typeof rawRef === 'string' && rawRef.trim().length > 0) {
         refDisplay = rawRef.trim();
       } else if (book && typeof book === 'string' && book.trim().length > 0) {
-        refDisplay = `${book} ${command.data?.chapter}:${command.data?.verseStart ?? command.data?.verse}`;
+        refDisplay = `${book} ${chapter ?? 1}:${verseStart ?? 1}`;
       } else {
         return {
           success: false,
           status: 'rejected',
           reason: 'Command rejected: start_scripture requires a valid, explicit reference.'
         };
+      }
+
+      // Format FreeShow native numeric reference: "${bookNumber}.${chapter}.${verseNumbers}"
+      // e.g. "Philippians 4:6" -> "50.4.6"
+      if (/^\d+\.\d+(\.[\d,-]+)?$/.test(refDisplay)) {
+        freeshowRef = refDisplay;
+      } else {
+        let bName = book;
+        let ch = chapter;
+        let vPart = verseStart;
+
+        if (!bName || !ch) {
+          const match = refDisplay.match(/^([1-3]?\s*[A-Za-z]+(?:\s+[A-Za-z]+)?)\s+(\d+)[:\s]+([\d,-]+)$/);
+          if (match) {
+            bName = match[1].trim();
+            ch = parseInt(match[2], 10);
+            vPart = match[3].trim();
+          }
+        }
+
+        if (bName && ch) {
+          const canon = findCanonBook(String(bName));
+          if (canon) {
+            const bookIndex = CANON_BOOKS.findIndex((b) => b.id === canon.id);
+            if (bookIndex >= 0) {
+              const bookNumber = bookIndex + 1;
+              refDisplay = `${canon.name} ${ch}:${vPart ?? 1}`;
+              if (vPart && String(vPart).includes('-')) {
+                const [start, end] = String(vPart).split('-').map(Number);
+                if (start && end && end >= start) {
+                  const expanded = Array.from({ length: end - start + 1 }, (_, i) => start + i).join(',');
+                  freeshowRef = `${bookNumber}.${ch}.${expanded}`;
+                } else {
+                  freeshowRef = `${bookNumber}.${ch}.${vPart}`;
+                }
+              } else {
+                freeshowRef = `${bookNumber}.${ch}.${vPart ?? 1}`;
+              }
+            }
+          }
+        }
       }
     }
 
@@ -425,7 +471,11 @@ export class FreeShowAdapter {
       switch (command.action) {
         case 'start_scripture':
           remoteChannel = 'API:start_scripture';
-          remoteData = { reference: refDisplay, play: true };
+          remoteData = {
+            reference: freeshowRef || refDisplay,
+            referenceDisplay: refDisplay,
+            play: true
+          };
           break;
         case 'next_slide':
           remoteChannel = 'API:next_slide';
@@ -482,7 +532,15 @@ export class FreeShowAdapter {
       }
 
       // Emit action with callback for port 5505 / mock server
-      this.socket!.emit('action', { action: command.action, data: command.data }, (response: any) => {
+      const actionData = command.action === 'start_scripture'
+        ? {
+            ...command.data,
+            reference: freeshowRef || refDisplay,
+            referenceDisplay: refDisplay
+          }
+        : command.data;
+
+      this.socket!.emit('action', { action: command.action, data: actionData }, (response: any) => {
         if (response && response.success !== false) {
           finish({ success: true, status: 'confirmed' });
         } else if (response && response.success === false) {

@@ -62,6 +62,27 @@ describe('QuickScriptureParser (Instant Church Verse Launcher)', () => {
     expect(res.verseStart).toBe(1);
   });
 
+  it('recovers from common typos and misspellings with fuzzy alias matching (philipains 4:6, phillippians 4 6)', () => {
+    const res1 = parseQuickScripture('philipains 4:6');
+    expect(res1.isValid).toBe(true);
+    expect(res1.bookName).toBe('Philippians');
+    expect(res1.chapter).toBe(4);
+    expect(res1.verseStart).toBe(6);
+    expect(res1.referenceString).toBe('Philippians 4:6');
+
+    const res2 = parseQuickScripture('phillippians 4 6');
+    expect(res2.isValid).toBe(true);
+    expect(res2.bookName).toBe('Philippians');
+    expect(res2.chapter).toBe(4);
+    expect(res2.verseStart).toBe(6);
+
+    const res3 = parseQuickScripture('phil 4:6');
+    expect(res3.isValid).toBe(true);
+    expect(res3.bookName).toBe('Philippians');
+    expect(res3.chapter).toBe(4);
+    expect(res3.verseStart).toBe(6);
+  });
+
   it('validates canonical chapter and verse bounds', () => {
     // Romans has 16 chapters
     const invalidChapter = parseQuickScripture('Romans 50 1');

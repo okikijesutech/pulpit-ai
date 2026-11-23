@@ -125,10 +125,11 @@ export const Header: React.FC = () => {
         {/* Operator Mode Toggle */}
         <div className="hidden sm:flex items-center space-x-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800/90 text-xs font-semibold flex-shrink-0 shadow-inner">
           <span className="text-[9px] text-slate-400 uppercase tracking-wider px-1.5 hidden md:inline font-mono">
-            Mode:
+            AI Assist:
           </span>
           <button
             onClick={() => setOperatorMode('suggestions')}
+            title="AI Assist Suggestions Mode: AI queues candidate passages for 1-click approval"
             className={`px-2 py-1 rounded-md transition-all text-xs ${
               authorityState.operatorMode === 'suggestions'
                 ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-900/40'
@@ -139,6 +140,7 @@ export const Header: React.FC = () => {
           </button>
           <button
             onClick={() => setOperatorMode('manual')}
+            title="Manual Control Mode: UI prioritizes manual slide cues and direct search"
             className={`px-2 py-1 rounded-md transition-all text-xs ${
               authorityState.operatorMode === 'manual'
                 ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-sm shadow-amber-900/40'

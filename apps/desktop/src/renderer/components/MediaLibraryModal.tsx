@@ -27,7 +27,6 @@ export const MediaLibraryModal: React.FC = () => {
   const clearActiveMedia = usePresentationStore((s) => s.clearActiveMedia);
 
   const freeShowConnected = useAuthorityStore((s) => s.freeShowSnapshot.connected);
-  const isLocked = useAuthorityStore((s) => s.authorityState.manualLockActive);
 
   const [filterTab, setFilterTab] = useState<'all' | MediaCategory>('all');
   const [uploadCategory, setUploadCategory] = useState<MediaCategory>('flyer');
@@ -269,7 +268,7 @@ export const MediaLibraryModal: React.FC = () => {
                       <div className="flex items-center justify-between gap-1.5">
                         <button
                           type="button"
-                          disabled={!freeShowConnected || isLocked}
+                          disabled={!freeShowConnected}
                           onClick={() => projectMediaAsset(asset)}
                           className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition-all disabled:opacity-40 ${
                             isLive

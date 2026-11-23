@@ -42,7 +42,6 @@ export const CountdownTimerModal: React.FC = () => {
   const stopProjectedTimer = usePresentationStore((s) => s.stopProjectedTimer);
 
   const freeShowConnected = useAuthorityStore((s) => s.freeShowSnapshot.connected);
-  const isLocked = useAuthorityStore((s) => s.authorityState.manualLockActive);
 
   const [customMinutes, setCustomMinutes] = useState(Math.floor(timer.totalSeconds / 60));
   const [customSeconds, setCustomSeconds] = useState(timer.totalSeconds % 60);
@@ -296,7 +295,7 @@ export const CountdownTimerModal: React.FC = () => {
             ) : (
               <button
                 type="button"
-                disabled={!freeShowConnected || isLocked}
+                disabled={!freeShowConnected}
                 onClick={projectTimerToScreen}
                 className="py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold flex items-center justify-center space-x-1.5 shadow-md"
               >

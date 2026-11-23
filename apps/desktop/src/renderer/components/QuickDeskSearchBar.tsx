@@ -182,12 +182,28 @@ export const QuickDeskSearchBar: React.FC<QuickDeskSearchBarProps> = ({
     }
 
     if (mode === 'bible') {
+      // ArrowRight: complete ghost text if cursor is at the end
+      if (e.key === 'ArrowRight' && completion?.ghostText) {
+        const input = inputRef.current;
+        if (input && input.selectionStart === query.length) {
+          e.preventDefault();
+          setQuery(query + completion.ghostText + ' ');
+          setIsDropdownOpen(true);
+          return;
+        }
+      }
+
       // EasyWorship progressive Spacebar / Tab autocomplete: Book -> Chapter -> Verse
       if (e.key === ' ' || e.key === 'Tab') {
         const nextVal = applyEasyWorshipSpaceStep(query);
         if (nextVal) {
           e.preventDefault();
           setQuery(nextVal);
+          setIsDropdownOpen(true);
+          return;
+        } else if (e.key === 'Tab' && completion?.ghostText) {
+          e.preventDefault();
+          setQuery(query + completion.ghostText + ' ');
           setIsDropdownOpen(true);
           return;
         }
@@ -201,6 +217,10 @@ export const QuickDeskSearchBar: React.FC<QuickDeskSearchBarProps> = ({
           setIsDropdownOpen(false);
         } else if (completion?.matchedBook && completion.stage === 'book') {
           setQuery(`${completion.matchedBook.name} `);
+          setIsDropdownOpen(true);
+        } else if (completion?.suggestions && completion.suggestions.length > 0) {
+          setQuery(`${completion.suggestions[0].name} `);
+          setIsDropdownOpen(true);
         }
       }
     } else if (mode === 'songs' && e.key === 'Enter') {
@@ -349,14 +369,16 @@ export const QuickDeskSearchBar: React.FC<QuickDeskSearchBarProps> = ({
               <div className="flex items-center justify-between px-1 text-[10px] text-slate-400">
                 <span className="font-mono">
                   {parsedScripture?.isValid
-                    ? `✓ Ready: ${parsedScripture.referenceString} (${activeTranslation})`
+                    ? `✓ Ready: ${parsedScripture.referenceString} (${activeTranslation}) — Press Enter to Project`
                     : completion?.stage === 'chapter' && completion.matchedBook
                       ? `${completion.matchedBook.name} (1–${completion.matchedBook.totalChapters} ch) → type chapter + Space`
                       : completion?.stage === 'verse' && completion.matchedBook
                         ? `Type verse # (e.g. 16 or 1-5) → Enter to project`
-                        : 'Type book letters → press Space to lock book'}
+                        : completion?.matchedBook
+                          ? `Press Tab / Space / → to complete: ${completion.matchedBook.name}`
+                          : 'Type book letters → press Space to lock book'}
                 </span>
-                <span className="text-[9px] font-mono text-indigo-400">Space ↹</span>
+                <span className="text-[9px] font-mono text-indigo-400">Space ↹ →</span>
               </div>
 
               {/* Book Matching Suggestions List */}

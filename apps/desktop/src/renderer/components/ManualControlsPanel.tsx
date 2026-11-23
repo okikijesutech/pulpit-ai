@@ -169,44 +169,48 @@ export const ManualControlsPanel: React.FC<ManualControlsPanelProps> = React.mem
           </button>
         </div>
 
-        {/* Clear & Restore Grid */}
-        <div className='grid grid-cols-3 gap-1.5'>
-          <button
-            disabled={disabled}
-            onClick={() => onDispatch("clear_slide")}
-            title='Clear current slide text [C]'
-            className='p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/80 disabled:opacity-40 text-[11px] text-slate-300 font-semibold transition-all flex flex-col items-center justify-center active:scale-95 group'
-          >
-            <span className='truncate'>Clear Slide</span>
-            <kbd className='text-[8px] font-mono text-slate-500 group-hover:text-slate-400'>
-              C
-            </kbd>
-          </button>
+        {/* Clear & Emergency Blackout Actions */}
+        <div className='flex items-center gap-2'>
+          <div className='grid grid-cols-2 gap-1.5 flex-1'>
+            <button
+              disabled={disabled}
+              onClick={() => onDispatch("clear_slide")}
+              title='Clear current slide text [C]'
+              className='p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/80 disabled:opacity-40 text-[11px] text-slate-300 font-semibold transition-all flex flex-col items-center justify-center active:scale-95 group'
+            >
+              <span className='truncate'>Clear Slide</span>
+              <kbd className='text-[8px] font-mono text-slate-500 group-hover:text-slate-400'>
+                C
+              </kbd>
+            </button>
+
+            <button
+              disabled={disabled}
+              onClick={() => onDispatch("restore_output")}
+              title='Restore last cleared output [R]'
+              className='p-1.5 rounded-xl bg-emerald-950/40 border border-emerald-800/60 hover:bg-emerald-900/50 hover:border-emerald-700 disabled:opacity-40 text-[11px] text-emerald-300 font-semibold transition-all flex flex-col items-center justify-center active:scale-95 group shadow-sm shadow-emerald-950/40'
+            >
+              <div className='flex items-center space-x-1 truncate'>
+                <RotateCcw className='w-3 h-3 flex-shrink-0' />
+                <span className='truncate'>Restore</span>
+              </div>
+              <kbd className='text-[8px] font-mono text-emerald-400/60 group-hover:text-emerald-300'>
+                R
+              </kbd>
+            </button>
+          </div>
+
+          <div className='h-7 w-[1px] bg-slate-800 flex-shrink-0' aria-hidden='true' />
 
           <button
             disabled={disabled}
             onClick={() => onDispatch("clear_all")}
-            title='Blackout screen and clear all output [Esc]'
-            className='p-1.5 rounded-xl bg-rose-950/40 border border-rose-800/60 hover:bg-rose-900/50 hover:border-rose-700 disabled:opacity-40 text-[11px] text-rose-300 font-semibold transition-all flex flex-col items-center justify-center active:scale-95 group shadow-sm shadow-rose-950/40'
+            title='Emergency Blackout: clear all screens [Esc]'
+            className='px-3 py-1.5 rounded-xl bg-rose-950/50 border border-rose-800/80 hover:bg-rose-900/70 hover:border-rose-600 disabled:opacity-40 text-[11px] text-rose-300 font-bold transition-all flex flex-col items-center justify-center active:scale-95 group shadow-sm shadow-rose-950/50 flex-shrink-0'
           >
             <span className='truncate'>Blackout</span>
-            <kbd className='text-[8px] font-mono text-rose-400/60 group-hover:text-rose-300'>
+            <kbd className='text-[8px] font-mono text-rose-400/70 group-hover:text-rose-200'>
               Esc
-            </kbd>
-          </button>
-
-          <button
-            disabled={disabled}
-            onClick={() => onDispatch("restore_output")}
-            title='Restore last cleared output [R]'
-            className='p-1.5 rounded-xl bg-emerald-950/40 border border-emerald-800/60 hover:bg-emerald-900/50 hover:border-emerald-700 disabled:opacity-40 text-[11px] text-emerald-300 font-semibold transition-all flex flex-col items-center justify-center active:scale-95 group shadow-sm shadow-emerald-950/40'
-          >
-            <div className='flex items-center space-x-1 truncate'>
-              <RotateCcw className='w-3 h-3 flex-shrink-0' />
-              <span className='truncate'>Restore</span>
-            </div>
-            <kbd className='text-[8px] font-mono text-emerald-400/60 group-hover:text-emerald-300'>
-              R
             </kbd>
           </button>
         </div>

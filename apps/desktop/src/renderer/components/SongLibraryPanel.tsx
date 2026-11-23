@@ -86,11 +86,6 @@ export const SongLibraryPanel: React.FC<SongLibraryPanelProps> = ({
 
   const handleProjectSection = async (section: SongSection, idx: number) => {
     if (!selectedSong) return;
-    if (manualLockActive) {
-      setProjectionFeedback('Blocked: Manual Lock is active');
-      setTimeout(() => setProjectionFeedback(null), 3000);
-      return;
-    }
     if (!freeShowConnected) {
       setProjectionFeedback('Cannot project: FreeShow disconnected');
       setTimeout(() => setProjectionFeedback(null), 3000);
