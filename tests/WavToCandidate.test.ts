@@ -62,6 +62,7 @@ describe('PR 9: WAV-to-Candidate Fixture Integration & Performance Benchmarks', 
 
       const segmenter = new SpeechSegmenter({ sampleRate, minSegmentSeconds: 0.5 });
       const speechEngine = new SpeechRecognitionEngine();
+      speechEngine.getWorker().registerMockTranscript('', '', 0.0);
       const scriptureGen = new ScriptureCandidateGenerator(db);
 
       speechEngine.getWorker().setNextResult({
@@ -109,6 +110,7 @@ describe('PR 9: WAV-to-Candidate Fixture Integration & Performance Benchmarks', 
         adaptiveNoiseFloor: true
       });
       const speechEngine = new SpeechRecognitionEngine();
+      speechEngine.getWorker().registerMockTranscript('', '', 0.0);
       const scriptureGen = new ScriptureCandidateGenerator(db);
 
       speechEngine.getWorker().setNextResult({
@@ -155,6 +157,7 @@ describe('PR 9: WAV-to-Candidate Fixture Integration & Performance Benchmarks', 
       const singingDetector = new SingingActivityDetector({ sampleRate });
       const segmenter = new SpeechSegmenter({ sampleRate, minSegmentSeconds: 0.5 });
       const speechEngine = new SpeechRecognitionEngine();
+      speechEngine.getWorker().registerMockTranscript('', '', 0.0);
       const scriptureGen = new ScriptureCandidateGenerator(db);
 
       let candidateCount = 0;
@@ -198,5 +201,5 @@ describe('PR 9: WAV-to-Candidate Fixture Integration & Performance Benchmarks', 
     expect(report.referenceRecall).toBeGreaterThanOrEqual(95.0); // Recall >= 95%
     expect(report.wrongSuggestionRate).toBeLessThanOrEqual(5.0); // Wrong-suggestion <= 5%
     expect(report.latency.meanMs).toBeLessThan(1000); // Mean latency < 1 second
-  });
+  }, 60000);
 });

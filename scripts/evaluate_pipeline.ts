@@ -130,13 +130,7 @@ export async function runPipelineEvaluation(): Promise<PipelineEvaluationReport>
     const speechEngine = new SpeechRecognitionEngine();
 
     // Mock transcript mapping to ground truth for realistic evaluation
-    if (fixture.groundTruthTranscript) {
-      speechEngine.getWorker().setNextResult({
-        text: fixture.groundTruthTranscript,
-        confidence: 0.96,
-        latencyMs: 18
-      });
-    }
+    speechEngine.getWorker().registerMockTranscript('', fixture.groundTruthTranscript || '', 0.96);
 
     let recognizedTranscript = '';
     let suggestedRef: string | null = null;

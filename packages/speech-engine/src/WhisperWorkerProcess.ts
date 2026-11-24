@@ -190,10 +190,17 @@ export class WhisperWorkerProcess {
     const binaryName = process.platform === 'win32' ? 'whisper-server.exe' : 'whisper-server';
     const candidatePaths = [
       join(process.cwd(), 'bin', binaryName),
+      join(process.cwd(), '..', 'bin', binaryName),
+      join(process.cwd(), '..', '..', 'bin', binaryName),
       join(process.cwd(), 'packages', 'speech-engine', 'bin', binaryName),
+      join(process.cwd(), '..', 'packages', 'speech-engine', 'bin', binaryName),
+      join(process.cwd(), '..', '..', 'packages', 'speech-engine', 'bin', binaryName),
       join(__dirname, '..', 'bin', binaryName),
       join(__dirname, '..', '..', 'bin', binaryName),
-      join((process as any).resourcesPath || '', 'app.asar.unpacked', 'node_modules', '@pulpit-ai', 'speech-engine', 'bin', binaryName)
+      join(__dirname, '..', '..', '..', 'bin', binaryName),
+      join(__dirname, '..', '..', '..', '..', 'bin', binaryName),
+      join((process as any).resourcesPath || '', 'app.asar.unpacked', 'node_modules', '@pulpit-ai', 'speech-engine', 'bin', binaryName),
+      join((process as any).resourcesPath || '', 'bin', binaryName)
     ];
 
     for (const p of candidatePaths) {
@@ -218,10 +225,17 @@ export class WhisperWorkerProcess {
     const binaryName = process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli';
     const candidatePaths = [
       join(process.cwd(), 'bin', binaryName),
+      join(process.cwd(), '..', 'bin', binaryName),
+      join(process.cwd(), '..', '..', 'bin', binaryName),
       join(process.cwd(), 'packages', 'speech-engine', 'bin', binaryName),
+      join(process.cwd(), '..', 'packages', 'speech-engine', 'bin', binaryName),
+      join(process.cwd(), '..', '..', 'packages', 'speech-engine', 'bin', binaryName),
       join(__dirname, '..', 'bin', binaryName),
       join(__dirname, '..', '..', 'bin', binaryName),
-      join((process as any).resourcesPath || '', 'app.asar.unpacked', 'node_modules', '@pulpit-ai', 'speech-engine', 'bin', binaryName)
+      join(__dirname, '..', '..', '..', 'bin', binaryName),
+      join(__dirname, '..', '..', '..', '..', 'bin', binaryName),
+      join((process as any).resourcesPath || '', 'app.asar.unpacked', 'node_modules', '@pulpit-ai', 'speech-engine', 'bin', binaryName),
+      join((process as any).resourcesPath || '', 'bin', binaryName)
     ];
 
     for (const p of candidatePaths) {
@@ -267,11 +281,18 @@ export class WhisperWorkerProcess {
 
     const modelDirs = [
       join(process.cwd(), 'models'),
+      join(process.cwd(), '..', 'models'),
+      join(process.cwd(), '..', '..', 'models'),
       join(process.cwd(), 'packages', 'speech-engine', 'models'),
+      join(process.cwd(), '..', 'packages', 'speech-engine', 'models'),
+      join(process.cwd(), '..', '..', 'packages', 'speech-engine', 'models'),
       join(platformAppData, 'Pulpit AI', 'models'),
       join(home, '.pulpit-ai', 'models'),
       join(__dirname, '..', 'models'),
-      join(__dirname, '..', '..', 'models')
+      join(__dirname, '..', '..', 'models'),
+      join(__dirname, '..', '..', '..', 'models'),
+      join(__dirname, '..', '..', '..', '..', 'models'),
+      join((process as any).resourcesPath || '', 'models')
     ];
 
     for (const dir of modelDirs) {

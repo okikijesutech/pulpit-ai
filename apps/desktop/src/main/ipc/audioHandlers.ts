@@ -118,9 +118,8 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
       whisperWorker.setSingingGuardActive(activityMetrics.isSinging);
       sherpaManager.pushPcmFrame(int16);
     } else {
-      speechSegmenter.setSingingActive(activityMetrics.isSinging);
       whisperWorker.setSingingGuardActive(activityMetrics.isSinging);
-      speechSegmenter.pushFrame(int16, activityMetrics.isSinging);
+      speechSegmenter.pushFrame(int16, false);
     }
 
     mainWindow.webContents.send('audio:level-changed', metrics);
