@@ -78,6 +78,8 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
       speechSegmenter.reset();
       sherpaManager?.reset();
       dualEngineVerifier?.resetBuffer();
+      singingActivityDetector.reset();
+      lastActivityMode = '';
       mainWindow.webContents.send('audio:level-changed', {
         rmsLevel: 0,
         decibels: -100,
@@ -144,11 +146,15 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
       speechSegmenter.reset();
       sherpaManager?.reset();
       dualEngineVerifier?.resetBuffer();
+      singingActivityDetector.reset();
+      lastActivityMode = '';
       mainWindow.webContents.send('audio:level-changed', AudioLevelMeter.disconnectedMetrics());
     } else if (state === 'muted') {
       speechSegmenter.reset();
       sherpaManager?.reset();
       dualEngineVerifier?.resetBuffer();
+      singingActivityDetector.reset();
+      lastActivityMode = '';
       mainWindow.webContents.send('audio:level-changed', {
         rmsLevel: 0,
         decibels: -100,

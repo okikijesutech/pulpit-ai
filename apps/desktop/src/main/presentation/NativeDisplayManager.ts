@@ -44,12 +44,20 @@ export class NativeDisplayManager {
     }));
   }
 
-  private getAppUrl(view: 'projector' | 'foldback'): string {
+  private loadView(win: BrowserWindow, view: 'projector' | 'foldback'): void {
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     if (isDev && process.env.VITE_DEV_SERVER_URL) {
-      return `${process.env.VITE_DEV_SERVER_URL}?view=${view}`;
+      win.loadURL(`${process.env.VITE_DEV_SERVER_URL}?view=${view}`).catch(console.error);
+    } else {
+      win.loadFile(join(__dirname, '../../renderer/index.html'), { query: { view } }).catch(console.error);
     }
-    return `file://${join(__dirname, '../renderer/index.html')}?view=${view}`;
+  }
+
+  private applyWindowSecurity(win: BrowserWindow): void {
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    win.webContents.on('will-navigate', (event) => {
+      event.preventDefault();
+    });
   }
 
   /**
@@ -92,7 +100,8 @@ export class NativeDisplayManager {
       }
     });
 
-    this.projectorWindow.loadURL(this.getAppUrl('projector'));
+    this.applyWindowSecurity(this.projectorWindow);
+    this.loadView(this.projectorWindow, 'projector');
 
     this.projectorWindow.webContents.on('did-finish-load', () => {
       this.broadcastSlide(this.lastSlide, this.lastCleared);
@@ -140,7 +149,8 @@ export class NativeDisplayManager {
       }
     });
 
-    this.foldbackWindow.loadURL(this.getAppUrl('foldback'));
+    this.applyWindowSecurity(this.foldbackWindow);
+    this.loadView(this.foldbackWindow, 'foldback');
 
     this.foldbackWindow.webContents.on('did-finish-load', () => {
       this.broadcastSlide(this.lastSlide, this.lastCleared);
@@ -182,7 +192,8 @@ export class NativeDisplayManager {
 
     this.previewWindow.setAspectRatio(16 / 9);
 
-    this.previewWindow.loadURL(this.getAppUrl('projector'));
+    this.applyWindowSecurity(this.previewWindow);
+    this.loadView(this.previewWindow, 'projector');
 
     this.previewWindow.webContents.on('did-finish-load', () => {
       this.broadcastSlide(this.lastSlide, this.lastCleared);
@@ -224,6 +235,10 @@ export class NativeDisplayManager {
   }
 
   public closeAllWindows(): void {
+    if (this.powerSaveBlockerId !== null && powerSaveBlocker.isStarted(this.powerSaveBlockerId)) {
+      powerSaveBlocker.stop(this.powerSaveBlockerId);
+      this.powerSaveBlockerId = null;
+    }
     if (this.projectorWindow && !this.projectorWindow.isDestroyed()) this.projectorWindow.close();
     if (this.foldbackWindow && !this.foldbackWindow.isDestroyed()) this.foldbackWindow.close();
     if (this.previewWindow && !this.previewWindow.isDestroyed()) this.previewWindow.close();

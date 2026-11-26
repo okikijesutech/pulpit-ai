@@ -24,7 +24,6 @@ export interface SongSearchResult {
 
 let SqliteDatabaseSync: any = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const sqlite = require('node:sqlite');
   SqliteDatabaseSync = sqlite.DatabaseSync;
 } catch {

@@ -128,16 +128,25 @@ export class NativePresentationEngine implements IPresentationEngine {
 
     switch (action as PresentationAction) {
       case 'start_scripture': {
-        const rawRef = String(data?.reference || data?.referenceDisplay || 'Scripture');
-        const text = String(data?.text || data?.fullText || '');
+        const rawRef = data?.reference || data?.referenceDisplay;
+        const text = data?.text || data?.fullText;
+        if (!rawRef || typeof rawRef !== 'string' || !rawRef.trim() || !text || typeof text !== 'string' || !text.trim()) {
+          return {
+            success: false,
+            status: 'rejected',
+            reason: 'Command rejected: start_scripture requires explicit reference and text.'
+          };
+        }
+        const refStr = rawRef.trim();
+        const textStr = text.trim();
         const translation = String(data?.translation || 'WEB');
 
         this.activeSlide = {
           id: `scripture_${Date.now()}`,
           category: 'scripture',
-          headerTitle: rawRef,
-          primaryBody: text,
-          citationSubtext: `${rawRef} (${translation})`,
+          headerTitle: refStr,
+          primaryBody: textStr,
+          citationSubtext: `${refStr} (${translation})`,
           theme: {
             backgroundType: 'color',
             backgroundValue: '#090D16',
@@ -150,9 +159,59 @@ export class NativePresentationEngine implements IPresentationEngine {
         this.isOutputCleared = false;
         this.slideHistory.push(this.activeSlide);
         this.historyIndex = this.slideHistory.length - 1;
-        this.stateSnapshot.currentShowId = `Scripture: ${rawRef}`;
+        this.stateSnapshot.currentShowId = `Scripture: ${refStr}`;
         this.emitSlide();
 
+        return { success: true, status: 'confirmed' };
+      }
+
+      case 'start_show':
+      case 'name_select_show': {
+        const songName = String(data?.name || data?.title || 'Song Selected');
+        this.activeSlide = {
+          id: `song_${Date.now()}`,
+          category: 'song',
+          headerTitle: songName,
+          primaryBody: String(data?.subtitle || data?.author || songName),
+          citationSubtext: songName,
+          theme: {
+            backgroundType: 'color',
+            backgroundValue: '#090D16',
+            textColor: '#FFFFFF',
+            accentColor: '#A78BFA'
+          },
+          timestamp: Date.now()
+        };
+        this.isOutputCleared = false;
+        this.slideHistory.push(this.activeSlide);
+        this.historyIndex = this.slideHistory.length - 1;
+        this.stateSnapshot.currentShowId = songName;
+        this.emitSlide();
+        return { success: true, status: 'confirmed' };
+      }
+
+      case 'index_select_slide':
+      case 'name_select_slide': {
+        const slideName = String(data?.name || data?.label || 'Verse');
+        const lyricText = String(data?.text || data?.lyrics || data?.content || slideName);
+        this.activeSlide = {
+          id: `song_slide_${Date.now()}`,
+          category: 'song',
+          headerTitle: slideName,
+          primaryBody: lyricText,
+          citationSubtext: this.stateSnapshot.currentShowId || 'Hymn / Worship',
+          theme: {
+            backgroundType: 'color',
+            backgroundValue: '#090D16',
+            textColor: '#FFFFFF',
+            accentColor: '#A78BFA'
+          },
+          timestamp: Date.now()
+        };
+        this.isOutputCleared = false;
+        this.slideHistory.push(this.activeSlide);
+        this.historyIndex = this.slideHistory.length - 1;
+        this.emitSlide();
         return { success: true, status: 'confirmed' };
       }
 
@@ -174,7 +233,7 @@ export class NativePresentationEngine implements IPresentationEngine {
           id: `logo_${Date.now()}`,
           category: 'logo',
           primaryBody: '',
-          headerTitle: 'Welcome to Worship',
+          headerTitle: String(data?.name || 'Welcome to Worship'),
           theme: {
             backgroundType: 'color',
             backgroundValue: '#000000',
@@ -195,6 +254,69 @@ export class NativePresentationEngine implements IPresentationEngine {
 
       case 'clear_overlays': {
         this.options.onOverlayChanged?.(null);
+        return { success: true, status: 'confirmed' };
+      }
+
+      case 'start_timer': {
+        const timerText = String(data?.time || data?.formatted || '00:00');
+        this.options.onOverlayChanged?.({ timer: data || { formatted: timerText } });
+        return { success: true, status: 'confirmed' };
+      }
+
+      case 'stop_timer': {
+        this.options.onOverlayChanged?.({ timer: null });
+        return { success: true, status: 'confirmed' };
+      }
+
+      case 'set_stage_message': {
+        const msg = String(data?.message || data?.text || '');
+        this.options.onOverlayChanged?.({ stageMessage: msg });
+        return { success: true, status: 'confirmed' };
+      }
+
+      case 'clear_stage_message': {
+        this.options.onOverlayChanged?.({ stageMessage: null });
+        return { success: true, status: 'confirmed' };
+      }
+
+      case 'set_stage_layout': {
+        this.options.onOverlayChanged?.({ stageLayout: data });
+        return { success: true, status: 'confirmed' };
+      }
+
+      case 'show_media': {
+        const assetName = String(data?.name || 'Media Asset');
+        this.activeSlide = {
+          id: `media_${Date.now()}`,
+          category: 'logo',
+          headerTitle: assetName,
+          primaryBody: '',
+          theme: {
+            backgroundType: data?.dataUrl ? 'image' : 'color',
+            backgroundValue: String(data?.dataUrl || '#000000'),
+            textColor: '#FFFFFF'
+          },
+          timestamp: Date.now()
+        };
+        this.isOutputCleared = false;
+        this.emitSlide();
+        return { success: true, status: 'confirmed' };
+      }
+
+      case 'clear_background': {
+        if (this.activeSlide?.theme) {
+          this.activeSlide.theme.backgroundValue = '#000000';
+          this.emitSlide();
+        }
+        return { success: true, status: 'confirmed' };
+      }
+
+      case 'freeze_output':
+      case 'get_output':
+      case 'get_output_slide_text':
+      case 'get_output_group_name':
+      case 'scripture_next':
+      case 'scripture_previous': {
         return { success: true, status: 'confirmed' };
       }
 
@@ -219,8 +341,11 @@ export class NativePresentationEngine implements IPresentationEngine {
       }
 
       default: {
-        // Fallback for generic actions
-        return { success: true, status: 'confirmed' };
+        return {
+          success: false,
+          status: 'rejected',
+          reason: `Action '${action}' is not supported by NativePresentationEngine`
+        };
       }
     }
   }

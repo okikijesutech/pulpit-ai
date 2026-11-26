@@ -227,30 +227,30 @@ export const App: React.FC = () => {
           manualLockActive={authorityState.manualLockActive}
         />
       ) : (
-        <main className="flex-1 min-h-0 min-w-0 p-3 sm:p-3.5 xl:p-4 grid grid-cols-12 auto-rows-max xl:auto-rows-fr gap-2.5 sm:gap-3 xl:gap-3.5 overflow-y-auto xl:overflow-hidden">
-          {/* Column 1 (41.7% at xl:): Live Presentation Output and Live Speech Transcript */}
+        <main className="flex-1 min-h-0 min-w-0 p-2.5 sm:p-3 lg:p-3.5 xl:p-4 grid grid-cols-12 auto-rows-max lg:auto-rows-fr gap-2.5 sm:gap-3 lg:gap-3 xl:gap-3.5 overflow-y-auto lg:overflow-hidden">
+          {/* Column 1 (41.7% at lg/xl:): Live Presentation Output and Live Speech Transcript */}
           <section
             aria-label="Stage Telemetry and Acoustic Stream"
-            className="col-span-12 lg:col-span-6 xl:col-span-5 flex flex-col gap-2.5 xl:min-h-0 min-w-0"
+            className="col-span-12 lg:col-span-5 xl:col-span-5 flex flex-col gap-2.5 lg:min-h-0 min-w-0"
           >
-            <div className="xl:flex-[1.35] min-h-[280px] xl:min-h-0">
+            <div className="lg:flex-[1.35] min-h-[260px] lg:min-h-0">
               <LiveOutputPanel
                 snapshot={freeShowSnapshot}
                 onOpenSlideMatrix={() => useUIStore.getState().openSlideMatrix()}
               />
             </div>
 
-            <div className="xl:flex-1 min-h-[220px] xl:min-h-0">
+            <div className="lg:flex-1 min-h-[200px] lg:min-h-0">
               <LiveTranscriptPanel />
             </div>
           </section>
 
-          {/* Column 2 (33.3% at xl:): Suggested Content Queue and Pastoral Memory Pinboard */}
+          {/* Column 2 (33.3% at lg/xl:): Suggested Content Queue and Pastoral Memory Pinboard */}
           <section
             aria-label="AI Candidate Pipeline and Pastoral Memory"
-            className="col-span-12 lg:col-span-6 xl:col-span-4 flex flex-col gap-2.5 xl:min-h-0 min-w-0"
+            className="col-span-12 lg:col-span-4 xl:col-span-4 flex flex-col gap-2.5 lg:min-h-0 min-w-0"
           >
-            <div className="h-[400px] xl:h-auto xl:flex-1 min-h-[300px] xl:min-h-0 min-w-0 flex flex-col">
+            <div className="h-[360px] lg:h-auto lg:flex-1 min-h-[260px] lg:min-h-0 min-w-0 flex flex-col">
               <SuggestionsQueue
                 candidates={candidates}
                 isLocked={authorityState.manualLockActive}
@@ -275,10 +275,10 @@ export const App: React.FC = () => {
             </div>
           </section>
 
-          {/* Column 3 (25.0% at xl:): Manual Controls Tactical Desk */}
+          {/* Column 3 (25.0% at lg/xl:): Manual Controls Tactical Desk */}
           <section
             aria-label="Manual Tactical Switcher Desk"
-            className="col-span-12 lg:col-span-12 xl:col-span-3 flex flex-col xl:min-h-0 min-w-0 xl:overflow-y-auto custom-scrollbar"
+            className="col-span-12 lg:col-span-3 xl:col-span-3 flex flex-col lg:min-h-0 min-w-0 lg:overflow-y-auto custom-scrollbar"
           >
             <ManualControlsPanel
               onDispatch={dispatchCommand}

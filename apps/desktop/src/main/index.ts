@@ -218,6 +218,29 @@ const nativePresentationEngine = new NativePresentationEngine(authorityManager, 
 
 let presentationEngineMode: 'native' | 'freeshow' = 'native';
 
+function getPresentationEngineMode(): 'native' | 'freeshow' {
+  return presentationEngineMode;
+}
+
+function setPresentationEngineMode(mode: 'native' | 'freeshow'): void {
+  presentationEngineMode = mode;
+  if (mode === 'native') {
+    authorityManager.setFreeShowConnected(true);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('freeshow:state-changed', nativePresentationEngine.getSnapshot());
+      mainWindow.webContents.send('presentation:mode-changed', mode);
+    }
+  } else {
+    authorityManager.setFreeShowConnected(freeShowAdapter?.getSnapshot().connected ?? false);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (freeShowAdapter) {
+        mainWindow.webContents.send('freeshow:state-changed', freeShowAdapter.getSnapshot());
+      }
+      mainWindow.webContents.send('presentation:mode-changed', mode);
+    }
+  }
+}
+
 function getActivePresentationEngine(): IPresentationEngine {
   if (presentationEngineMode === 'freeshow' && freeShowAdapter) {
     return freeShowAdapter;
@@ -446,7 +469,9 @@ registerSongHandlers(songDatabase, songReviewManager, auditLogger, () => getActi
 registerMediaHandlers();
 registerPresentationHandlers(
   () => getActivePresentationEngine(),
-  nativeDisplayManager
+  nativeDisplayManager,
+  () => getPresentationEngineMode(),
+  (mode) => setPresentationEngineMode(mode)
 );
 
 // App Lifecycle
