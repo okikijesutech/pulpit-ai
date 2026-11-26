@@ -8,8 +8,8 @@ import {
   BackupManager,
   BackupArchive
 } from '@pulpit-ai/song-engine';
-import { FreeShowAdapter } from '@pulpit-ai/presentation-contracts';
-import { FreeShowCommand } from '@pulpit-ai/shared-types';
+import { IPresentationEngine } from '@pulpit-ai/presentation-contracts';
+import { PresentationCommand } from '@pulpit-ai/shared-types';
 import {
   MAX_IPC_BASE64_FILE_CHARS,
   MAX_IPC_QUERY_CHARS,
@@ -22,7 +22,7 @@ export function registerSongHandlers(
   songDatabase: SongDatabase,
   songReviewManager: SongReviewManager,
   auditLogger: any,
-  getFreeShowAdapter: () => FreeShowAdapter | null
+  getPresentationEngine: () => IPresentationEngine | null
 ): void {
   ipcMain.handle('songs:list', () => {
     return songDatabase.listSongs();
@@ -150,31 +150,31 @@ export function registerSongHandlers(
         sectionIndex
       }: { songTitle: string; sectionLabel: string; sectionIndex: number }
     ) => {
-      const freeShowAdapter = getFreeShowAdapter();
-      if (!freeShowAdapter) {
-        return { success: false, reason: 'FreeShow adapter not initialized' };
+      const engine = getPresentationEngine();
+      if (!engine) {
+        return { success: false, reason: 'Presentation engine not initialized' };
       }
 
-      const showCommand: FreeShowCommand = {
+      const showCommand: PresentationCommand = {
         action: 'name_select_show',
         data: { name: songTitle },
         source: 'operator',
         correlationId: `song_show_${Date.now()}`,
         createdAt: Date.now()
       };
-      const showResult = await freeShowAdapter.dispatchCommand(showCommand);
+      const showResult = await engine.dispatchCommand(showCommand);
       if (!showResult.success) {
         return showResult;
       }
 
-      const slideCommand: FreeShowCommand = {
+      const slideCommand: PresentationCommand = {
         action: 'index_select_slide',
         data: { index: sectionIndex, name: sectionLabel },
         source: 'operator',
         correlationId: `song_slide_${Date.now()}`,
         createdAt: Date.now()
       };
-      return await freeShowAdapter.dispatchCommand(slideCommand);
+      return await engine.dispatchCommand(slideCommand);
     }
   );
 

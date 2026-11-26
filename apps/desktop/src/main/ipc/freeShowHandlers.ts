@@ -1,10 +1,10 @@
 import { ipcMain, app } from 'electron';
-import { FreeShowAdapter, MockFreeShowServer } from '@pulpit-ai/presentation-contracts';
-import { AllowlistedAction, FreeShowCommand } from '@pulpit-ai/shared-types';
+import { IPresentationEngine, FreeShowAdapter, MockFreeShowServer } from '@pulpit-ai/presentation-contracts';
+import { AllowlistedAction, PresentationCommand } from '@pulpit-ai/shared-types';
 import { isAllowlistedAction, isValidLocalPort } from './ipcValidation.js';
 
 export function registerFreeShowHandlers(
-  getFreeShowAdapter: () => FreeShowAdapter | null,
+  getPresentationEngine: () => IPresentationEngine | null,
   initFreeShow: (port?: number) => FreeShowAdapter,
   getVirtualMockServer: () => MockFreeShowServer | null,
   setVirtualMockServer: (server: MockFreeShowServer | null) => void
@@ -34,19 +34,19 @@ export function registerFreeShowHandlers(
   });
 
   ipcMain.handle('freeshow:disconnect', () => {
-    const adapter = getFreeShowAdapter();
-    if (adapter) {
-      adapter.disconnect();
+    const engine = getPresentationEngine();
+    if (engine) {
+      engine.disconnect();
     }
     return { success: true };
   });
 
   ipcMain.handle('freeshow:get-snapshot', () => {
-    const adapter = getFreeShowAdapter();
-    if (!adapter) return null;
-    const snapshot = adapter.getSnapshot();
+    const engine = getPresentationEngine();
+    if (!engine) return null;
+    const snapshot = engine.getSnapshot();
     const mockServer = getVirtualMockServer();
-    if (mockServer && snapshot.connected) {
+    if (mockServer && snapshot.connected && snapshot.status !== 'native_active') {
       return { ...snapshot, status: 'simulated' as const };
     }
     return snapshot;
@@ -59,12 +59,12 @@ export function registerFreeShowHandlers(
         return { success: false, reason: 'Blocked: Action is not on the strict FreeShow allowlist' };
       }
 
-      const adapter = getFreeShowAdapter();
-      if (!adapter) {
-        return { success: false, reason: 'FreeShow adapter not initialized' };
+      const engine = getPresentationEngine();
+      if (!engine) {
+        return { success: false, reason: 'Presentation engine not initialized' };
       }
 
-      const command: FreeShowCommand = {
+      const command: PresentationCommand = {
         action: payload.action,
         data: payload.data,
         source: 'operator',
@@ -72,7 +72,7 @@ export function registerFreeShowHandlers(
         createdAt: Date.now()
       };
 
-      return await adapter.dispatchCommand(command);
+      return await engine.dispatchCommand(command);
     }
   );
 }

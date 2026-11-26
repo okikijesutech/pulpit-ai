@@ -1,12 +1,12 @@
 import { ipcMain } from 'electron';
 import { AuthorityManager } from '@pulpit-ai/authority-manager';
-import { FreeShowAdapter } from '@pulpit-ai/presentation-contracts';
+import { IPresentationEngine } from '@pulpit-ai/presentation-contracts';
 import { OperatorMode } from '@pulpit-ai/shared-types';
 import { isValidOperatorMode, validateStringLength } from './ipcValidation.js';
 
 export function registerAuthorityHandlers(
   authorityManager: AuthorityManager,
-  getFreeShowAdapter: () => FreeShowAdapter | null
+  getPresentationEngine: () => IPresentationEngine | null
 ): void {
   const auditLogger = authorityManager.getAuditLogger();
 
@@ -36,9 +36,9 @@ export function registerAuthorityHandlers(
       return { success: false, reason: 'Invalid candidate ID' };
     }
     const safeCandidateId = validateStringLength(candidateId.trim(), 128, 'candidateId');
-    const freeShowAdapter = getFreeShowAdapter();
-    if (!freeShowAdapter) {
-      return { success: false, reason: 'FreeShow adapter not initialized' };
+    const engine = getPresentationEngine();
+    if (!engine) {
+      return { success: false, reason: 'Presentation engine not initialized' };
     }
 
     const approval = authorityManager.approveCandidate(safeCandidateId);
@@ -49,7 +49,7 @@ export function registerAuthorityHandlers(
       };
     }
 
-    return await freeShowAdapter.dispatchCommand(approval.command);
+    return await engine.dispatchCommand(approval.command);
   });
 
   ipcMain.handle('audit:get-events', () => {

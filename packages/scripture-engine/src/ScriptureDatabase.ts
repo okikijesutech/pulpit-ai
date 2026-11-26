@@ -32,6 +32,12 @@ export class ScriptureDatabase {
     verses: new Map<string, ScriptureVerseRecord>() // key: `${translationId}:${bookName}:${chapter}:${verse}`
   };
 
+  // Cached prepared statements
+  private stmtGetPassage: any = null;
+  private stmtGetVerseCount: any = null;
+  private stmtGetTotalVerseCount: any = null;
+  private stmtGetAllChapterVerseCounts: any = null;
+
   constructor(private dbPath: string = ':memory:') {
     this.initialize();
   }
@@ -40,6 +46,46 @@ export class ScriptureDatabase {
     if (SqliteDatabaseSync) {
       this.db = new SqliteDatabaseSync(this.dbPath);
       this.createTables();
+      this.prepareCachedStatements();
+    }
+  }
+
+  private prepareCachedStatements(): void {
+    if (!this.db) return;
+    try {
+      this.stmtGetPassage = this.db.prepare(`
+        SELECT translation_id, book_id, book_name, chapter, verse, text 
+        FROM bible_verses 
+        WHERE translation_id = ? 
+          AND book_id = ? 
+          AND chapter = ? 
+          AND verse >= ? 
+          AND verse <= ? 
+        ORDER BY verse ASC
+      `);
+
+      this.stmtGetVerseCount = this.db.prepare(`
+        SELECT COUNT(*) as count 
+        FROM bible_verses 
+        WHERE translation_id = ? 
+          AND book_id = ? 
+          AND chapter = ?
+      `);
+
+      this.stmtGetTotalVerseCount = this.db.prepare(`
+        SELECT COUNT(*) as count 
+        FROM bible_verses 
+        WHERE UPPER(translation_id) = ?
+      `);
+
+      this.stmtGetAllChapterVerseCounts = this.db.prepare(`
+        SELECT book_id, chapter, COUNT(*) as count 
+        FROM bible_verses 
+        WHERE translation_id = ? 
+        GROUP BY book_id, chapter
+      `);
+    } catch (err) {
+      console.warn('Could not prepare cached statements in ScriptureDatabase:', err);
     }
   }
 
@@ -306,7 +352,7 @@ export class ScriptureDatabase {
     const transKey = translationId.toUpperCase();
 
     if (this.db) {
-      const stmt = this.db.prepare(`
+      const stmt = this.stmtGetVerseCount || this.db.prepare(`
         SELECT COUNT(*) as count 
         FROM bible_verses 
         WHERE translation_id = ? 
@@ -340,7 +386,7 @@ export class ScriptureDatabase {
     const transKey = translationId.toUpperCase();
 
     if (this.db) {
-      const stmt = this.db.prepare(`
+      const stmt = this.stmtGetAllChapterVerseCounts || this.db.prepare(`
         SELECT book_id, chapter, COUNT(*) as count 
         FROM bible_verses 
         WHERE translation_id = ? 
@@ -376,7 +422,7 @@ export class ScriptureDatabase {
     if (!translation) return 0;
 
     if (this.db) {
-      const stmt = this.db.prepare(`
+      const stmt = this.stmtGetTotalVerseCount || this.db.prepare(`
         SELECT COUNT(*) as count 
         FROM bible_verses 
         WHERE UPPER(translation_id) = ?
@@ -432,7 +478,7 @@ export class ScriptureDatabase {
     const verses: ScriptureVerseRecord[] = [];
 
     if (this.db) {
-      const stmt = this.db.prepare(`
+      const stmt = this.stmtGetPassage || this.db.prepare(`
         SELECT translation_id, book_id, book_name, chapter, verse, text 
         FROM bible_verses 
         WHERE translation_id = ? 

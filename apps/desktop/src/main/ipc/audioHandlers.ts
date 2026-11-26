@@ -50,6 +50,9 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
     getSpeechRoutingPlan
   } = deps;
 
+  let lastActivityMode = '';
+  let lastActivityTime = 0;
+
   ipcMain.handle('audio:get-devices', () => {
     return audioDeviceManager.getDevices();
   });
@@ -123,7 +126,14 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
     }
 
     mainWindow.webContents.send('audio:level-changed', metrics);
-    mainWindow.webContents.send('audio:activity-mode', activityMetrics);
+
+    const now = Date.now();
+    const modeKey = `${activityMetrics.mode}:${activityMetrics.isSinging}`;
+    if (modeKey !== lastActivityMode || now - lastActivityTime >= 500) {
+      lastActivityMode = modeKey;
+      lastActivityTime = now;
+      mainWindow.webContents.send('audio:activity-mode', activityMetrics);
+    }
   });
 
   // Explicit audio state report (e.g. disconnected hardware, muted)

@@ -35,6 +35,12 @@ export class SongDatabase {
   private db: any = null;
   private inMemoryFallback: Map<string, Song> = new Map();
 
+  // Cached prepared statements for high-throughput live lookups
+  private stmtGetSongById: any = null;
+  private stmtGetVersionsBySongId: any = null;
+  private stmtGetSectionsByVersionId: any = null;
+  private stmtGetLyricsBySectionId: any = null;
+
   constructor(private dbPath: string = ':memory:') {
     this.initialize();
   }
@@ -43,6 +49,23 @@ export class SongDatabase {
     if (SqliteDatabaseSync) {
       this.db = new SqliteDatabaseSync(this.dbPath);
       this.createTables();
+      this.prepareCachedStatements();
+    }
+  }
+
+  private prepareCachedStatements(): void {
+    if (!this.db) return;
+    try {
+      this.stmtGetSongById = this.db.prepare('SELECT * FROM songs WHERE id = ?');
+      this.stmtGetVersionsBySongId = this.db.prepare('SELECT * FROM song_versions WHERE song_id = ?');
+      this.stmtGetSectionsByVersionId = this.db.prepare(
+        'SELECT * FROM song_sections WHERE version_id = ? ORDER BY sequence_order ASC'
+      );
+      this.stmtGetLyricsBySectionId = this.db.prepare(
+        'SELECT lyric_text FROM song_lyrics WHERE section_id = ? ORDER BY line_order ASC'
+      );
+    } catch (err) {
+      console.warn('Could not prepare cached statements in SongDatabase:', err);
     }
   }
 
@@ -216,22 +239,30 @@ export class SongDatabase {
    */
   public getSong(id: string): Song | null {
     if (this.db) {
-      const songRow = this.db.prepare('SELECT * FROM songs WHERE id = ?').get(id);
+      const songRow = this.stmtGetSongById
+        ? this.stmtGetSongById.get(id)
+        : this.db.prepare('SELECT * FROM songs WHERE id = ?').get(id);
       if (!songRow) return null;
 
       const versions: SongVersion[] = [];
-      const verRows = this.db.prepare('SELECT * FROM song_versions WHERE song_id = ?').all(id);
+      const verRows = this.stmtGetVersionsBySongId
+        ? this.stmtGetVersionsBySongId.all(id)
+        : this.db.prepare('SELECT * FROM song_versions WHERE song_id = ?').all(id);
 
       for (const vRow of verRows) {
-        const secRows = this.db
-          .prepare('SELECT * FROM song_sections WHERE version_id = ? ORDER BY sequence_order ASC')
-          .all(vRow.id);
+        const secRows = this.stmtGetSectionsByVersionId
+          ? this.stmtGetSectionsByVersionId.all(vRow.id)
+          : this.db
+              .prepare('SELECT * FROM song_sections WHERE version_id = ? ORDER BY sequence_order ASC')
+              .all(vRow.id);
 
         const sections: SongSection[] = [];
         for (const sRow of secRows) {
-          const lyricRows = this.db
-            .prepare('SELECT lyric_text FROM song_lyrics WHERE section_id = ? ORDER BY line_order ASC')
-            .all(sRow.id);
+          const lyricRows = this.stmtGetLyricsBySectionId
+            ? this.stmtGetLyricsBySectionId.all(sRow.id)
+            : this.db
+                .prepare('SELECT lyric_text FROM song_lyrics WHERE section_id = ? ORDER BY line_order ASC')
+                .all(sRow.id);
 
           sections.push({
             id: sRow.id,

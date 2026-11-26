@@ -57,7 +57,8 @@ export type FreeShowConnectionStatus =
   | 'connected'
   | 'simulated'
   | 'reconnecting'
-  | 'error';
+  | 'error'
+  | 'native_active';
 
 export interface FreeShowStateSnapshot {
   connected: boolean;

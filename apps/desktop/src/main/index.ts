@@ -2,7 +2,15 @@ import { app, BrowserWindow } from 'electron';
 import { join } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { AuthorityManager } from '@pulpit-ai/authority-manager';
-import { FreeShowAdapter, MockFreeShowServer } from '@pulpit-ai/presentation-contracts';
+import {
+  FreeShowAdapter,
+  MockFreeShowServer,
+  IPresentationEngine,
+  NativePresentationEngine
+} from '@pulpit-ai/presentation-contracts';
+import { ActiveSlideContent, PresentationStateSnapshot } from '@pulpit-ai/shared-types';
+import { NativeDisplayManager } from './presentation/NativeDisplayManager.js';
+import { registerPresentationHandlers } from './ipc/presentationHandlers.js';
 import {
   AudioDeviceManager,
   AudioLevelMeter,
@@ -198,6 +206,31 @@ const songCandidateGenerator = new SongCandidateGenerator(songDatabase, {
 let freeShowAdapter: FreeShowAdapter | null = null;
 let virtualMockServer: MockFreeShowServer | null = null;
 
+const nativeDisplayManager = new NativeDisplayManager();
+const nativePresentationEngine = new NativePresentationEngine(authorityManager, {
+  onSlideChanged: (slide: ActiveSlideContent | null, isCleared: boolean) => {
+    nativeDisplayManager.broadcastSlide(slide, isCleared);
+  },
+  onOverlayChanged: (overlay: Record<string, unknown> | null) => {
+    nativeDisplayManager.broadcastOverlay(overlay);
+  }
+});
+
+let presentationEngineMode: 'native' | 'freeshow' = 'native';
+
+function getActivePresentationEngine(): IPresentationEngine {
+  if (presentationEngineMode === 'freeshow' && freeShowAdapter) {
+    return freeShowAdapter;
+  }
+  return nativePresentationEngine;
+}
+
+nativePresentationEngine.subscribe((snapshot: PresentationStateSnapshot) => {
+  if (mainWindow && !mainWindow.isDestroyed() && presentationEngineMode === 'native') {
+    mainWindow.webContents.send('freeshow:state-changed', snapshot);
+  }
+});
+
 function detectTrailingBookName(text: string): string | null {
   if (!text) return null;
   const clean = text.trim().replace(/[.,!?;:]+$/, '').toLowerCase();
@@ -385,9 +418,9 @@ function createWindow(): void {
 }
 
 // Register all modular IPC handlers
-registerAuthorityHandlers(authorityManager, () => freeShowAdapter);
+registerAuthorityHandlers(authorityManager, () => getActivePresentationEngine());
 registerFreeShowHandlers(
-  () => freeShowAdapter,
+  () => getActivePresentationEngine(),
   initFreeShow,
   () => virtualMockServer,
   (srv) => {
@@ -409,13 +442,17 @@ registerAudioHandlers({
   getSpeechRoutingPlan
 });
 registerScriptureHandlers(scriptureDatabase, scriptureGenerator);
-registerSongHandlers(songDatabase, songReviewManager, auditLogger, () => freeShowAdapter);
+registerSongHandlers(songDatabase, songReviewManager, auditLogger, () => getActivePresentationEngine());
 registerMediaHandlers();
+registerPresentationHandlers(
+  () => getActivePresentationEngine(),
+  nativeDisplayManager
+);
 
 // App Lifecycle
 app.whenReady().then(() => {
-  const adapter = initFreeShow(5510);
-  adapter.connect().catch(() => {});
+  // Connect native presentation engine automatically for autonomous projection
+  void nativePresentationEngine.connect();
   sherpaProcessManager.start();
   const plan = getSpeechRoutingPlan();
   console.log(
@@ -431,6 +468,8 @@ app.whenReady().then(() => {
 });
 
 app.on('before-quit', () => {
+  nativePresentationEngine.disconnect();
+  nativeDisplayManager.closeAllWindows();
   sherpaProcessManager.shutdown();
   whisperWorker.shutdown();
   if (freeShowAdapter) {
@@ -439,6 +478,8 @@ app.on('before-quit', () => {
 });
 
 app.on('window-all-closed', () => {
+  nativePresentationEngine.disconnect();
+  nativeDisplayManager.closeAllWindows();
   sherpaProcessManager.shutdown();
   whisperWorker.shutdown();
   if (freeShowAdapter) {

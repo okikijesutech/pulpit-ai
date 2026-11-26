@@ -660,6 +660,16 @@ if (typeof window !== 'undefined' && !(window as any).pulpitAPI) {
     onSongCandidate: (fn: any) => {
       songListeners.add(fn);
       return () => songListeners.delete(fn);
-    }
+    },
+
+    getAvailableDisplays: async () => [
+      { id: 1, label: 'Display 1 (Primary Screen)', bounds: { x: 0, y: 0, width: 1920, height: 1080 }, isPrimary: true },
+      { id: 2, label: 'Display 2 (Auditorium Projector)', bounds: { x: 1920, y: 0, width: 1920, height: 1080 }, isPrimary: false }
+    ],
+    toggleNativeProjector: async () => ({ success: true }),
+    toggleNativeFoldback: async () => ({ success: true }),
+    toggleWindowedPreview: async () => true,
+    onNativeSlideRender: (_fn: any) => () => {},
+    onNativeOverlayRender: (_fn: any) => () => {}
   };
 }

@@ -2,6 +2,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.js';
+import { NativeProjectorScreen } from './screens/NativeProjectorScreen.js';
+import { NativeFoldbackScreen } from './screens/NativeFoldbackScreen.js';
 import './index.css';
 
 async function bootstrap() {
@@ -11,11 +13,30 @@ async function bootstrap() {
     await import('./browserMockBridge.js');
   }
 
-  ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
+  const urlParams = new URLSearchParams(window.location.search);
+  const viewMode = urlParams.get('view');
+
+  const rootElement = document.getElementById('root')!;
+
+  if (viewMode === 'projector') {
+    ReactDOM.createRoot(rootElement).render(
+      <React.StrictMode>
+        <NativeProjectorScreen />
+      </React.StrictMode>
+    );
+  } else if (viewMode === 'foldback') {
+    ReactDOM.createRoot(rootElement).render(
+      <React.StrictMode>
+        <NativeFoldbackScreen />
+      </React.StrictMode>
+    );
+  } else {
+    ReactDOM.createRoot(rootElement).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+  }
 }
 
 bootstrap();

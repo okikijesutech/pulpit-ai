@@ -173,11 +173,13 @@ export const Header: React.FC = () => {
             }`}
           />
           <span className="font-mono text-[11px]">
-            {freeShowSnapshot.connected
-              ? freeShowSnapshot.status === 'simulated'
-                ? 'FreeShow: Simulated (Dev 5510)'
-                : 'FreeShow: Live (5510)'
-              : 'FreeShow: Offline'}
+            {freeShowSnapshot.status === 'native_active'
+              ? 'Native Projector: Live'
+              : freeShowSnapshot.connected
+                ? freeShowSnapshot.status === 'simulated'
+                  ? 'FreeShow: Simulated (Dev 5510)'
+                  : 'FreeShow: Live (5510)'
+                : 'Presentation: Standby'}
           </span>
           {!freeShowSnapshot.connected && (
             <button

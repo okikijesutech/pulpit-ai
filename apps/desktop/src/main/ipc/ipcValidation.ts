@@ -60,6 +60,23 @@ export function isAllowedNavigationUrl(targetUrl: string): boolean {
   );
 }
 
+export function validatePositiveInteger(value: unknown, fieldName: string, min = 1, max = 100000): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value)) {
+    throw new Error(`${fieldName} must be an integer`);
+  }
+  if (value < min || value > max) {
+    throw new Error(`${fieldName} must be between ${min} and ${max}`);
+  }
+  return value;
+}
+
+export function validateSafeObject(value: unknown, fieldName: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${fieldName} must be a non-null object`);
+  }
+  return value as Record<string, unknown>;
+}
+
 export function buildContentSecurityPolicy(isDev: boolean): string {
   const scriptSrc = isDev ? "'self' 'unsafe-inline' blob:" : "'self' blob:";
   return [

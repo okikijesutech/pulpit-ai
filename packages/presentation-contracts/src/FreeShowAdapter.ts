@@ -7,6 +7,7 @@ import {
   FreeShowStateSnapshot
 } from '@pulpit-ai/shared-types';
 import { AuthorityManager } from '@pulpit-ai/authority-manager';
+import { IPresentationEngine, PresentationStateListener } from './IPresentationEngine.js';
 
 export interface FreeShowAdapterOptions {
   host?: string;
@@ -17,9 +18,9 @@ export interface FreeShowAdapterOptions {
   commandTimeoutMs?: number;
 }
 
-export type FreeShowStateListener = (snapshot: FreeShowStateSnapshot) => void;
+export type FreeShowStateListener = PresentationStateListener;
 
-export class FreeShowAdapter {
+export class FreeShowAdapter implements IPresentationEngine {
   private socket: Socket | null = null;
   private readonly authorityManager: AuthorityManager;
   private host: string;

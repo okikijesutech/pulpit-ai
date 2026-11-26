@@ -156,6 +156,14 @@ export interface PulpitAPI {
   onSpeechEngineStatusChange: (callback: (plan: SpeechRoutingPlan) => void) => () => void;
   onScriptureCandidate: (callback: (candidate: SuggestionCandidate) => void) => () => void;
   onSongCandidate: (callback: (candidate: SuggestionCandidate) => void) => () => void;
+
+  // Native Presentation Display & Multi-Window Management
+  getAvailableDisplays: () => Promise<any[]>;
+  toggleNativeProjector: (targetDisplayId?: number, windowed?: boolean) => Promise<{ success: boolean }>;
+  toggleNativeFoldback: (targetDisplayId?: number) => Promise<{ success: boolean }>;
+  toggleWindowedPreview: () => Promise<boolean>;
+  onNativeSlideRender: (callback: (payload: { slide: any; isCleared: boolean }) => void) => () => void;
+  onNativeOverlayRender: (callback: (overlay: any) => void) => () => void;
 }
 
 const api: PulpitAPI = {
@@ -256,6 +264,25 @@ const api: PulpitAPI = {
     const handler = (_event: any, candidate: SuggestionCandidate) => callback(candidate);
     ipcRenderer.on('song:candidate', handler);
     return () => ipcRenderer.removeListener('song:candidate', handler);
+  },
+
+  getAvailableDisplays: () => ipcRenderer.invoke('presentation:get-displays'),
+  toggleNativeProjector: (targetDisplayId, windowed) =>
+    ipcRenderer.invoke('presentation:toggle-projector', { targetDisplayId, windowed }),
+  toggleNativeFoldback: (targetDisplayId) =>
+    ipcRenderer.invoke('presentation:toggle-foldback', { targetDisplayId }),
+  toggleWindowedPreview: () => ipcRenderer.invoke('presentation:toggle-preview'),
+
+  onNativeSlideRender: (callback) => {
+    const handler = (_event: any, payload: any) => callback(payload);
+    ipcRenderer.on('presentation:slide-render', handler);
+    return () => ipcRenderer.removeListener('presentation:slide-render', handler);
+  },
+
+  onNativeOverlayRender: (callback) => {
+    const handler = (_event: any, overlay: any) => callback(overlay);
+    ipcRenderer.on('presentation:overlay-render', handler);
+    return () => ipcRenderer.removeListener('presentation:overlay-render', handler);
   }
 };
 

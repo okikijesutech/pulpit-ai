@@ -94,6 +94,20 @@ export const LiveOutputPanel: React.FC<LiveOutputPanelProps> = React.memo(({ sna
             </span>
           )}
 
+          {/* 1-Click Floating Projector Window for Single Screen / Testing */}
+          <button
+            type="button"
+            onClick={() => {
+              if (window.pulpitAPI && typeof window.pulpitAPI.toggleWindowedPreview === 'function') {
+                window.pulpitAPI.toggleWindowedPreview().catch(console.error);
+              }
+            }}
+            title="Toggle Floating 16:9 Projector Preview Window (Single-Screen / Dev Mode)"
+            className="p-1.5 rounded-lg bg-slate-900 hover:bg-indigo-950 text-slate-400 hover:text-indigo-300 border border-slate-800 hover:border-indigo-600/50 transition-colors"
+          >
+            <Cast className="w-3.5 h-3.5" />
+          </button>
+
           {/* Quick Stage Modal Launcher */}
           <button
             type="button"

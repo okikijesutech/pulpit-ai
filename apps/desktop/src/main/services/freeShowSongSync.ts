@@ -39,6 +39,14 @@ export function syncHymnsToFreeShow(): void {
   try {
     const { documentsPath, showsJsonPath } = resolveFreeShowPaths();
 
+    // Check if FreeShow is actually installed or used on this system
+    const parentDocs = dirname(documentsPath);
+    const parentAppData = dirname(showsJsonPath);
+    const isFreeShowPresent = existsSync(parentDocs) || existsSync(parentAppData);
+    if (!isFreeShowPresent) {
+      return; // FreeShow not installed; bypass external disk sync
+    }
+
     if (!existsSync(documentsPath)) {
       mkdirSync(documentsPath, { recursive: true });
     }
