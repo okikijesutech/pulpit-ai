@@ -105,21 +105,22 @@ describe('UI/UX Ergonomics & Live Sanctuary Booth Safety', () => {
     expect(cssContent).not.toMatch(/backdrop-filter\s*:/i);
   });
 
-  it('renders live presentation desk as a responsive two-column layout with all five panels visible', () => {
+  it('renders live presentation desk as a responsive three-column cockpit layout with all five panels visible', () => {
     const appContent = readFileSync(join(RENDERER_DIR, 'App.tsx'), 'utf8');
 
-    // Confirm main live desk is structured as a 2-column layout rather than 3-column
+    // Confirm main live desk is structured as a 3-column cockpit layout
     expect(appContent).toContain('grid grid-cols-12');
-    expect(appContent).toContain('lg:col-span-7');
-    expect(appContent).toContain('lg:col-span-5');
-    expect(appContent).not.toContain('lg:col-span-4');
-    expect(appContent).not.toContain('lg:col-span-3');
+    expect(appContent).toContain('xl:col-span-5');
+    expect(appContent).toContain('xl:col-span-4');
+    expect(appContent).toContain('xl:col-span-3');
 
     // Column 1 must house Live Presentation Output and Live Speech Transcript
-    const col1Idx = appContent.indexOf('lg:col-span-7');
-    const col2Idx = appContent.indexOf('lg:col-span-5');
+    const col1Idx = appContent.indexOf('xl:col-span-5');
+    const col2Idx = appContent.indexOf('xl:col-span-4');
+    const col3Idx = appContent.indexOf('xl:col-span-3');
     expect(col1Idx).toBeGreaterThan(-1);
     expect(col2Idx).toBeGreaterThan(col1Idx);
+    expect(col3Idx).toBeGreaterThan(col2Idx);
 
     const col1Slice = appContent.slice(col1Idx, col2Idx);
     expect(col1Slice).toContain('<LiveOutputPanel');
@@ -128,17 +129,25 @@ describe('UI/UX Ergonomics & Live Sanctuary Booth Safety', () => {
     expect(col1Slice).not.toContain('<SuggestionsQueue');
     expect(col1Slice).not.toContain('<SermonScripturePinboard');
 
-    // Column 2 must house Manual Controls Panel, Suggested Content Queue, and Pastoral Memory Pinboard
-    const col2Slice = appContent.slice(col2Idx, appContent.indexOf('</main>'));
-    expect(col2Slice).toContain('<ManualControlsPanel');
+    // Column 2 must house Suggested Content Queue and Pastoral Memory Pinboard
+    const col2Slice = appContent.slice(col2Idx, col3Idx);
     expect(col2Slice).toContain('<SuggestionsQueue');
     expect(col2Slice).toContain('<SermonScripturePinboard');
     expect(col2Slice).not.toContain('<LiveOutputPanel');
     expect(col2Slice).not.toContain('<LiveTranscriptPanel');
+    expect(col2Slice).not.toContain('<ManualControlsPanel');
+
+    // Column 3 must house Manual Controls Panel
+    const col3Slice = appContent.slice(col3Idx, appContent.indexOf('</main>'));
+    expect(col3Slice).toContain('<ManualControlsPanel');
+    expect(col3Slice).not.toContain('<LiveOutputPanel');
+    expect(col3Slice).not.toContain('<LiveTranscriptPanel');
+    expect(col3Slice).not.toContain('<SuggestionsQueue');
 
     // Confirm overflow guards preventing horizontal scrolling
     expect(col1Slice).toContain('min-w-0');
     expect(col2Slice).toContain('min-w-0');
-    expect(col2Slice).toContain('custom-scrollbar');
+    expect(col3Slice).toContain('min-w-0');
+    expect(col3Slice).toContain('custom-scrollbar');
   });
 });

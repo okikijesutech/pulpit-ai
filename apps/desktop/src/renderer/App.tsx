@@ -227,45 +227,30 @@ export const App: React.FC = () => {
           manualLockActive={authorityState.manualLockActive}
         />
       ) : (
-        <main className="flex-1 p-3 sm:p-4 lg:p-4 xl:p-5 grid grid-cols-12 gap-3 sm:gap-4 lg:gap-4 xl:gap-5 min-h-0 min-w-0 overflow-y-auto lg:overflow-hidden">
-          {/* Column 1 (7 cols): Live Presentation Output (Hero stage confidence monitor) and Live Speech Transcript */}
-          <div className="col-span-12 lg:col-span-7 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0">
-            <div className="flex-[1.35] min-h-[300px] lg:min-h-0">
+        <main className="flex-1 min-h-0 min-w-0 p-3 sm:p-3.5 xl:p-4 grid grid-cols-12 auto-rows-max xl:auto-rows-fr gap-2.5 sm:gap-3 xl:gap-3.5 overflow-y-auto xl:overflow-hidden">
+          {/* Column 1 (41.7% at xl:): Live Presentation Output and Live Speech Transcript */}
+          <section
+            aria-label="Stage Telemetry and Acoustic Stream"
+            className="col-span-12 lg:col-span-6 xl:col-span-5 flex flex-col gap-2.5 xl:min-h-0 min-w-0"
+          >
+            <div className="xl:flex-[1.35] min-h-[280px] xl:min-h-0">
               <LiveOutputPanel
                 snapshot={freeShowSnapshot}
                 onOpenSlideMatrix={() => useUIStore.getState().openSlideMatrix()}
               />
             </div>
 
-            <div className="flex-1 min-h-[200px] lg:min-h-0">
+            <div className="xl:flex-1 min-h-[220px] xl:min-h-0">
               <LiveTranscriptPanel />
             </div>
-          </div>
+          </section>
 
-          {/* Column 2 (5 cols): Manual Controls Panel, Suggested Content Queue, and Pastoral Memory Pinboard */}
-          <div className="col-span-12 lg:col-span-5 flex flex-col gap-2.5 sm:gap-3 min-h-0 min-w-0 overflow-y-auto custom-scrollbar">
-            <div className="flex-shrink-0">
-              <ManualControlsPanel
-                onDispatch={dispatchCommand}
-                disabled={!freeShowSnapshot.connected}
-                onOpenBibleExplorer={() => useUIStore.getState().openBibleExplorer()}
-                onOpenAnnouncements={() => useUIStore.getState().openAnnouncementModal()}
-                onOpenSlideMatrix={() => useUIStore.getState().openSlideMatrix()}
-                onOpenStanzaMatrix={() => useUIStore.getState().openStanzaMatrix()}
-                onOpenServiceOrder={() => useUIStore.getState().openServiceOrder()}
-                onOpenMediaLibrary={() => useUIStore.getState().openMediaModal()}
-                onOpenCountdownTimer={() => useUIStore.getState().openTimerModal()}
-                onProjectChurchLogo={() => usePresentationStore.getState().projectChurchLogo()}
-                currentCueTitle={serviceCues[activeCueIndex]?.title}
-                currentCueNumber={activeCueIndex + 1}
-                totalCues={serviceCues.length}
-                onAdvanceCue={() => usePresentationStore.getState().advanceServiceCue()}
-                activeAnnouncement={activeAnnouncement}
-                onClearAnnouncement={() => usePresentationStore.getState().clearOverlay()}
-              />
-            </div>
-
-            <div className="flex-1 min-h-[220px] lg:min-h-0 min-w-0 flex flex-col">
+          {/* Column 2 (33.3% at xl:): Suggested Content Queue and Pastoral Memory Pinboard */}
+          <section
+            aria-label="AI Candidate Pipeline and Pastoral Memory"
+            className="col-span-12 lg:col-span-6 xl:col-span-4 flex flex-col gap-2.5 xl:min-h-0 min-w-0"
+          >
+            <div className="h-[400px] xl:h-auto xl:flex-1 min-h-[300px] xl:min-h-0 min-w-0 flex flex-col">
               <SuggestionsQueue
                 candidates={candidates}
                 isLocked={authorityState.manualLockActive}
@@ -277,7 +262,7 @@ export const App: React.FC = () => {
               />
             </div>
 
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 min-w-0">
               <SermonScripturePinboard
                 pinnedScriptures={pinnedScriptures}
                 onReProject={(ref, text) => usePresentationStore.getState().directProjectScripture(ref, text)}
@@ -288,7 +273,32 @@ export const App: React.FC = () => {
                 isLocked={authorityState.manualLockActive}
               />
             </div>
-          </div>
+          </section>
+
+          {/* Column 3 (25.0% at xl:): Manual Controls Tactical Desk */}
+          <section
+            aria-label="Manual Tactical Switcher Desk"
+            className="col-span-12 lg:col-span-12 xl:col-span-3 flex flex-col xl:min-h-0 min-w-0 xl:overflow-y-auto custom-scrollbar"
+          >
+            <ManualControlsPanel
+              onDispatch={dispatchCommand}
+              disabled={!freeShowSnapshot.connected}
+              onOpenBibleExplorer={() => useUIStore.getState().openBibleExplorer()}
+              onOpenAnnouncements={() => useUIStore.getState().openAnnouncementModal()}
+              onOpenSlideMatrix={() => useUIStore.getState().openSlideMatrix()}
+              onOpenStanzaMatrix={() => useUIStore.getState().openStanzaMatrix()}
+              onOpenServiceOrder={() => useUIStore.getState().openServiceOrder()}
+              onOpenMediaLibrary={() => useUIStore.getState().openMediaModal()}
+              onOpenCountdownTimer={() => useUIStore.getState().openTimerModal()}
+              onProjectChurchLogo={() => usePresentationStore.getState().projectChurchLogo()}
+              currentCueTitle={serviceCues[activeCueIndex]?.title}
+              currentCueNumber={activeCueIndex + 1}
+              totalCues={serviceCues.length}
+              onAdvanceCue={() => usePresentationStore.getState().advanceServiceCue()}
+              activeAnnouncement={activeAnnouncement}
+              onClearAnnouncement={() => usePresentationStore.getState().clearOverlay()}
+            />
+          </section>
         </main>
       )}
 

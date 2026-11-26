@@ -1,6 +1,6 @@
 import React from 'react';
 import { SuggestionCandidate } from '@pulpit-ai/shared-types';
-import { Sparkles, Check, X, BookOpen, Music, ShieldAlert } from 'lucide-react';
+import { Sparkles, Check, X, BookOpen, Music, ShieldAlert, Monitor } from 'lucide-react';
 
 interface SuggestionsQueueProps {
   candidates: SuggestionCandidate[];
@@ -25,168 +25,211 @@ export const SuggestionsQueue: React.FC<SuggestionsQueueProps> = React.memo(({
   ];
 
   return (
-    <div className="glass-panel rounded-2xl p-4 flex flex-col h-full shadow-xl transition-all">
-      {/* Panel Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-3">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shadow-sm">
-            <Sparkles className="w-4 h-4" />
+    <div className="glass-panel rounded-2xl p-3 flex flex-col h-full shadow-xl transition-all">
+      {/* Compact Panel Header (~37px) */}
+      <div className="flex items-center justify-between pb-2 border-b border-slate-700/80 mb-2 flex-shrink-0">
+        <div className="flex items-center space-x-2">
+          <div className="w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500 text-amber-300 flex items-center justify-center shadow-sm">
+            <Sparkles className="w-3.5 h-3.5" />
           </div>
           <div>
-            <h2 className="text-xs font-bold tracking-wider uppercase text-slate-200">
+            <h2 className="text-xs font-bold tracking-wider uppercase text-[#D8E2EC] leading-tight">
               Suggested Content Queue
             </h2>
-            <p className="text-[10px] text-slate-400 hidden sm:block">AI-Assisted Candidate Pipeline</p>
+            <p className="text-[10px] text-[#A3B3C6] hidden sm:block leading-tight">
+              AI-Assisted Candidate Pipeline
+            </p>
           </div>
         </div>
-
-        <div className="flex items-center space-x-2">
-          <span
-            className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold border transition-colors ${
-              candidates.length > 0
-                ? 'bg-amber-950/80 text-amber-300 border-amber-700/80 shadow-[0_0_8px_rgba(251,191,36,0.3)] animate-pulse'
-                : 'bg-slate-900 text-slate-400 border-slate-800'
-            }`}
-          >
-            {candidates.length} active
-          </span>
-        </div>
+        <span
+          className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold border transition-colors ${
+            candidates.length > 0
+              ? 'bg-amber-950 text-amber-300 border-amber-600 shadow-[0_0_8px_rgba(251,191,36,0.3)] animate-pulse'
+              : 'bg-slate-900 text-slate-300 border-slate-500'
+          }`}
+        >
+          {candidates.length} active
+        </span>
       </div>
 
-      {/* Suggestions Stream */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+      {/* Scrollable Candidate Stream */}
+      <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-0">
         {candidates.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-3 sm:p-4 text-slate-500">
-            <Sparkles className="w-7 h-7 mb-1.5 opacity-25 text-amber-400" />
-            <p className="font-semibold text-slate-300 text-xs">Listening for Scripture references & hymns...</p>
-            <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs">
-              When the preacher speaks a chapter and verse, the matching passage will appear here for one-click approval.
+          <div className="h-full flex flex-col items-center justify-center text-center p-4">
+            <Sparkles className="w-6 h-6 mb-1 text-amber-400/40" />
+            <p className="text-sm font-bold text-slate-300">Listening for Scripture &amp; Song Cues...</p>
+            <p className="text-xs text-[#A3B3C6] mt-1 max-w-xs">
+              When the preacher speaks a scripture reference or song lyric, verified candidates appear here for 1-click approval.
             </p>
-
-            {/* Quick Demo Starters */}
-            <div className="mt-2.5 pt-2 border-t border-slate-800/60 w-full max-w-xs flex flex-col items-center">
-              <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">
-                Click to test suggestions:
-              </span>
-              <div className="flex flex-wrap gap-1.5 justify-center">
+            {onManualLookup && (
+              <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                <span className="w-full text-[11px] text-[#A3B3C6] mb-1 font-semibold">Click to test suggestions:</span>
                 {sampleStarters.map((s) => (
                   <button
                     key={s.label}
                     type="button"
-                    onClick={() => onManualLookup?.(s.query)}
-                    className="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800/80 hover:border-indigo-500/50 text-[11px] font-semibold text-slate-300 hover:text-white transition-all shadow-sm active:scale-95"
+                    onClick={() => onManualLookup(s.query)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 text-slate-300 border border-slate-500 text-xs font-semibold hover:border-indigo-400 hover:text-white transition-colors"
                   >
                     {s.label}
                   </button>
                 ))}
               </div>
-            </div>
+            )}
           </div>
         ) : (
           candidates.map((cand) => {
+            const isScripture = cand.type === 'scripture';
             const attribution = (cand.actionPayload?.data?.attribution as string) || '';
+            const translation = (cand.actionPayload?.data?.translation as string) || 'WEB';
+            const confidencePct = Math.round(cand.confidence * 100);
 
             return (
               <div
                 key={cand.id}
-                className={`rounded-xl p-3.5 border transition-all shadow-sm hover:shadow-md ${
-                  cand.type === 'song'
-                    ? 'border-purple-800/60 bg-gradient-to-br from-purple-950/20 to-slate-900/90 hover:border-purple-600/70'
-                    : 'border-indigo-800/60 bg-gradient-to-br from-indigo-950/20 to-slate-900/90 hover:border-indigo-500/70'
+                className={`rounded-2xl p-2.5 border transition-all shadow-lg min-h-[220px] flex flex-col justify-between ${
+                  isScripture
+                    ? 'border-indigo-500 bg-gradient-to-br from-indigo-950/40 via-slate-900/95 to-slate-950/95 hover:border-indigo-400'
+                    : 'border-purple-500 bg-gradient-to-br from-purple-950/40 via-slate-900/95 to-slate-950/95 hover:border-purple-400'
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                    <div
-                      className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
-                        cand.type === 'song'
-                          ? 'bg-purple-950 text-purple-400 border border-purple-800/50'
-                          : 'bg-indigo-950 text-indigo-400 border border-indigo-800/50'
-                      }`}
-                    >
-                      {cand.type === 'scripture' ? (
-                        <BookOpen className="w-3.5 h-3.5" />
-                      ) : (
-                        <Music className="w-3.5 h-3.5" />
-                      )}
+                <div>
+                  {/* Card Header: Type, Title, and Touch-Safe 28x28px Dismiss */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <div
+                        className={`w-7 h-7 rounded-lg border flex items-center justify-center flex-shrink-0 ${
+                          isScripture
+                            ? 'bg-indigo-950 border-indigo-500 text-indigo-300'
+                            : 'bg-purple-950 border-purple-500 text-purple-300'
+                        }`}
+                      >
+                        {isScripture ? <BookOpen className="w-3.5 h-3.5" /> : <Music className="w-3.5 h-3.5" />}
+                      </div>
+                      <h3 className="text-sm font-bold text-[#D8E2EC] tracking-tight leading-snug truncate">
+                        {cand.title}
+                      </h3>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => onDismiss(cand.id)}
+                      aria-label={`Dismiss ${cand.title}`}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center bg-slate-900 text-[#A3B3C6] hover:text-rose-300 hover:bg-rose-950 border border-slate-500 hover:border-rose-500 transition-colors flex-shrink-0"
+                      title="Dismiss candidate"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
 
-                    <h3 className="text-sm font-bold text-white tracking-tight">{cand.title}</h3>
-
+                  {/* Semantic Badges Row: Wrapped beneath title to prevent title crushing */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full font-mono border ${
-                        cand.type === 'song'
-                          ? 'bg-purple-950/80 text-purple-300 border-purple-700/60 shadow-[0_0_6px_rgba(168,85,247,0.25)]'
-                          : 'bg-indigo-950/80 text-indigo-300 border-indigo-700/60 shadow-[0_0_6px_rgba(99,102,241,0.25)]'
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full font-mono border ${
+                        confidencePct >= 90
+                          ? 'bg-emerald-950 text-emerald-300 border-emerald-500'
+                          : isScripture
+                          ? 'bg-indigo-950 text-indigo-300 border-indigo-500'
+                          : 'bg-purple-950 text-purple-200 border-purple-500'
                       }`}
                     >
-                      {Math.round(cand.confidence * 100)}% Match
+                      {confidencePct}% Match
                     </span>
-
                     {cand.needsReview && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-950/80 text-amber-300 border border-amber-700/60">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-950 text-amber-200 border border-amber-500">
                         Needs Review
                       </span>
                     )}
                     {cand.isWholeChapter && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-950/80 text-blue-300 border border-blue-700/60">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-950 text-blue-300 border border-blue-500">
                         Whole Chapter
                       </span>
                     )}
                   </div>
 
-                  <button
-                    onClick={() => onDismiss(cand.id)}
-                    title="Dismiss suggestion"
-                    className="text-slate-500 hover:text-rose-400 p-1 rounded-md hover:bg-slate-800/80 transition-colors flex-shrink-0"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                  {/* Horizontal Stage Bezel: 16:9 WYSIWYG Preview + Passage/Evidence */}
+                  <div className="mt-1.5 p-1.5 rounded-xl bg-[#040711] border border-slate-500 shadow-inner flex items-start gap-2">
+                    <div className="w-[184px] xl:w-[188px] flex-shrink-0 aspect-video rounded-lg bg-slate-950 border border-slate-500 p-1.5 flex flex-col justify-between overflow-hidden">
+                      <div className="flex items-center justify-between text-[9px] font-mono">
+                        <span
+                          className={`uppercase font-bold tracking-wider flex items-center gap-1 ${
+                            isScripture ? 'text-indigo-300' : 'text-purple-300'
+                          }`}
+                        >
+                          <Monitor className="w-2.5 h-2.5" /> 16:9
+                        </span>
+                        <span
+                          className={`px-1 py-0.5 rounded border font-bold leading-none ${
+                            isScripture
+                              ? 'bg-indigo-950 text-indigo-200 border-indigo-500'
+                              : 'bg-purple-900 text-purple-200 border-purple-500'
+                          }`}
+                        >
+                          {translation}
+                        </span>
+                      </div>
+                      <p className="text-[10px] font-serif italic text-slate-300 leading-tight text-center line-clamp-3">
+                        &ldquo;{cand.contentPreview}&rdquo;
+                      </p>
+                      <div className="text-right text-[9px] font-sans font-bold text-[#A3B3C6] truncate">
+                        — {cand.title}
+                      </div>
+                    </div>
 
-                <blockquote className="text-xs font-serif text-slate-100 mt-2.5 p-3 bg-slate-950/90 rounded-xl border border-slate-800/80 leading-relaxed whitespace-pre-line shadow-inner">
-                  "{cand.contentPreview}"
-                </blockquote>
-
-                {attribution && (
-                  <div className="mt-1.5 text-[10px] text-indigo-400 font-semibold tracking-wide flex items-center space-x-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                    <span>{attribution}</span>
+                    <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                      <p className="text-xs font-serif text-slate-300 leading-snug line-clamp-4">
+                        &ldquo;{cand.contentPreview}&rdquo;
+                      </p>
+                      <div className="mt-1 space-y-0.5 min-w-0">
+                        {attribution && (
+                          <div className="text-[10px] text-indigo-300 font-semibold truncate">
+                            {attribution}
+                          </div>
+                        )}
+                        {cand.evidence && (
+                          <div className="text-[11px] flex items-center gap-1 text-slate-300 min-w-0">
+                            <span className="text-[#A3B3C6] font-bold uppercase text-[10px] tracking-wider flex-shrink-0">
+                              Heard:
+                            </span>
+                            <span className="italic truncate text-slate-300">&ldquo;{cand.evidence}&rdquo;</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
-
-                <div className="mt-2 text-[11px] text-slate-400 flex items-center space-x-1.5">
-                  <span className="text-slate-500 font-semibold text-[10px] uppercase">Heard:</span>
-                  <span className="italic truncate text-slate-300">{cand.evidence}</span>
                 </div>
 
-                <div className="mt-3 pt-2.5 border-t border-slate-800/70 flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    {new Date(cand.detectedAt).toLocaleTimeString()}
+                {/* Action Footer: Timestamp & 44px WCAG AAA Tactile Approval CTA */}
+                <div className="mt-1.5 pt-1.5 border-t border-slate-700/80 flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-[#A3B3C6] font-mono">
+                    {new Date(cand.detectedAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
                   </span>
-
                   <button
+                    type="button"
                     disabled={isLocked}
                     onClick={() => onApprove(cand)}
-                    className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ${
+                    className={`h-11 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center space-x-2 shadow-lg transition-all active:scale-95 ${
                       isLocked
-                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                        : cand.type === 'song'
-                        ? 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white shadow-purple-900/40 border border-purple-400/40'
-                        : 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-600 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-indigo-900/40 border border-indigo-400/40'
+                        ? 'bg-slate-800 text-slate-300 border border-slate-500 cursor-not-allowed'
+                        : isScripture
+                        ? 'bg-indigo-700 hover:bg-indigo-600 text-white border border-indigo-400'
+                        : 'bg-purple-800 hover:bg-purple-700 text-white border border-purple-400'
                     }`}
                   >
                     {isLocked ? (
                       <>
-                        <ShieldAlert className="w-3.5 h-3.5" />
+                        <ShieldAlert className="w-4 h-4" />
                         <span>Safety Locked</span>
                       </>
                     ) : (
                       <>
-                        <Check className="w-3.5 h-3.5" />
-                        <span>{cand.type === 'song' ? 'Project Song' : 'Approve & Project'}</span>
-                        <kbd className="hidden sm:inline px-1 py-0.2 rounded bg-black/30 text-[9px] font-mono text-white/80">
-                          ↵
+                        <Check className="w-4 h-4 stroke-[2.5]" />
+                        <span>{isScripture ? 'Approve & Project' : 'Project Song'}</span>
+                        <kbd className="px-1.5 py-0.5 rounded bg-indigo-950 text-[10px] font-mono font-bold text-indigo-200 border border-indigo-400">
+                          ↵ Enter
                         </kbd>
                       </>
                     )}
